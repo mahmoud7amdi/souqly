@@ -1,0 +1,1291 @@
+@import 'tailwindcss';
+
+/* ==========================================================================
+   Souqly design system — v2.1 "long shift, green"
+   --------------------------------------------------------------------------
+   Tuned for a POS operated for eight-hour shifts, so the whole palette is
+   deliberately low-chroma: no saturated fills, no pure white against pure
+   black, no colour used decoratively.
+
+   ONE FAMILY, RANKED BY DEPTH. v2 shouted with a second hue (copper) against
+   teal chrome. v2.1 draws the whole interactive vocabulary from one
+   green-turquoise family anchored on #00a76f, and ranks importance by *depth*
+   instead of by hue:
+
+     brand-500  #00a76f  the identity colour — focus rings, borders, tints
+     brand-600  #00845d  the screen's main action (white text, 4.7:1)
+     accent-700 #005a54  commits money — deeper, elevated (white text, 8.1:1)
+
+   Darker reads as heavier, so the pay button is still unmistakable in
+   peripheral vision without a competing hue. Green cannot carry white text at
+   AA until it is this dark: #00a76f itself measures 3.1:1, which is a UI-
+   component colour, not a text-background one. So the brand hex is used
+   everywhere it is a surface accent and the button fill is the next step down.
+
+   NO BOXES. Surfaces are defined by tint and layered soft shadow, not by 1px
+   grey borders: `.card`/`.table-wrap` carry a 5%-alpha ring and
+   `--shadow-panel`, card headers and footers separate by space and tone rather
+   than by a rule, and sections are grouped by rhythm (`.section`, mb-8) with a
+   real title above them. Divider lines are reserved for places where scanning
+   needs them — a table's header tint, a row separator, a totals line.
+
+   Direction-agnostic by construction: every spacing/alignment utility used in
+   the Blade templates is a *logical* one (ms/me, ps/pe, start/end,
+   text-start/text-end), so a single stylesheet serves both Arabic (RTL) and
+   English (LTR) with no separate rtl.css build.
+
+   Consistency strategy: the neutral, brand and semantic scales below OVERRIDE
+   Tailwind's own `slate`, `emerald`, `rose`, `amber` and `sky` ramps. Every
+   screen already written in terms of `text-slate-500` / `bg-rose-50` therefore
+   inherits the calm palette with no edit, and no screen can drift back to a
+   default Tailwind colour. Final hex values are logged in NOTES.md §11.
+   ========================================================================== */
+
+@theme {
+    /* --- Neutrals --------------------------------------------------------
+       A green-grey ramp replacing Tailwind `slate`. Re-tinted from v2's warm
+       blue-grey so the canvas sits in the brand's own family: a #00a76f button
+       on a blue-grey page reads as two unrelated decisions, while the same
+       button on a faintly green-grey page reads as one.
+
+       Chosen so that the shades the UI actually puts text in clear WCAG AA on
+       white: 500 = 5.3:1, 600 = 7.6:1, 700 = 9.8:1, 800 = 13:1. The canvas
+       (50/100) is a soft grey rather than #fff so a full-screen POS does not
+       glare, and 400 (3.5:1) is placeholder/decorative only — never body text. */
+    --color-slate-50: #f6f9f8;
+    --color-slate-100: #eef3f1;
+    --color-slate-200: #dee6e3;
+    --color-slate-300: #c2cfcb;
+    --color-slate-400: #7b8d88;
+    --color-slate-500: #5c6f6a;
+    --color-slate-600: #465752;
+    --color-slate-700: #374742;
+    --color-slate-800: #26332f;
+    --color-slate-900: #18211f;
+    --color-slate-950: #0f1615;
+
+    /* --- Brand ------------------------------------------------------------
+       The green-turquoise family. 500 is the identity hex; the family drifts
+       from green (160°) at 500 toward teal (172°) at 700, which is what makes
+       the dark end read as depth rather than as mud.
+
+       Which stop to reach for:
+         50/100  page washes, hovered rows, calm "informational" states
+         200/300 borders on tinted surfaces, dividers inside brand blocks
+         500     THE brand colour: focus rings, active borders, checkbox tint,
+                 icon glyphs on light. Never a background under white text.
+         600     primary button and other white-on-brand fills (4.7:1)
+         700     hover/active on those, and brand-coloured TEXT on white (5.4:1)
+         800/900 headings and text on brand-50/100 tints (7.6:1 / 10:1) */
+    --color-brand-50: #eefaf3;
+    --color-brand-100: #c8fad6;
+    --color-brand-200: #9bf0bd;
+    --color-brand-300: #5be49b;
+    --color-brand-400: #1fc98a;
+    --color-brand-500: #00a76f;
+    --color-brand-600: #00845d;
+    --color-brand-700: #007867;
+    --color-brand-800: #005f54;
+    --color-brand-900: #004b50;
+    --color-brand-950: #00302f;
+
+    /* --- Accent ----------------------------------------------------------
+       Same family, one register deeper: the money-commit rank. Not a second
+       hue any more — v2 used copper, which meant the loudest thing on a sales
+       screen belonged to no other part of the system. Depth carries the rank
+       instead, so 700 is the fill (8.1:1 with white) and it always arrives
+       raised (`shadow-raised`) and usually large (`btn-lg btn-block`).
+
+       Still at most one per screen. That rule is what makes it legible. */
+    --color-accent-50: #e9f7f5;
+    --color-accent-100: #c6ebe6;
+    --color-accent-200: #94d8d1;
+    --color-accent-300: #5cbdb6;
+    --color-accent-400: #2f9f9a;
+    --color-accent-500: #16847f;
+    --color-accent-600: #006d63;
+    --color-accent-700: #005a54;
+    --color-accent-800: #004b50;
+    --color-accent-900: #003b40;
+
+    /* --- Semantic: success (replaces `emerald`) ---------------------------
+       Pushed to leaf green (~133°), roughly 28° off the brand. It has to be a
+       different green now that the brand is one: a "paid" badge beside a brand
+       badge in the old desaturated emerald (153°) would have looked like a
+       rendering accident rather than two meanings. */
+    --color-emerald-50: #f0f8f1;
+    --color-emerald-100: #daeedd;
+    --color-emerald-200: #b5dcbc;
+    --color-emerald-300: #87c392;
+    --color-emerald-400: #59a668;
+    --color-emerald-500: #3c8c4d;
+    --color-emerald-600: #31743f;
+    --color-emerald-700: #285e34;
+    --color-emerald-800: #224d2c;
+    --color-emerald-900: #1d4026;
+
+    /* --- Semantic: danger (replaces `rose`) ------------------------------- */
+    --color-rose-50: #fcefee;
+    --color-rose-100: #f8dbd8;
+    --color-rose-200: #f0bab4;
+    --color-rose-300: #e4928a;
+    --color-rose-400: #d26a60;
+    --color-rose-500: #bc4b41;
+    --color-rose-600: #a33b32;
+    --color-rose-700: #85302a;
+    --color-rose-800: #6d2823;
+    --color-rose-900: #5b231f;
+
+    /* --- Semantic: warning (replaces `amber`) ----------------------------- */
+    --color-amber-50: #fbf5e7;
+    --color-amber-100: #f6e8c8;
+    --color-amber-200: #edd293;
+    --color-amber-300: #dfb558;
+    --color-amber-400: #cb9a2c;
+    --color-amber-500: #ac7f16;
+    --color-amber-600: #8c6710;
+    --color-amber-700: #71530e;
+    --color-amber-800: #5c440d;
+    --color-amber-900: #4d390c;
+
+    /* --- Semantic: info (replaces `sky`) --------------------------------- */
+    --color-sky-50: #eff4fa;
+    --color-sky-100: #dbe6f3;
+    --color-sky-200: #b9cde7;
+    --color-sky-300: #8daed6;
+    --color-sky-400: #618dc2;
+    --color-sky-500: #3f6fa9;
+    --color-sky-600: #315a8d;
+    --color-sky-700: #2a4b75;
+    --color-sky-800: #253e60;
+    --color-sky-900: #213551;
+
+    /* --- Fonts -----------------------------------------------------------
+       Cairo carries Arabic and Latin in one family, so the UI does not shift
+       metrics when the locale changes. Both families are self-hosted through
+       vite.config.js — keep the weights declared there in step with the ones
+       used here.
+
+       The "… fallback" entries are the metric-matched faces fontaine generates
+       at build time: ascent, descent and glyph advance are scaled to match the
+       real font, so the text laid out before the WOFF2 arrives occupies the
+       same box and nothing reflows on swap. Written out literally rather than
+       as var(--font-cairo) so a missing font stylesheet degrades to
+       system-ui instead of to the browser's default serif. */
+    --font-sans: 'Cairo', 'Cairo fallback', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'JetBrains Mono fallback', ui-monospace, monospace;
+
+    /* --- Geometry --------------------------------------------------------
+       One radius vocabulary for the whole app, softened slightly from
+       Tailwind's defaults: rounded corners read as calmer at a glance. */
+    --radius-md: 0.5rem;
+    --radius-lg: 0.625rem;
+    --radius-xl: 0.875rem;
+    --radius-2xl: 1.125rem;
+
+    /* --- Elevation -------------------------------------------------------
+       Tinted with the neutral ramp's own darkest value (#18211f) rather than
+       black, so a shadow reads as the surface lifting off the canvas instead of
+       as a grey smear under it.
+
+       `--shadow-panel` is the v2.1 workhorse and the reason the UI no longer
+       needs 1px grey borders: three stacked layers at 6% — a contact shadow, a
+       short mid one, and a wide diffuse one — give a surface a soft, physical
+       edge on every side. A single-layer shadow cannot do this; it either has a
+       hard lip or disappears.
+
+       Pair it with a 5%-alpha ring, not a border. The ring is what keeps a white
+       card legible where it meets a white table or a bright monitor, and at 5%
+       it is an edge rather than a line. */
+    --shadow-panel:
+        0 1px 2px -1px rgb(24 33 31 / 0.06),
+        0 4px 10px -4px rgb(24 33 31 / 0.06),
+        0 10px 28px -12px rgb(24 33 31 / 0.06);
+    --shadow-card: 0 1px 2px 0 rgb(24 33 31 / 0.04), 0 1px 3px -1px rgb(24 33 31 / 0.05);
+    --shadow-raised: 0 1px 2px 0 rgb(24 33 31 / 0.05), 0 6px 16px -6px rgb(24 33 31 / 0.12);
+    --shadow-overlay: 0 24px 48px -16px rgb(24 33 31 / 0.20), 0 4px 12px -4px rgb(24 33 31 / 0.10);
+
+    /* --- Control sizing --------------------------------------------------
+       POS hardware is touch. 2.75rem = 44px, the smallest target a finger
+       hits reliably; every interactive control is at least this tall. */
+    --size-control: 2.75rem;
+    --size-control-sm: 2.25rem;
+    --size-control-lg: 3.5rem;
+}
+
+@layer base {
+    html {
+        -webkit-text-size-adjust: 100%;
+        scrollbar-gutter: stable;
+        /* A mis-tap must never zoom a POS screen. */
+        touch-action: manipulation;
+    }
+
+    body {
+        @apply bg-slate-100 text-slate-700 antialiased;
+        font-family: var(--font-sans);
+    }
+
+    /* Arabic needs a touch more line-height for diacritics and taller glyphs. */
+    html[lang='ar'] body,
+    html[lang='ps'] body {
+        line-height: 1.75;
+    }
+
+    [dir='rtl'] {
+        /* Keeps Latin product codes/SKUs readable inside Arabic sentences. */
+        --tw-numeric-direction: ltr;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        @apply font-semibold text-slate-900;
+        text-wrap: balance;
+    }
+
+    /* Visible on every control, in both directions, without layout shift. */
+    :focus-visible {
+        @apply outline-2 outline-offset-2 outline-brand-500;
+    }
+
+    /* Touch devices get no hover state; suppress the flash of one. */
+    @media (hover: none) {
+        * { -webkit-tap-highlight-color: transparent; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+
+    /* Never render a raw scrollbar over the sidebar on Windows. */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { @apply bg-transparent; }
+    ::-webkit-scrollbar-thumb { @apply rounded-full bg-slate-300; }
+    ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
+}
+
+/* ==========================================================================
+   Composable primitives
+   --------------------------------------------------------------------------
+   Declared with @utility (not @layer components) because Tailwind 4 only
+   allows @apply to reference custom classes that are registered utilities.
+   These are the bases the variants below build on.
+   ========================================================================== */
+
+@utility btn {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg
+           px-4 text-sm font-semibold transition select-none
+           active:translate-y-px
+           disabled:cursor-not-allowed disabled:opacity-45 disabled:active:translate-y-0;
+    min-height: var(--size-control);
+}
+
+@utility badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5
+           text-xs font-semibold whitespace-nowrap;
+}
+
+@utility alert {
+    @apply flex items-start gap-3 rounded-lg border p-4 text-sm;
+}
+
+@utility input {
+    @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2
+           text-sm text-slate-900 transition
+           placeholder:text-slate-400
+           focus:border-brand-500 focus:ring-2 focus:ring-brand-500/25
+           disabled:bg-slate-50 disabled:text-slate-500;
+    min-height: var(--size-control);
+}
+
+/* The one surface primitive. No border: a 5%-alpha ring plus the three-layer
+   `--shadow-panel` gives the same definition without the boxed-in look that a
+   page full of grey-outlined rectangles has. Everything that used to be
+   "rounded-xl border border-slate-200 bg-white shadow-card" is this. */
+@utility card {
+    @apply rounded-xl bg-white ring-1 ring-slate-900/5 shadow-panel;
+}
+
+@utility nav-link {
+    @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium
+           text-slate-600 transition hover:bg-slate-100 hover:text-slate-900;
+}
+
+/* Touch target that is also a surface — POS product buttons, pickable options.
+   Keeps a ring rather than a border for the same reason .card does, but at 8%:
+   a tile is pressed, so its edge has to be findable by a thumb, not merely
+   implied. The hover state tints toward the brand instead of darkening. */
+@utility tile {
+    @apply flex cursor-pointer flex-col rounded-xl bg-white p-3 text-start
+           ring-1 ring-slate-900/[0.08] shadow-card transition select-none
+           hover:bg-brand-50 hover:ring-brand-300
+           active:translate-y-px
+           disabled:cursor-not-allowed disabled:opacity-45;
+}
+
+/* Inline link inside prose and table cells. Underline appears on hover only:
+   a table full of permanently underlined references reads as noise. */
+@utility link {
+    @apply font-medium text-brand-700 underline-offset-2 transition
+           hover:text-brand-800 hover:underline;
+}
+
+/* Initials chip. Sized by the variants below so one shape serves the user menu,
+   a contact row and a document header. */
+@utility avatar {
+    @apply grid shrink-0 place-items-center rounded-full bg-brand-100
+           font-semibold text-brand-800 uppercase select-none;
+}
+
+/* One pagination cell. The active/disabled variants build on this, which is why
+   it is a registered utility rather than a plain component class. */
+@utility page-link {
+    @apply inline-flex items-center justify-center rounded-lg border border-slate-300
+           bg-white px-3 text-sm font-medium text-slate-600 transition
+           hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900;
+    min-height: var(--size-control-sm);
+    min-width: var(--size-control-sm);
+}
+
+@layer components {
+
+    /* ==================================================================
+     | Page scaffolding
+     |  Every screen uses the same three-part rhythm: a page head (what am I
+     |  looking at + the primary action), then sections, then the data. This
+     |  is what keeps 50+ screens feeling like one system.
+     ================================================================== */
+    .page-head {
+        @apply mb-5 flex flex-wrap items-start justify-between gap-3;
+    }
+
+    .page-head-text {
+        @apply min-w-0;
+    }
+
+    .page-title {
+        @apply truncate text-xl font-bold text-slate-900;
+    }
+
+    .page-subtitle {
+        @apply mt-0.5 text-sm text-slate-500;
+    }
+
+    /* "Back to list" above the title on every detail and form screen, so
+       leaving a record never depends on the browser's back button. */
+    .page-back {
+        @apply mb-1.5 inline-flex items-center gap-1.5 text-xs font-semibold
+               text-slate-500 transition hover:text-brand-700;
+    }
+
+    /* Primary action always sits at the inline end of the head, so the eye
+       finds it in the same place on every screen. */
+    .page-actions {
+        @apply flex flex-wrap items-center gap-2;
+    }
+
+    /* --- Sections --------------------------------------------------------
+       How a screen is divided, and the part of v2.1 that is not about colour.
+
+       A section is separated from its neighbour by SPACE (mb-8, half again what
+       v2 used), by a real title above it, and — where the content needs binding
+       together — by a tint. Not by a horizontal rule: a screen with four <hr>s
+       reads as a form printed in 1998, and once every group is a white rectangle
+       with a grey outline the eye has nothing left to rank.
+
+       The ladder, top to bottom, is deliberately four steps and no more:
+         .page-title     text-xl  bold      what am I looking at
+         .section-title  text-base bold     a division of that
+         .card-title     text-base semibold a surface inside a division
+         .section-label  text-xs  bold caps a quiet grouping label
+       Anything that needs a fifth step is really two screens. */
+    .section {
+        @apply mb-8;
+    }
+
+    /* For a section whose content is a single short block — a filter strip above
+       a table, a two-field form — where mb-8 would read as a gap rather than as
+       a break. */
+    .section-tight {
+        @apply mb-5;
+    }
+
+    .section-head {
+        @apply mb-3.5 flex flex-wrap items-end justify-between gap-3;
+    }
+
+    .section-head-text {
+        @apply min-w-0;
+    }
+
+    /* Micro-label above a section title, in brand green. Carries the category
+       ("this month", "unpaid") so the title itself can stay a plain noun. */
+    .section-eyebrow {
+        @apply mb-0.5 text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-brand-700;
+    }
+
+    .section-title {
+        @apply text-base font-bold text-slate-900;
+    }
+
+    /* One line explaining what the section is for. Capped at a readable measure
+       — a description running the full width of a 1600px monitor is not read. */
+    .section-desc {
+        @apply mt-0.5 max-w-prose text-sm text-slate-500;
+    }
+
+    .section-actions {
+        @apply flex flex-wrap items-center gap-2;
+    }
+
+    /* The v2 treatment, kept for what it is actually good at: labelling a group
+       of fields inside a form, where a bold title would compete with the page. */
+    .section-label {
+        @apply mb-2 text-xs font-bold uppercase tracking-wide text-slate-500;
+    }
+
+    /* Groups related content on the canvas by tone alone — no ring, no shadow,
+       no title bar. This is the "visual grouping without divider lines" tool:
+       reach for it before reaching for a second nested card, which is what makes
+       a screen look like a template. */
+    .surface-quiet {
+        @apply rounded-2xl bg-slate-50 p-5;
+    }
+
+    /* Deliberately rare. A rule is for separating two things that are the same
+       kind and must not be confused — two records in one list, a totals line from
+       the figures above it — never for fencing off a section. */
+    .divider {
+        @apply my-7 border-t border-slate-200;
+    }
+
+    /* --- Surfaces --------------------------------------------------------
+       Headers and footers separate from the body by SPACE and TONE, not by a
+       border. A card whose header, body and footer are each fenced with a 1px
+       line is three boxes in a box; the same card with a generous header, a
+       plain body and a tinted footer reads as one object with three parts. */
+    .card-header {
+        @apply flex flex-wrap items-center justify-between gap-3 px-5 pt-4 pb-3;
+    }
+
+    .card-title {
+        @apply text-base font-semibold text-slate-900;
+    }
+
+    /* Second line in a card header, for the count or the qualifier that would
+       otherwise be crammed into the title. */
+    .card-subtitle {
+        @apply mt-0.5 text-xs text-slate-500;
+    }
+
+    .card-body {
+        @apply p-5;
+    }
+
+    /* Muted footer strip for totals / helper text inside a card. The tint alone
+       marks it off; at 60% it stays lighter than the filter bar, so a card's own
+       footer never looks like a separate control surface. */
+    .card-footer {
+        @apply flex flex-wrap items-center justify-between gap-3 rounded-b-xl
+               bg-slate-50/60 px-5 py-3.5 text-sm;
+    }
+
+    /* Commit strip at the foot of a card-contained form. The page-level
+       counterpart is .form-actions, which sticks to the viewport — use that only
+       for forms long enough that Save scrolls out of reach. */
+    .card-actions {
+        @apply flex flex-wrap items-center justify-end gap-2 rounded-b-xl
+               bg-slate-50/60 px-5 py-4;
+    }
+
+    /* --- Buttons ---------------------------------------------------------
+       Four ranks, and only four, so importance is never ambiguous:
+         accent    → commits money (one per screen, at most)
+         primary   → the screen's main action
+         secondary → everything else
+         ghost/danger → tertiary and destructive
+
+       All four are now the same hue, so the rank is carried by DEPTH and
+       ELEVATION rather than by colour: accent is darker than primary and
+       arrives raised. Note that controls keep real 1px borders (.btn-secondary,
+       .input, .stepper) while surfaces do not — a border on a thing you click is
+       an affordance, a border on a thing you read is a fence.
+    */
+    .btn-accent {
+        @apply btn bg-accent-700 text-white shadow-raised
+               hover:bg-accent-800 active:bg-accent-900;
+    }
+
+    .btn-primary {
+        @apply btn bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800;
+    }
+
+    .btn-secondary {
+        @apply btn border border-slate-300 bg-white text-slate-700
+               hover:border-slate-400 hover:bg-slate-50;
+    }
+
+    .btn-danger {
+        @apply btn bg-rose-600 text-white hover:bg-rose-700;
+    }
+
+    .btn-ghost {
+        @apply btn text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+    }
+
+    /* Dense variant for table row actions — still 36px, still tappable. */
+    .btn-sm {
+        @apply gap-1.5 px-3 text-xs;
+        min-height: var(--size-control-sm);
+    }
+
+    /* Touch variant for POS and confirmation screens. */
+    .btn-lg {
+        @apply gap-2.5 px-6 text-base;
+        min-height: var(--size-control-lg);
+    }
+
+    .btn-block {
+        @apply w-full;
+    }
+
+    .btn-icon {
+        @apply inline-flex items-center justify-center rounded-lg
+               text-slate-500 transition
+               hover:bg-slate-100 hover:text-slate-800;
+        width: var(--size-control-sm);
+        height: var(--size-control-sm);
+    }
+
+    /* Rules repeated rather than @apply btn-icon: Tailwind 4 refuses to apply
+       a class declared in the same @layer components block. */
+    .btn-icon-danger {
+        @apply inline-flex items-center justify-center rounded-lg
+               text-slate-500 transition
+               hover:bg-rose-50 hover:text-rose-700;
+        width: var(--size-control-sm);
+        height: var(--size-control-sm);
+    }
+
+    /* --- Forms -----------------------------------------------------------
+       One field rhythm everywhere: label, control, then error underneath.
+       `.form-grid` is the standard two/three-column field layout. */
+    .form-grid {
+        @apply grid gap-x-5 gap-y-4 sm:grid-cols-2;
+    }
+
+    .form-grid-3 {
+        @apply grid gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-3;
+    }
+
+    .field {
+        @apply min-w-0;
+    }
+
+    .label {
+        @apply mb-1.5 block text-sm font-medium text-slate-700;
+    }
+
+    .label-required::after {
+        content: ' *';
+        @apply text-rose-600;
+    }
+
+    .hint {
+        @apply mt-1.5 text-xs text-slate-500;
+    }
+
+    .select,
+    .textarea {
+        @apply input;
+    }
+
+    .textarea {
+        @apply py-2.5 leading-relaxed;
+    }
+
+    .select {
+        @apply pe-9 appearance-none bg-no-repeat;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%235c6f6a' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+        background-position: right 0.625rem center;
+        background-size: 1.1em;
+    }
+
+    [dir='rtl'] .select {
+        background-position: left 0.625rem center;
+    }
+
+    /* Monetary and quantity inputs stay LTR even in Arabic — a figure typed
+       right-to-left is unreadable. */
+    .input-numeric {
+        @apply input font-mono;
+        direction: ltr;
+        text-align: end;
+    }
+
+    /* Big, centred numeric field for the POS payment pad. */
+    .input-amount {
+        @apply input font-mono text-2xl font-bold;
+        direction: ltr;
+        text-align: end;
+        min-height: var(--size-control-lg);
+    }
+
+    .field-error {
+        @apply mt-1.5 text-xs font-medium text-rose-700;
+    }
+
+    .input-invalid {
+        @apply border-rose-400 focus:border-rose-500 focus:ring-rose-500/25;
+    }
+
+    /* Search field with room for a leading icon. */
+    .input-search {
+        @apply input ps-10;
+    }
+
+    .input-search-wrap {
+        @apply relative;
+    }
+
+    .input-search-icon {
+        @apply pointer-events-none absolute inset-y-0 start-0 grid w-10 place-items-center text-slate-400;
+    }
+
+    /* Touch-height modifier — the input counterpart of .btn-lg, for the POS and
+       any other screen worked with a thumb. Placed after .input, .input-numeric,
+       .select and .input-search because each of those declares the default
+       control height itself: a size modifier only works if it is the last word. */
+    .input-lg {
+        @apply text-base;
+        min-height: var(--size-control-lg);
+    }
+
+    /* --- Checkboxes ------------------------------------------------------
+       The native control is tinted, not replaced. Screens used to spell out
+       `rounded border-slate-300 text-brand-600 focus:ring-brand-500`, which is
+       the @tailwindcss/forms idiom — and that plugin is deliberately not
+       installed here, so none of those four utilities did anything: a browser
+       ignores border, radius and colour on a default-rendered checkbox. Every
+       box in the app was drawing the platform blue.
+
+       accent-color is the one property that does tint it, and it costs nothing:
+       no plugin, no appearance-none, no hand-drawn checkmark. The control keeps
+       its native focus ring, its keyboard behaviour and its high-contrast-mode
+       rendering — all of which a div-and-an-icon imitation loses. */
+    .checkbox {
+        @apply size-4 shrink-0 cursor-pointer;
+        accent-color: var(--color-brand-600);
+    }
+
+    /* The whole row is the hit target, not just the 16px box — on a phone that
+       is the difference between one tap and three. items-start rather than
+       items-center so the box lines up with the first line of a label that
+       wraps, instead of floating to the middle of two. */
+    .checkbox-row {
+        @apply flex cursor-pointer items-start gap-2.5 py-1.5 select-none;
+    }
+
+    /* Nudged to the optical centre of the first text line. The row is
+       items-start so a wrapping label keeps its box on line one; without this a
+       16px box in a 20px line box sits 2px high. Scoped to the row so a
+       .checkbox in a centred layout is not pushed off by it. */
+    .checkbox-row .checkbox {
+        @apply mt-0.5;
+    }
+
+    /* The text beside a checkbox. Its own primitive because it had been spelled
+       out at five call sites in four different ways — `text-sm font-medium
+       text-slate-700`, the same without the weight, the same at slate-600, and a
+       nested block variant — so a row of checkboxes drawn from two screens did
+       not look like one control. min-w-0 lets a long label wrap instead of
+       stretching the flex row. */
+    .checkbox-label {
+        @apply min-w-0 text-sm font-medium text-slate-700;
+    }
+
+    /* Second line under a checkbox label, explaining what turning it on does.
+       font-normal because it inherits the label's medium weight. */
+    .checkbox-hint {
+        @apply mt-0.5 block text-xs font-normal text-slate-500;
+    }
+
+    /* Quantity stepper — −/value/+ as one control, sized for fingers. */
+    .stepper {
+        @apply inline-flex items-stretch overflow-hidden rounded-lg border border-slate-300 bg-white;
+        /* Without this the group is only as tall as its input's line box — about
+           24px, which is a mouse target and not a finger one. The container sets
+           the height and `items-stretch` passes it to both buttons, so a POS cart
+           row and a purchase line row are worked the same way on a tablet. */
+        min-height: var(--size-control-sm);
+    }
+
+    .stepper-btn {
+        @apply grid w-9 shrink-0 cursor-pointer place-items-center bg-slate-50
+               text-slate-600 transition hover:bg-slate-200 active:bg-slate-300;
+    }
+
+    .stepper-input {
+        @apply w-14 border-0 bg-white text-center font-mono text-sm font-semibold
+               text-slate-900 focus:ring-0;
+        direction: ltr;
+    }
+
+    /* Form footer. Sticks to the bottom of the viewport on short screens so
+       Save is reachable without scrolling a long product form to its end. */
+    .form-actions {
+        @apply sticky bottom-0 z-10 -mx-4 mt-6 flex flex-wrap items-center justify-end
+               gap-2 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur
+               lg:-mx-6 lg:px-6;
+    }
+
+    /* Pushes the secondary/cancel action away from the commit action, so a
+       mis-tap does not discard a half-filled form. */
+    .form-actions-spacer {
+        @apply me-auto text-xs text-slate-500;
+    }
+
+    /* --- Filter bars -----------------------------------------------------
+       Filters are secondary to the data, so they sit in a quiet strip rather
+       than a white card competing with the table. Lighter than the canvas and
+       ringed rather than bordered: the strip should read as part of the page's
+       chrome, not as a second record on it. */
+    .filter-bar {
+        @apply mb-4 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-900/5;
+    }
+
+    .filter-grid {
+        @apply grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-4;
+    }
+
+    /* Quick-filter pills (paid / due / today …). */
+    .chip {
+        @apply inline-flex cursor-pointer items-center gap-1.5 rounded-full border
+               border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold
+               text-slate-600 transition hover:border-slate-400 hover:bg-slate-100;
+    }
+
+    .chip-active {
+        @apply border-brand-600 bg-brand-600 text-white hover:border-brand-700 hover:bg-brand-700;
+    }
+
+    /* --- Tables ---------------------------------------------------------- */
+    .table-wrap {
+        @apply overflow-x-auto rounded-xl bg-white ring-1 ring-slate-900/5 shadow-panel;
+    }
+
+    /* A table already inside a card must not draw a second surface around
+       itself. Named for the intent so screens stop spelling it out as
+       "rounded-none border-0 shadow-none" three times a page. */
+    .table-flush {
+        @apply rounded-none bg-transparent shadow-none ring-0;
+    }
+
+    .table {
+        @apply w-full border-collapse text-sm;
+    }
+
+    /* Tinted, not underlined. The tone is what marks the header off; a rule
+       under it as well is one line doing a job already done. */
+    .table thead th {
+        @apply whitespace-nowrap bg-slate-100/70 px-4 py-3 text-start text-xs
+               font-bold uppercase tracking-wide text-slate-600;
+    }
+
+    .table tbody td {
+        @apply border-b border-slate-100 px-4 py-3 align-middle text-slate-700;
+    }
+
+    .table tbody tr:last-child td {
+        @apply border-b-0;
+    }
+
+    .table tbody tr:hover {
+        @apply bg-brand-50/60;
+    }
+
+    .table tfoot td {
+        @apply border-t border-slate-200 bg-slate-50/60 px-4 py-3 font-semibold text-slate-900;
+    }
+
+    /* Roomier rows for touch screens. */
+    .table-touch tbody td {
+        @apply py-4;
+    }
+
+    /* The primary identifying cell of a row — pulls the eye first. */
+    .cell-primary {
+        @apply font-semibold text-slate-900;
+    }
+
+    /* The identifying cell when it is also a link. Deliberately not .link: that
+       paints brand teal, and a column of twenty-five teal names reads as noise —
+       the name is the row's identity first and a destination second. The colour
+       shift on hover carries the affordance, without the underline that would
+       make a dense table jitter on mouse-over.
+
+       Spelled out rather than `@apply cell-primary`: Tailwind 4 refuses to apply
+       a class declared in the same @layer components block. */
+    .cell-link {
+        @apply font-semibold text-slate-900 transition hover:text-brand-700;
+    }
+
+    .cell-meta {
+        @apply block text-xs text-slate-500;
+    }
+
+    /* Figures column: LTR + tabular so decimal points line up. */
+    .cell-numeric {
+        @apply text-end font-mono tabular-nums;
+        direction: ltr;
+    }
+
+    /* Header above a figures column — must align with the numbers under it. */
+    .th-numeric {
+        @apply text-end;
+    }
+
+    .cell-actions {
+        @apply flex items-center justify-end gap-1;
+    }
+
+    /* The cell an empty table collapses into. Spans every column and hosts an
+       .empty-state, so "no results" is never a bare grey line. */
+    .cell-empty {
+        @apply px-4 py-0;
+    }
+
+    /* The placeholder standing in for a value that isn't set — see or_dash().
+       Muted on purpose: an em-dash at full text weight reads as content, so a
+       column of absent brands drew the eye harder than the names beside it. */
+    .cell-none {
+        @apply text-slate-400;
+    }
+
+    /* --- Empty states ----------------------------------------------------
+       An empty table is a dead end without one of these. */
+    .empty-state {
+        @apply flex flex-col items-center gap-3 px-6 py-14 text-center;
+    }
+
+    .empty-state-icon {
+        @apply grid size-12 place-items-center rounded-full bg-slate-100 text-slate-400;
+    }
+
+    .empty-state-title {
+        @apply text-sm font-semibold text-slate-700;
+    }
+
+    .empty-state-text {
+        @apply max-w-sm text-sm text-slate-500;
+    }
+
+    /* Compact variant for a panel rather than a page. The dashboard stacks four
+       "nothing outstanding" cards in a grid; at the full py-14 they push the
+       sales trend below the fold on a laptop, so a panel that is empty must not
+       occupy more room than one holding three rows. Declared after .empty-state
+       so the smaller padding wins. */
+    .empty-state-compact {
+        @apply gap-2 py-7;
+    }
+
+    .empty-state-compact .empty-state-icon {
+        @apply size-10;
+    }
+
+    /* --- Badges ---------------------------------------------------------- */
+    .badge-success { @apply badge bg-emerald-100 text-emerald-800; }
+    .badge-warning { @apply badge bg-amber-100 text-amber-800; }
+    .badge-danger  { @apply badge bg-rose-100 text-rose-800; }
+    .badge-info    { @apply badge bg-sky-100 text-sky-800; }
+    .badge-brand   { @apply badge bg-brand-100 text-brand-800; }
+    .badge-accent  { @apply badge bg-accent-100 text-accent-800; }
+    .badge-muted   { @apply badge bg-slate-200 text-slate-700; }
+
+    /* --- Navigation ------------------------------------------------------ */
+    .nav-link-active {
+        @apply bg-brand-50 font-semibold text-brand-800 hover:bg-brand-50 hover:text-brand-800;
+    }
+
+    .nav-section {
+        @apply px-3 pt-5 pb-2 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-500;
+    }
+
+    /* Tabs for sibling listings (sales / drafts / quotations). */
+    .tab-bar {
+        @apply mb-4 flex flex-wrap items-center gap-1 border-b border-slate-200;
+    }
+
+    .tab {
+        @apply -mb-px inline-flex items-center gap-2 border-b-2 border-transparent
+               px-3.5 py-2.5 text-sm font-medium text-slate-500 transition
+               hover:border-slate-300 hover:text-slate-800;
+    }
+
+    .tab-active {
+        @apply border-brand-600 font-semibold text-brand-800 hover:border-brand-600 hover:text-brand-800;
+    }
+
+    /* Count pinned to a tab — how many drafts, how many quotations. */
+    .tab-count {
+        @apply rounded-full bg-slate-200 px-1.5 py-0.5 font-mono text-[0.6875rem]
+               font-bold tabular-nums text-slate-600;
+        direction: ltr;
+    }
+
+    .tab-active .tab-count {
+        @apply bg-brand-100 text-brand-800;
+    }
+
+    /* --- Pagination ------------------------------------------------------
+       Replaces Laravel's bundled Tailwind paginator, which ships physical
+       `ml-px` margins and Tailwind's default `gray` ramp — off-palette here,
+       and mirrored the wrong way in Arabic. See views/vendor/pagination. */
+    .pagination {
+        @apply flex flex-wrap items-center justify-between gap-3
+               border-t border-slate-100 px-4 py-3;
+    }
+
+    .pagination-summary {
+        @apply text-xs text-slate-500;
+    }
+
+    .pagination-list {
+        @apply flex flex-wrap items-center gap-1;
+    }
+
+    .page-link-active {
+        @apply page-link border-brand-600 bg-brand-600 font-semibold text-white
+               hover:border-brand-700 hover:bg-brand-700 hover:text-white;
+    }
+
+    .page-link-disabled {
+        @apply page-link cursor-not-allowed opacity-45
+               hover:border-slate-300 hover:bg-white hover:text-slate-600;
+    }
+
+    /* Ellipsis between page ranges — not a target, so not a .page-link. */
+    .pagination-gap {
+        @apply px-1.5 text-sm text-slate-400 select-none;
+    }
+
+    /* --- Stat tiles ------------------------------------------------------ */
+    .stat {
+        @apply card flex flex-col gap-1 p-5;
+    }
+
+    .stat-label {
+        @apply text-xs font-semibold uppercase tracking-wide text-slate-500;
+    }
+
+    /* Label and icon on one line — the icon is the tile's only decoration. */
+    .stat-head {
+        @apply flex items-center justify-between gap-2;
+    }
+
+    /* Tinted with the brand rather than grey. The icon is the only decoration a
+       stat tile gets, so it may as well tie the figure to the system; four grey
+       chips in a row is the single most template-looking thing a dashboard does. */
+    .stat-icon {
+        @apply grid size-8 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700;
+    }
+
+    .stat-value {
+        @apply font-mono text-2xl font-bold tabular-nums text-slate-900;
+        direction: ltr;
+    }
+
+    .stat-hint {
+        @apply text-xs text-slate-500;
+    }
+
+    /* --- Summary lists (invoice totals, document meta) ------------------- */
+    .dl {
+        @apply grid gap-2.5 text-sm;
+    }
+
+    .dl-row {
+        @apply flex items-baseline justify-between gap-4;
+    }
+
+    .dl-key {
+        @apply text-slate-500;
+    }
+
+    .dl-value {
+        @apply font-mono tabular-nums text-slate-800;
+        direction: ltr;
+    }
+
+    .dl-total {
+        @apply flex items-baseline justify-between gap-4 border-t border-slate-200 pt-2.5;
+    }
+
+    .dl-total-value {
+        @apply font-mono text-lg font-bold tabular-nums text-slate-900;
+        direction: ltr;
+    }
+
+    /* --- Attribute lists (a record's own fields) -------------------------
+       Distinct from the .dl family above, and the difference matters. A .dl-row
+       is one line of money — key on one side, a monospace LTR figure on the
+       other. An .attr is a descriptive field of a record: "Brand: Nike",
+       "Category: مستحضرات تجميل". Forcing those into .dl-value would set an
+       Arabic category name in JetBrains Mono and lay it out left-to-right.
+
+       Label above value rather than beside it: the values are free text of
+       unpredictable length, and a two-column layout ragged on both edges is
+       harder to scan than a stacked pair. */
+    .attr-grid {
+        @apply grid gap-4;
+    }
+
+    .attr-key {
+        @apply text-xs font-medium tracking-wide text-slate-500 uppercase;
+    }
+
+    .attr-value {
+        @apply mt-0.5 text-sm text-slate-900;
+    }
+
+    /* --- Alerts ---------------------------------------------------------- */
+    .alert-success { @apply alert border-emerald-200 bg-emerald-50 text-emerald-900; }
+    .alert-danger  { @apply alert border-rose-200 bg-rose-50 text-rose-900; }
+    .alert-warning { @apply alert border-amber-200 bg-amber-50 text-amber-900; }
+    .alert-info    { @apply alert border-sky-200 bg-sky-50 text-sky-900; }
+
+    /* --- Modals / popovers ----------------------------------------------- */
+    .modal-backdrop {
+        @apply fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4 backdrop-blur-sm;
+    }
+
+    .modal-panel {
+        @apply w-full max-w-lg rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-overlay;
+    }
+
+    .popover {
+        @apply rounded-xl bg-white p-1.5 ring-1 ring-slate-900/5 shadow-overlay;
+    }
+
+    .popover-item {
+        @apply flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2
+               text-sm text-slate-700 transition hover:bg-slate-100 hover:text-slate-900;
+    }
+
+    /* --- Directional icons ----------------------------------------------
+       Chevrons/arrows must mirror in RTL or they point the wrong way. */
+    .icon-directional {
+        @apply rtl:-scale-x-100;
+    }
+
+    /* --- Avatars --------------------------------------------------------- */
+    .avatar-sm { @apply avatar size-7 text-[0.625rem]; }
+    .avatar-md { @apply avatar size-9 text-xs; }
+    .avatar-lg { @apply avatar size-12 text-base; }
+
+    /* --- Assorted ------------------------------------------------------- */
+    .link-muted {
+        @apply link font-normal text-slate-600 hover:text-brand-700;
+    }
+
+    /* Keyboard hint. The POS is driven by shortcuts, and a cashier learns them
+       only if the screen shows them. */
+    .kbd {
+        @apply inline-flex min-w-5 items-center justify-center rounded border
+               border-slate-300 bg-slate-50 px-1.5 py-0.5 font-mono text-[0.6875rem]
+               font-semibold text-slate-600;
+        direction: ltr;
+    }
+
+    /* Action strip above a table or inside a card header. */
+    .toolbar {
+        @apply flex flex-wrap items-center gap-2;
+    }
+
+    /* Status dot for a badge that carries no text of its own. */
+    .badge-dot {
+        @apply inline-block size-1.5 shrink-0 rounded-full bg-current;
+    }
+
+    /* Screen-only and print-only counterparts of .no-print. */
+    .print-only {
+        @apply hidden;
+    }
+
+    /* ==================================================================
+     | POS terminal
+     |  A cashier works this screen without reading: big targets, one
+     |  accent, and a cart that never moves. The product grid scrolls; the
+     |  cart and the pay button do not.
+     ================================================================== */
+
+    /* Products on the inline-start, cart docked on the inline-end. */
+    .pos-shell {
+        @apply grid gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start;
+    }
+
+    .pos-panel {
+        @apply card flex flex-col overflow-hidden;
+    }
+
+    /* The cart sticks below the header so the total is always on screen. */
+    .pos-cart {
+        @apply card flex flex-col overflow-hidden lg:sticky lg:top-20;
+        max-height: calc(100vh - 6.5rem);
+    }
+
+    .pos-cart-scroll {
+        @apply min-h-32 flex-1 overflow-y-auto;
+    }
+
+    /* Product buttons: 96px tall minimum, name first, price loud. */
+    .product-grid {
+        @apply grid gap-2.5 p-4;
+        grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+    }
+
+    .product-tile {
+        @apply tile min-h-24 justify-between gap-1.5;
+    }
+
+    .product-tile-name {
+        @apply line-clamp-2 text-sm font-semibold text-slate-900;
+    }
+
+    .product-tile-price {
+        @apply font-mono text-base font-bold tabular-nums text-brand-800;
+        direction: ltr;
+    }
+
+    .product-tile-stock {
+        @apply font-mono text-xs tabular-nums text-slate-500;
+        direction: ltr;
+    }
+
+    .product-tile-out {
+        @apply border-rose-200 bg-rose-50/60;
+    }
+
+    /* Cart rows: name + qty stepper + line total, nothing else. */
+    .cart-row {
+        @apply flex items-center gap-2 border-b border-slate-100 px-3 py-2.5;
+    }
+
+    .cart-row-name {
+        @apply min-w-0 flex-1;
+    }
+
+    .cart-row-total {
+        @apply w-20 shrink-0 text-end font-mono text-sm font-semibold tabular-nums text-slate-900;
+        direction: ltr;
+    }
+
+    /* The grand total: the largest type in the application. */
+    .pos-total {
+        @apply flex items-baseline justify-between gap-3 border-t border-slate-200
+               bg-slate-50 px-4 py-3;
+    }
+
+    .pos-total-label {
+        @apply text-sm font-bold uppercase tracking-wide text-slate-600;
+    }
+
+    /* font-bold, not extrabold: 800 is not among the shipped JetBrains Mono
+       weights, so asking for it makes the browser synthesise a smeared fake bold.
+       At 3xl the real 700 already dominates the cart. */
+    .pos-total-value {
+        @apply font-mono text-3xl font-bold tabular-nums text-slate-900;
+        direction: ltr;
+    }
+
+    /* Numeric keypad for cash tendering. */
+    .keypad {
+        @apply grid grid-cols-3 gap-2;
+    }
+
+    .keypad-key {
+        @apply grid cursor-pointer place-items-center rounded-lg border border-slate-300
+               bg-white font-mono text-lg font-bold text-slate-800 transition select-none
+               hover:bg-slate-100 active:translate-y-px active:bg-slate-200;
+        min-height: var(--size-control-lg);
+    }
+
+    /* Register open/closed indicator. */
+    .register-pill {
+        @apply inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold;
+    }
+}
+
+@layer utilities {
+    /* Force LTR on a fragment (SKUs, phone numbers, invoice numbers). */
+    .force-ltr {
+        direction: ltr;
+        unicode-bidi: isolate;
+    }
+
+    .tabular {
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Hide from sight, keep for screen readers. */
+    .sr-only-focusable:not(:focus):not(:focus-within) {
+        @apply sr-only;
+    }
+}
+
+/* ==========================================================================
+   Print — invoices, receipts and reports, RTL-aware
+   ========================================================================== */
+@media print {
+    .no-print { display: none !important; }
+
+    /* Counterpart of .no-print: hidden on screen, revealed on paper (invoice
+       footers, signature lines, terms). */
+    .print-only { display: revert !important; }
+
+    body {
+        @apply bg-white text-black;
+        line-height: 1.4;
+    }
+
+    /* Rings and shadows are screen affordances. On paper they print as grey
+       smudges, and `ring-0` matters as much as `shadow-none` now that the ring is
+       what defines a surface. */
+    .card,
+    .table-wrap,
+    .filter-bar,
+    .tile { @apply border-0 shadow-none ring-0; }
+
+    .table thead th { @apply bg-white text-black; }
+
+    .card-footer,
+    .card-actions,
+    .surface-quiet,
+    .pos-total { @apply bg-white; }
+
+    /* Chrome that carries no information on paper. A .page-back belongs here for
+       the same reason as the rest: on screen it is how you leave a record, on a
+       printed statement it is a stray "Back to contact" above the letterhead. */
+    .pagination,
+    .filter-bar,
+    .tab-bar,
+    .form-actions,
+    .page-back,
+    .cell-actions { display: none !important; }
+
+    /* A table must not be split mid-row across a page break. */
+    .table tr { break-inside: avoid; }
+
+    .table thead { display: table-header-group; }
+
+    /* Thermal receipt roll. */
+    .receipt-thermal {
+        width: 72mm;
+        margin: 0;
+        font-size: 11px;
+    }
+
+    @page { margin: 10mm; }
+}
