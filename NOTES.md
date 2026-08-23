@@ -342,18 +342,26 @@ so its decisions are recorded individually.
 
 ```bash
 php artisan migrate:fresh --seed   # 18 migrations, 131 tables, 55 currencies, 181 permissions
-php artisan test                   # 40 tests, 163 assertions — 39 passing, 1 known (below)
+php artisan test                   # 40 tests, 163 assertions — all 40 passing
 php scripts/verify-models.php      # 109 models, 321 relations, 460 casts — clean
 php scripts/add-lang-keys.php      # 637 ar / 637 en — parity OK
 npm run build                      # 101.9 KB CSS, builds clean
 php artisan route:list             # all routes resolve
 ```
 
-**The one failing test, stated plainly:** `ScreensRenderTest` walks every named GET route,
-and item 5's routes are registered while their views are not yet written — so it reports 19
-screens as HTTP 500/404 (`payments.*`, `expenses.*`, `expense-categories.*`,
-`cash-register.*`, `accounts.*`). That is the guard doing its job, not a regression: it is
-the reason the walk exists. It goes green when those views land.
+**The suite is fully green as of 2026-08-23.** The failure recorded here previously —
+`ScreensRenderTest` reporting 19 screens as HTTP 500/404 because item 5's routes were
+registered before its views existed — is resolved: those views were written, and the walk now
+renders all of them. The guard did exactly what it was built to do.
+
+**One trap worth knowing, because it costs an hour to diagnose:** the suites use
+`DatabaseTransactions`, not `RefreshDatabase`, so they run against the **persistent**
+`souqly_test` database and never migrate it themselves. After any migration change you must
+run `php artisan migrate:fresh --seed --env=testing`, or tests fail with a missing column
+that plainly exists in the migration file. This is how the `transaction_payment_id` column on
+`cash_register_transactions` (added when payments were wired to the drawer) presented itself:
+`ProcureToPayCycleTest::deleting_a_sale_returns_its_stock` failed on a column the schema
+defines. The code was correct; the test database was stale.
 
 | Suite | Covers |
 |---|---|
@@ -361,7 +369,9 @@ the reason the walk exists. It goes green when those views land.
 | `ProcureToPayCycleTest` (10) | Received vs pending purchase, full purchase→sale→payment→return cycle, purchase return capped at remaining lot, PO fulfilment `ordered→partial→completed`, payment terms + >100 % rejection, contact-due allocation with advance banking, credit-limit breach, pre-sale shortfall detection, sale deletion restoring stock |
 | `StockTransactionGuardTest` (6) | Every stock/payment mutation refuses to run outside a DB transaction |
 | `ApplicationSmokeTest` (10) | Login page, guest redirect, sign-in → dashboard **rendering RTL Arabic**, default tenant resources, brand creation stamped with tenant, **cross-tenant isolation**, permission refusal, `allow_login=0` block, `/api/ping`, print-agent token rejection |
-| `ScreensRenderTest` (1) | Every named GET route rendered as an admin — **81 of them** — asserting no 4xx/5xx, and no raw `lang_v1.*` key in any response body |
+| `UsernameLoginTest` (5) | Username-based sign-in against the seeded admin, whose password comes from `SEED_ADMIN_PASSWORD` (§12.2) |
+| `ScreensRenderTest` (1) | Every named GET route rendered as an admin — **100 of them**, up from 81 as item 5 landed — asserting no 4xx/5xx, and no raw `lang_v1.*` key in any response body. 20 routes are in its `SKIP` list, each with a stated reason (JSON endpoints, file downloads, guest-only). **No item-5 route is skipped.** |
+
 
 ---
 
@@ -374,8 +384,8 @@ the reason the walk exists. It goes green when those views land.
 | 4. Middleware, roles & permissions | ✅ **Complete** — 5 middleware, 2 groups, 181 permissions, tenant-namespaced roles, tenant provisioning |
 | 6. Services / events / listeners | ✅ **Core complete** — 8 services, 11 events, 3 listeners |
 | 7. Run migrations & verify | ✅ **Complete** — all green (§9) |
-| 3. Routes & controllers | ⚠️ **Partial** — see below |
-| 5. Views / frontend | ⚠️ **Foundation complete, screens partial** — see below |
+| 3. Routes & controllers | ⚠️ **Partial** — items 1–5 done; 6–12 outstanding (§10.2) |
+| 5. Views / frontend | ⚠️ **Foundation complete, screens partial** — items 1–5 done; 6–12 outstanding (§10.2) |
 
 ### 10.1 Build progress — items 1–12
 
@@ -387,6 +397,22 @@ Each line is written as the item lands.
 | 2. Contacts | ✅ Done | 2 (`Contact`, `CustomerGroup`) | 7 (index, create, edit, show, ledger, opening-balance, import) |
 | 3. Purchases | ✅ Done | 4 (`Purchase`, `PurchaseOrder`, `PurchaseRequisition`, `PurchaseReturn`) | 10 (purchase index/create/edit/show + shared `_form`/`_line`/`pdf`, order index/create/edit/show, requisition index/create/edit/show, return index/create/show — all served by the shared purchase views) |
 | 4. Sales / POS | ✅ Done | 5 (`Sell`, `SellPos`, `SalesOrder`, `SellReturn`, `Shipment`) | 11 (sell index/create/edit/show + shared `_form`/`_line`, sales-order index/create/edit/show served by those same views, **`pos/create` — the terminal**, sell-return index/create/show, shipments index) |
+| 5. Payments & finance | ✅ Done | 5 (`TransactionPayment`, `Expense`, `ExpenseCategory`, `Account`, `CashRegister`) — 1,879 lines, 42 methods | 23 (`payment` index/create/edit/show + `_form`, `expense` index/create/edit/show + `_form`, `expense_category` index/create/edit + `_form`, `account` index/create/edit/show + `_form`, `cash_register` index/create/show/close) |
+
+**Item 5, verified rather than assumed:** 38 routes across the five modules — full CRUD plus
+the account operations (`deposit`, `withdraw`, `transfer`, `setClosed`, transaction
+update/destroy) and the drawer-close flow (`closeForm`/`close`). All 19 of its named GET
+routes are walked by `ScreensRenderTest` — **none is in the `SKIP` list** — and the suite is
+green. Note the view directories are singular and underscored (`payment/`, `expense/`,
+`expense_category/`, `account/`, `cash_register/`) while the route names are plural and
+hyphenated (`payments.*`, `expense-categories.*`, `cash-register.*`); looking for
+`resources/views/payments/` finds nothing and invites the wrong conclusion.
+
+One known functional gap remains inside this item, deferred with approval and tracked as
+**§12.1**: cash paid *out* of the drawer (a supplier payment or expense settled in cash) writes
+no drawer row, so `cash_in_hand` reads high. The screens are complete; that enum change is a
+feature in its own right.
+
 
 **UI:** every Blade file was rebuilt against the v2 design system in three passes — shared
 primitives, then the existing screens, then the outstanding sales screens authored
@@ -400,11 +426,9 @@ write per item. It already caught 4 real parameter-resolution gaps.
 ### 10.2 What remains
 
 Still to build, in dependency order — all of it sits on services that already exist and
-are pinned by passing tests, so this is wiring, not design:
+are pinned by passing tests, so this is wiring, not design. **Item 5 is done and has moved to
+§10.1**; numbering is kept as-is so references elsewhere in this file stay valid.
 
-5. **Payments & finance** — `TransactionPaymentController` (→ `PaymentService`),
-   `ExpenseController`, `ExpenseCategoryController`, `AccountController`,
-   `CashRegisterController`.
 6. **Stock** — `StockAdjustmentController`, `StockTransferController`,
    `OpeningStockController`.
 7. **Reports** — `ReportController` (≈40 reports; excludes Indian GST per decision #2).
