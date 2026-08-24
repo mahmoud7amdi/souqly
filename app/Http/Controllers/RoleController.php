@@ -37,7 +37,11 @@ class RoleController extends Controller
         $this->permit('roles.view');
 
         $roles = Role::forBusiness()
-            ->withCount('users')
+            // Counted, not loaded: the index prints how many permissions a role
+            // holds and never reads one. `permissions` absent here was a
+            // LazyLoadingViolationException the moment a tenant had two roles —
+            // which every tenant does, since Admin and Cashier are both seeded.
+            ->withCount(['users', 'permissions'])
             ->when($request->filled('search'), function ($query) use ($request) {
                 // The stored name carries the #id suffix; matching the raw term
                 // against it still finds "Manager" when the user types "Man".

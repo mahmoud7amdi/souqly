@@ -83,6 +83,12 @@ class PrinterController extends SimpleCrudController
             ['name' => 'ip_address', 'label' => __('lang_v1.ip_address'), 'type' => 'text',
              'hint' => __('lang_v1.printer_ip_hint')],
             ['name' => 'port', 'label' => __('lang_v1.port'), 'type' => 'text'],
+            // `printers.path` is what an ESC/POS driver opens for the two
+            // non-network kinds (a Windows share, `/dev/usb/lp0` on Linux).
+            // It was validated but never rendered, so those printers could be
+            // created and then never actually printed to.
+            ['name' => 'path', 'label' => __('lang_v1.printer_path'), 'type' => 'text',
+             'hint' => __('lang_v1.printer_path_hint')],
         ]];
     }
 }

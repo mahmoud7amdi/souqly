@@ -20,10 +20,10 @@
     <x-panel :title="__('lang_v1.personal_details')" icon="user">
         <div class="form-grid">
             <div class="field">
-                <label for="surname" class="label">{{ __('lang_v1.prefix') }}</label>
+                <label for="surname" class="label">{{ __('lang_v1.name_prefix') }}</label>
                 <input id="surname" name="surname" @class(['input', 'input-invalid' => $errors->has('surname')])
                        value="{{ old('surname', $user->surname ?? '') }}"
-                       placeholder="{{ __('lang_v1.prefix_placeholder') }}">
+                       placeholder="{{ __('lang_v1.name_prefix_placeholder') }}">
                 @error('surname')<p class="field-error">{{ $message }}</p>@enderror
             </div>
 

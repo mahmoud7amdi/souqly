@@ -151,7 +151,140 @@ class ScreensRenderTest extends TestCase
         // sales left behind — see the note on quantities in the method itself.
         $this->seedStockDocuments();
 
+        // After the documents, because the inactive branch it adds must not be
+        // the one anything was booked against.
+        $this->seedSettingsFixtures();
+
         $this->seedListingDuplicates();
+    }
+
+    /**
+     * The settings area's own rows — the nine screens of item 8.
+     *
+     * `BusinessService::register()` already leaves one invoice scheme, one
+     * invoice layout and one location behind, so those only need a second row
+     * here. Printers, barcode presets, extra roles and staff accounts have
+     * nothing at all until this runs, which is why their `edit` screens had
+     * nothing to bind to.
+     *
+     * Every pair is deliberate about *which* second row it adds, because the
+     * settings screens branch on the difference:
+     *
+     * - a barcode preset with `business_id IS NULL` is a shared global one, and
+     *   the index renders it as a locked "built-in" row rather than an edit icon
+     *   ({@see \App\Http\Controllers\BarcodeController::indexViewData()});
+     * - a `windows` printer is the kind identified by `path` rather than by an
+     *   IP address, so it covers the field the network one leaves empty;
+     * - the third location is inactive, which is the only way the index's
+     *   inactive badge and the deactivate/activate toggle get exercised;
+     * - the extra role is non-default, so the index renders its delete button
+     *   and its real permission count instead of Admin's "full access" note.
+     */
+    private function seedSettingsFixtures(): void
+    {
+        $business = $this->admin->business_id;
+
+        \App\Models\InvoiceScheme::create([
+            'name' => 'Second scheme', 'scheme_type' => 'year', 'number_type' => 'random',
+            'prefix' => 'SEC', 'start_number' => 1, 'invoice_count' => 0,
+            'total_digits' => 5, 'is_default' => false,
+        ]);
+
+        \App\Models\InvoiceLayout::create([
+            'name' => 'Second layout', 'design' => 'elegant', 'is_default' => 0,
+        ]);
+
+        // Own row first, so `barcodes.edit` binds to something the tenant may
+        // actually mutate; findRecord() 404s on the global one below.
+        $this->fixtureBarcodeId = \App\Models\Barcode::create([
+            'name' => 'Fixture stickers', 'business_id' => $business,
+            'width' => 40, 'height' => 20, 'paper_width' => 210, 'paper_height' => 297,
+            'top_margin' => 10, 'left_margin' => 10, 'row_distance' => 2, 'col_distance' => 2,
+            'stickers_in_one_row' => 4, 'stickers_in_one_sheet' => 40, 'is_default' => true,
+        ])->id;
+
+        \App\Models\Barcode::create([
+            'name' => 'Global stickers', 'business_id' => null,
+            'width' => 50, 'height' => 25, 'stickers_in_one_row' => 3, 'is_default' => false,
+        ]);
+
+        $this->fixturePrinterId = \App\Models\Printer::create([
+            'name' => 'Counter printer', 'connection_type' => 'network',
+            'capability_profile' => 'default', 'char_per_line' => 42,
+            'ip_address' => '192.168.1.50', 'port' => '9100',
+            'created_by' => $this->admin->id,
+        ])->id;
+
+        \App\Models\Printer::create([
+            'name' => 'Back-office printer', 'connection_type' => 'windows',
+            'capability_profile' => 'simple', 'char_per_line' => 40,
+            'path' => '\\\\SERVER\\RECEIPTS', 'created_by' => $this->admin->id,
+        ]);
+
+        $first = \App\Models\BusinessLocation::first();
+
+        $this->fixtureLocationId = \App\Models\BusinessLocation::create([
+            'business_id' => $business,
+            'name' => 'Closed branch',
+            'location_id' => app(\App\Services\ReferenceService::class)
+                ->generate('business_location', $business),
+            'invoice_scheme_id' => $first->invoice_scheme_id,
+            'invoice_layout_id' => $first->invoice_layout_id,
+            'printer_id' => $this->fixturePrinterId,
+            'receipt_printer_type' => 'printer',
+            'print_receipt_on_invoice' => 1,
+            'is_active' => false,
+        ])->id;
+
+        app(BusinessService::class)->createLocationPermission(
+            \App\Models\BusinessLocation::find($this->fixtureLocationId)
+        );
+
+        $role = \App\Models\Role::create([
+            'name' => \App\Models\Role::nameFor('Fixture manager', $business),
+            'business_id' => $business, 'is_default' => false, 'guard_name' => 'web',
+        ]);
+        $role->givePermissionTo(['product.view', 'sell.view', 'purchase.view']);
+        $this->fixtureRoleId = $role->id;
+
+        $staff = \App\Models\User::create([
+            'user_type' => 'user', 'business_id' => $business,
+            'surname' => 'Mr', 'first_name' => 'Fixture', 'last_name' => 'Staff',
+            'username' => 'fixture_staff_'.uniqid(), 'password' => 'secret-pass',
+            'language' => 'ar', 'status' => 'active', 'allow_login' => 1,
+            'is_cmmsn_agnt' => 1, 'cmmsn_percent' => 2.5,
+            'max_sales_discount_percent' => 10,
+        ]);
+        $staff->assignRole($role);
+        // Explicit location access rather than access_all_locations: it is the
+        // branch of manage_user/_form that ticks individual boxes, and the one
+        // an "all locations" fixture would leave uncovered.
+        $staff->givePermissionTo(Permission::findOrCreate(
+            Permissions::forLocation($first->id), 'web'
+        ));
+        $this->fixtureStaffId = $staff->id;
+
+        /*
+         * Two of the sixteen types, configured differently on purpose: the index
+         * shows an automatic/manual badge per channel, and a template with
+         * `auto_send` off is the only thing that renders the manual tone. The
+         * other fourteen stay unconfigured, which is also a state the index has
+         * to draw.
+         */
+        \App\Models\NotificationTemplate::create([
+            'template_for' => 'new_sale', 'subject' => 'Your invoice {invoice_number}',
+            'email_body' => 'Thank you, {contact_name}. Total {total_amount}.',
+            'sms_body' => 'Invoice {invoice_number}: {total_amount}',
+            'auto_send' => true, 'auto_send_sms' => false,
+        ]);
+
+        \App\Models\NotificationTemplate::create([
+            'template_for' => 'payment_received',
+            'subject' => 'Payment received',
+            'email_body' => 'We received {received_amount}. Due {due_amount}.',
+            'whatsapp_text' => 'Received {received_amount}, thank you.',
+            'auto_send' => false, 'auto_send_wa_notif' => true,
+        ]);
     }
 
     /**
@@ -564,6 +697,16 @@ class ScreensRenderTest extends TestCase
 
     private int $fixtureTransferId;
 
+    private int $fixtureBarcodeId;
+
+    private int $fixturePrinterId;
+
+    private int $fixtureLocationId;
+
+    private int $fixtureRoleId;
+
+    private int $fixtureStaffId;
+
     private function createProductFor(): \App\Models\Product
     {
         $unit = \App\Models\Unit::first();
@@ -622,6 +765,9 @@ class ScreensRenderTest extends TestCase
             'stock-adjustments.show' => $this->fixtureAdjustmentId,
             'stock-adjustments.edit' => $this->fixtureAdjustmentId,
             'stock-transfers.show' => $this->fixtureTransferId,
+            // The inactive branch, so the toggle flips a location nothing was
+            // booked against rather than deactivating the shop mid-walk.
+            'business-location.toggle' => $this->fixtureLocationId,
         ];
 
         $parameters = [];
@@ -657,6 +803,27 @@ class ScreensRenderTest extends TestCase
                 'purchase_requisition' => $this->fixtureRequisitionId,
                 'sell' => $this->fixtureSellId,
                 'sales_order' => $this->fixtureSalesOrderId,
+
+                /*
+                 * Settings. Each resource route names its parameter after the
+                 * singular resource, and every one of these needs an id the
+                 * *controller* will accept, not merely one that exists:
+                 * `barcode` must be the tenant's own preset because
+                 * BarcodeController::findRecord() 404s on a global one, and
+                 * `template` is a `template_for` slug rather than an id at all —
+                 * NotificationTemplateController aborts 404 on anything outside
+                 * NotificationTemplate::templateTypes(), which is what the
+                 * default fixture-id fallback below was handing it.
+                 */
+                'invoice_scheme' => \App\Models\InvoiceScheme::first()->id,
+                'invoice_layout' => \App\Models\InvoiceLayout::first()->id,
+                'barcode' => $this->fixtureBarcodeId,
+                'printer' => $this->fixturePrinterId,
+                'business_location' => \App\Models\BusinessLocation::first()->id,
+                'role' => $this->fixtureRoleId,
+                'user' => $this->fixtureStaffId,
+                'template' => 'new_sale',
+
                 default => $this->fixtureProductId,
             };
         }

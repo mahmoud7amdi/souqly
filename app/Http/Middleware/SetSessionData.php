@@ -29,16 +29,46 @@ class SetSessionData
             return $next($request);
         }
 
-        // Refresh when the session is empty or belongs to a different user
-        // (e.g. after "sign in as user").
-        if (empty($request->session()->get('user'))
-            || (int) $request->session()->get('user.id') !== (int) $user->id) {
+        if ($this->needsHydrating($request, $user)) {
             $this->hydrate($request, $user);
         }
 
         Tenancy::bind($request->session()->get('user.business_id'));
 
         return $next($request);
+    }
+
+    /**
+     * Does the session need (re)building on this request?
+     *
+     * Three cases, and the third is the one that is easy to miss:
+     *
+     * 1. Nothing cached yet — the first request after logging in.
+     * 2. A different user — "sign in as user" swaps the authenticated user
+     *    without starting a new session.
+     * 3. **The business cache was deliberately dropped.**
+     *    {@see \App\Http\Controllers\BusinessController::updateSettings()} calls
+     *    `session()->forget(['business', 'currency', 'financial_year'])` after a
+     *    save, precisely so the next request picks the new values up. It leaves
+     *    `user` alone, because the user has not changed — so without this clause
+     *    the first two conditions are both false, nothing is rebuilt, and
+     *    `session('business')` stays empty until the user logs out. Every figure
+     *    on every screen then formats with a null precision and no currency
+     *    symbol, and `session('business.enabled_modules')` reads as an empty
+     *    list, which silently collapses the sidebar's module groups and the
+     *    permission list in the role editor. Saving your settings would break
+     *    the rest of your session.
+     */
+    protected function needsHydrating(Request $request, $user): bool
+    {
+        $session = $request->session();
+
+        if (empty($session->get('user'))
+            || (int) $session->get('user.id') !== (int) $user->id) {
+            return true;
+        }
+
+        return ! empty($user->business_id) && empty($session->get('business'));
     }
 
     /**

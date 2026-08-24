@@ -70,7 +70,7 @@
                                  "0" here would read as a broken role. --}}
                             <span class="badge-success">{{ __('lang_v1.full_access') }}</span>
                         @else
-                            {{ $role->permissions->count() }}
+                            {{ $role->permissions_count }}
                         @endif
                     </td>
 

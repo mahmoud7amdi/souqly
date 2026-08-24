@@ -21,6 +21,7 @@
 /public/storage
 /public/uploads
 /storage/*.key
+/storage/*.tmp
 /storage/pail
 /vendor
 _ide_helper.php

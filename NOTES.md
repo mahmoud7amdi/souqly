@@ -52,39 +52,57 @@ the source documentation is recorded with its reason. Nothing here is a silent a
 
 ### 1. آخر ما اكتمل
 
-**البند 7 — التقارير، الدفعة الأولى: ✅ مكتمل بالكامل — كودًا واختبارًا وتوثيقًا.** التوثيق
-المعماري الكامل في **§13**، والخطة المعتمدة في
-`C:\Users\mohamed\.claude\plans\adaptive-plotting-dongarra.md`.
+**البند 8 — الإعدادات: ✅ مكتمل بالكامل — كودًا واختبارًا وتوثيقًا.** التوثيق المعماري الكامل في
+**§14** (ثلاثة عشر قسمًا فرعيًا).
 
-المُنجَز:
+المتحكِّمات التسع وشاشاتها كانت قد نزلت في `eefb941` مع البند 7 — **الـcommit مختلط، ويُفيد معرفة
+ذلك عند قراءة التاريخ** — و**ما أكمل البند فعلًا** هو ما أضافته هذه الدفعة:
 
 | الطبقة | الملف | الحالة |
 |---|---|---|
-| الخدمة | `app/Services/ReportService.php` | ✅ جديد — كل الأرقام هنا، والمتحكِّم رقيق بالتصميم |
-| المتحكِّم | `app/Http/Controllers/ReportController.php` | ✅ جديد — المركز + ٥ تقارير + `export()` واحد مُعامَل بقائمة بيضاء |
-| المسارات | `routes/web.php` | ✅ مجموعة `reports.` — المركز والخمسة و`{report}/export` |
-| مكوّن الفلترة | `resources/views/components/report-filters.blade.php` | ✅ جديد — زوج التواريخ دائمًا، والباقي بـ `:fields` |
-| لوحة التحكم | `app/Http/Controllers/HomeController.php` | ✅ `dateRange()` تُفوَّض الآن لـ `ReportService`، و`FormattingService` أُزيلت من المتحكِّم |
-| الشاشات | `resources/views/report/{index,purchase-sell,stock,profit-loss,tax,expenses}.blade.php` | ✅ الستة موجودة ومكتملة |
-| الترجمة | `lang/ar/lang_v1.php` + `lang/en/lang_v1.php` | ✅ 68 مفتاحًا جديدًا في كل ملف (974/974) |
-| الاختبارات | `tests/Feature/ReportsTest.php` (17) + `ApiResponseTest.php` (14) | ✅ خضراء داخل 102 اختبار / 494 تأكيد |
-| التوثيق | **NOTES §13** | ✅ حدّ الخدمة، قرار COGS، القائمة البيضاء، السبعة المؤجَّلة، الأخطاء الثلاثة |
+| اختبار السلوك | `tests/Feature/SettingsTest.php` | ✅ جديد — 24 اختبارًا / 167 تأكيدًا |
+| حارس الترجمة | `tests/Feature/LangParityTest.php` | ✅ جديد — 3 اختبارات، والثلاثة مُثبَتة بالتحوير |
+| إصلاح إنتاجي | `app/Http/Middleware/SetSessionData.php` | ✅ `needsHydrating()` — إعادة البناء بعد الحفظ |
+| إصلاح 500 | `app/Http/Controllers/RoleController.php` + `resources/views/role/index.blade.php` | ✅ `withCount(['users', 'permissions'])` بدل تحميلٍ كسول |
+| حقل مفقود | `app/Http/Controllers/PrinterController.php` | ✅ `printer_path` كان مُتحقَّقًا منه ولا يُعرَض |
+| مَشْي المسارات | `tests/Feature/ScreensRenderTest.php` | ✅ مُثبِّتات الإعدادات + 8 خرائط معاملات |
+| الترجمة | `lang/ar/lang_v1.php` + `lang/en/lang_v1.php` | ✅ 1,404 مفتاحًا نهائيًا لكل لغة، تكافؤ تام |
+| التوثيق | **NOTES §14** | ✅ الصلاحيات المسطَّحة، حدّا التعدُّد، الباركود المشترك، أخطاء الإغلاق، حارس الترجمة |
 
-**وأهم ما في هذه الدفعة ليس تقريرًا.** اختبار تقرير الأرباح كشف **خطأ إنتاج حقيقيًا في
-`SellService::syncLines()`**: كانت مِسْحة التنظيف تحذف خطوط مكوّنات الكومبو التي أُنشئت للتوّ
-وتُحرِّر المخزون الذي استهلكته، في **كل** عملية بيع كومبو — لا في التعديل وحده. النتيجة الظاهرة
-صفرُ تكلفة، فكل كومبو يبدو ربحًا خالصًا في التقرير الوحيد الذي يتّخذ المالك قراره عليه. أُصلح
-ومُوثَّق في §13.6.
+**وأهم ما في هذه الدفعة ليس شاشة.** اختبارُ ذاكرة الجلسة كشف أن `SetSessionData` **لم يُعِد بناء**
+`session('business')` بعد أن يُسقطها `BusinessController::updateSettings()` عن قصد — فحفظُ الإعدادات
+كان يُفرِغ الذاكرة **لبقية الجلسة**: لا رمز عملة في أي رقم على أي شاشة، ولا مجموعات وحدات في الشريط
+الجانبي، وقائمةُ صلاحيات فارغة في مُحرِّر الأدوار. لا شيء رمى استثناءً، ولا سطر في السجل، **ولا
+مَشْيُ مسارات يمكن أن يراه** — لأن المَشْي يُصدر GET ولا يحفظ شيئًا أبدًا. §14.5.
 
-### 2. البند التالي: 8 — Settings
+**والبند 7 قبله — التقارير، الدفعة الأولى: ✅ مكتمل** — التوثيق في **§13**، والخطة المعتمدة في
+`C:\Users\mohamed\.claude\plans\adaptive-plotting-dongarra.md`، والسبعة المؤجَّلة مسمّاة صريحةً في
+§10.2 بند 7 وهي تَرِث البنية التحتية كلها. وأهمُّ ما فيه لم يكن تقريرًا أيضًا: اختبار تقرير الأرباح
+كشف **خطأ إنتاج حقيقيًا في `SellService::syncLines()`** — مِسْحة التنظيف كانت تحذف خطوط مكوّنات
+الكومبو التي أُنشئت للتوّ وتُحرِّر المخزون الذي استهلكته، في **كل** عملية بيع كومبو لا في التعديل
+وحده، فيظهر الكومبو بصفر تكلفة أي ربحًا خالصًا في التقرير الوحيد الذي يتّخذ المالك قراره عليه.
+أُصلح ومُوثَّق في §13.6.
 
-لا شيء متبقٍّ من البند 7 يمنع البدء. المؤجَّل منه سبعة تقارير مسمّاة صريحةً في §10.2 بند 7، وهي
-تَرِث البنية التحتية كلها ولا تحتاج جديدًا منها.
+### 2. البند التالي: 9 — Printing
 
-**البند 8 — Settings.** المتحكِّمات المطلوبة: `BusinessController`، `BusinessLocationController`،
-`InvoiceSchemeController`، `InvoiceLayoutController`، `BarcodeController`، `PrinterController`،
-`NotificationTemplateController`، `RoleController`، `ManageUserController`. ثم 9 → 10 → 11 → 12
-(Printing، Offline PWA، شاشات الوحدات، الأوامر المجدولة). `inventory.index` تبقى خارج النطاق
+لا شيء متبقٍّ من البند 8 يمنع البدء. والمؤجَّل منه مذكور صريحًا في §10.2 بند 8 و§14.13، وليس ثغرات:
+**رفعُ شعار النشاط** (يلتحق بالبند 9 نفسه لأنه أول موضع يُطبَع فيه)، وشاشات إعدادات الوحدات (البند
+11)، وبيانات بوّابات البريد/الرسائل (**لا تظهر في شاشة إعدادات أبدًا** — §12.2)، و37 تسمية صلاحية
+تتبع وحدات لم تُبنَ بعد ويُغطّيها `Permissions::humanise()` مؤقتًا.
+
+**البند 9 — Printing:** `PrintPreviewController` + قوالب الطباعة بـRTL. والبنية التحتية موجودة
+أصلًا ولم تُبنَ عليها شاشة بعد، وهذا ما تَرِثه:
+
+- **`InvoiceLayout`** بحقوله كلها — نزلت في البند 8، وهي التي تقرأها كل فاتورة مطبوعة.
+- **`Barcode`** بمقاسات الملصقات والهوامش وعدد الملصقات في الصف والورقة (§14.3).
+- **`Printer`** بنوع الطابعة ومسارها — و`printer_path` صار يُعرَض فعلًا الآن، وقبل هذا البند كان
+  مُتحقَّقًا منه ولا يُعرَض، فلا يمكن إعطاء طابعة windows/linux مسارَها إطلاقًا.
+- **`api/print-queue/*`** مع `Api\PrintQueueController`، وقناة البث `print-queue.{locationId}`
+  المحروسة بـ`access_printers` (`routes/channels.php:45`).
+- **`purchase-order.pdf`** (`routes/web.php:240`) — السابقة الوحيدة لتوليد PDF في المشروع كله، فهي
+  النمط الذي يُقاس عليه بقيةُ المستندات.
+
+ثم 10 → 11 → 12 (Offline PWA، شاشات الوحدات، الأوامر المجدولة). `inventory.index` تبقى خارج النطاق
 (تنتمي لـ `inventorymanagement`، البند 11).
 
 ### 3. القرارات — **لا شيء ينتظر إذنك**
@@ -92,6 +110,8 @@ the source documentation is recorded with its reason. Nothing here is a silent a
 القرارات كلها محسومة، ولا يوجد سؤال مُعطِّل:
 
 - **نطاق البند 7** = دفعة أولى ٥ تقارير + البنية التحتية. ✅ محسوم ومُنفَّذ
+- **نطاق البند 8** = المتحكِّمات التسع المسمّاة في §10.2 بند 8، و`UserController` يبقى شاشةَ الملف
+  الشخصي للمستخدم نفسه فلا يُلمَس، و`inventory.index` تبقى للبند 11. ✅ محسوم ومُنفَّذ
 - **§12.3** = لا نلمس `Gate::before()`؛ الأدمن يبقى غير مقيَّد، والتقارير تحترم الصلاحيات لغير
   الأدمن — وهو ما يفعله `permit()` أصلًا. ✅ محسوم **بلا أي تغيير سلوكي**، ويبقى 🟡 للمراجعة عند
   أول متطلَّب حقيقي متعدد المديرين (المُحفِّز مذكور في §12.3).
@@ -112,36 +132,57 @@ the source documentation is recorded with its reason. Nothing here is a silent a
 مَشْي المسارات يفتحه عاريًا — وافتراضُ «الشهر الحالي» في `dateRange()` هو ما يجعل ذلك ممكنًا؛ فلا
 تقرير يجوز أن يشترط query string.
 
-**ودرسان من هذه الدفعة يتكرران في كل ما بعدها:**
+**ودروسٌ من الدفعتين الأخيرتين تتكرَّر في كل ما بعدهما:**
 
+- **مَشْيُ المسارات يُصدر GET ولا يحفظ شيئًا أبدًا.** فكل خطأ لا يظهر إلا بعد حفظٍ فعلي — وذاكرةُ
+  الجلسة أوضح مثاله — خارج مدى المَشْي بحكم بنيته لا بحكم نقصٍ فيه. البندُ 8 كله كان أخضر في المَشْي
+  والخطأُ قائم (§14.5).
+- **الحارس الذي يقصُر على `isAdmin()` لا يُختبَر أبدًا وأنت أدمن.** كل بناء البند 8 جرى بحساب
+  الأدمن، و`permit()` يقصُر عليه، فاسمُ صلاحية خاطئ لا يملكه أحد كان سيبدو سليمًا تمامًا حتى أول
+  مستخدم حقيقي في أول وردية. أي تأكيد على صلاحية يجب أن يعمل بمستخدمٍ **مقيَّد عن قصد** (§14.1) —
+  ويحتاج `'allow_login' => 1` و`'status' => 'active'` وإلا حوَّلت `CheckUserLogin` كلَّ 403 إلى 302.
 - **أي اختبار على مستوى الخدمة لِما هو مقيَّد بالفروع يجب أن يُوثِّق دخولًا** — وإلا قاس الفراغَ
   بثقة. `permittedLocations()` تُحَلّ مقابل `auth()->user()`، و`createTenant()` لا تُوثِّق أحدًا
   (§13.7).
 - **الأصفار المتماثلة توقيعُ استعلامٍ فارغ، لا توقيعُ حسابٍ خاطئ.** ثلاثة عشر فشلًا متطابقًا كان
   لها سبب واحد، وإصلاحٌ واحد حلَّ أحدَ عشر منها.
+- **وحين يخالف فحصٌ ملفًا قرأتَه، اشكُك في الفحص.** تكرَّر هذا مرتين الآن: مرة عرضُ grep أظهر تعليقًا
+  كأنه كود بلا `//`، وقراءةُ السطر نفسه أثبتت أن الملف سليم.
 
 ### 5. حالة التحقق — الصادقة، بلا أرقام من الذاكرة
 
 **نُفِّذ فعليًا ونجح:**
 
-- `php artisan test` → **102 اختبارًا / 494 تأكيدًا، كلها خضراء.**
-- **تكافؤ الترجمة: `ar = 974` مفتاحًا، `en = 974`** — تكافؤ تام (كان 906/906، +68 لكل ملف).
-- المفاتيح الـ68 الجديدة موجودة في الملفين، **كل مفتاح مرة واحدة بالضبط** — لا تكرار يكتب فوق
-  مفتاح قائم (وهو خطأ لا يلتقطه `php -l` لأن تكرار مفتاح مصفوفة ليس خطأ صياغة).
-- فحصان بالتحوير (mutation) على COGS، وكلاهما عَضَّ — الجدول في §13.8.
-- مستخدم غير أدمن يملك `stock_report.view` فقط: بطاقة واحدة في المركز و403 على الأربعة الباقية —
-  مُؤكَّد باختبار في `ReportsTest`، لا بالعين. (ويحتاج `'allow_login' => 1` وإلا صدَّته
-  `CheckUserLogin` بـ 302 وقاس الاختبارُ بوابةَ الدخول لا بوابات التقارير.)
+- `php artisan test` → **129 اختبارًا / 672 تأكيدًا، كلها خضراء.**
+- **تكافؤ الترجمة صار اختبارًا لا رقمًا.** `tests/Feature/LangParityTest.php` يؤكِّد ثلاث خصائص على
+  مجلَّدي اللغة معًا: تطابق المفاتيح تطابقًا شجريًّا في الاتجاهين، ولا مفتاح مُعرَّف مرتين في ملف
+  واحد، ولا قيمة تُساوي مفتاحها. والعدد المُحصى **1,404 مفتاحًا نهائيًا لكل لغة** (1,245 في الجذر +
+  15 في `perm_group` + 144 في `perm`) مُسجَّل للاسترشاد فقط — الاختبار هو التأكيد الآن (§14.10).
+- **`SettingsTest` — 24 اختبارًا / 167 تأكيدًا.** التقسيم: إعدادات النشاط (4)، الصلاحيات
+  المسطَّحة (2)، قوالب الإشعارات (2)، الباركود (2)، أنظمة الفواتير (2)، الفروع (2)، الأدوار (5)،
+  المستخدمون (5).
+- **فحصٌ بالتحوير على أعلى تأكيدٍ قيمةً:** إزالة تجاوُز `BarcodeController::ability()` أسقطت مصفوفة
+  الصلاحيات المسطَّحة بسطر تشخيصٍ واحد يسمّي الشاشة بالضبط — ثم أُعيد الأصل. واختبارُ ذاكرة الجلسة
+  كُتب **أحمر** وشُوهد يفشل قبل الإصلاح، وهو الدليل الوحيد على أنه يقيس شيئًا (§14.11).
+- **ثلاثة أخطاء حقيقية أُصلحت في هذا البند:** 500 في `roles.index` (lazy-load عند كل مستأجر، لأن
+  `BusinessService` يزرع دورين)، و`printers.path` مُتحقَّقٌ منه ولا يُعرَض أبدًا، و**الخطأ الذي لا
+  يكشفه إلا حفظٌ فعلي**: `SetSessionData` لم يُعِد بناء الذاكرة التي يُسقطها
+  `BusinessController::updateSettings()` عن قصد (§14.5).
+- مَشْي المسارات يفتح شاشات الإعدادات التسع بالعربية تحت حُرّاس المفتاح غير المُترجَم، وتوازن
+  `<div>`، والعنوان الفارغ.
+- الاختبارات تعمل كأدمن حقيقي عبر `BusinessService::register()` **لا** عبر `createTenant()` — فهذه
+  الأخيرة لا تزرع أدوارًا، فلا يُختبَر معها قصرُ `permit()` على `isAdmin()` إطلاقًا.
 
-**متبقٍّ، ولا يمنع البند 8:**
+**متبقٍّ، ولا يمنع البند 9:**
 
-- `npm run build` — مُصنِّف أمان Bash/PowerShell كان متوقفًا مرارًا في هذه الجلسة. التوقع
-  ≈121.26 kB CSS، إذ لم يُضَف CSS إطلاقًا: `.tile` و`.rise-group` و`<x-stat>` و`.filter-bar`
-  تحمل متطلبات التصميم أصلًا (§13.10).
-- فتح كل تقرير عاريًا بالعربية بالعين، وطباعة تقرير واحد — الأول مُغطّى آليًا بمَشْي المسارات،
-  والثاني تكفله كتلة الطباعة التي تُخفي `.filter-bar` أصلًا.
-- ⚠️ **ثغرة تغطية مذكورة بصراحة:** قرار «COGS شامل الضريبة» غير مثبَّت باختبار، لأن مُثبِّت
-  `buy()` يجعل `purchase_price` و`purchase_price_inc_tax` متساويين — §13.8.
+- `npm run build` — **لم يُنفَّذ.** مُصنِّف أمان Bash/PowerShell رفض هذا الأمر تحديدًا في كل محاولة
+  في هذه الجلسة وفي التي قبلها (بينما `php artisan test` يمرّ). والبندان 7 و8 أضافا **صنفًا واحدًا**
+  إلى `resources/css/app.css` هو `.input-static` (§14.7)، فالزيادة المتوقَّعة على 121.26 kB
+  ضئيلة — **لكن هذا تقدير، لا قياس، والبناء يبقى غير مُتحقَّق منه.**
+- ⚠️ **ثغرة تغطية مذكورة بصراحة، منقولة من البند 7:** قرار «COGS شامل الضريبة» غير مثبَّت باختبار،
+  لأن مُثبِّت `buy()` يجعل `purchase_price` و`purchase_price_inc_tax` متساويين — §13.8.
+- **§12.3 يبقى 🟡 بقرارك** — الأدمن غير مقيَّد، و`Gate::before()` لم يُلمَس؛ توثيق فقط بلا تغيير
+  سلوكي.
 
 ---
 
@@ -624,8 +665,8 @@ other 105 Blade files are clean, as is the check for an opener with no closer at
 | 4. Middleware, roles & permissions | ✅ **Complete** — 5 middleware, 2 groups, 181 permissions, tenant-namespaced roles, tenant provisioning |
 | 6. Services / events / listeners | ✅ **Core complete** — 8 services, 11 events, 3 listeners |
 | 7. Run migrations & verify | ✅ **Complete** — all green (§9) |
-| 3. Routes & controllers | ⚠️ **Partial** — items 1–6 done; 7–12 outstanding (§10.2) |
-| 5. Views / frontend | ⚠️ **Foundation complete, screens partial** — items 1–6 done; 7–12 outstanding (§10.2) |
+| 3. Routes & controllers | ⚠️ **Partial** — items 1–6 and 8 done, 7 first tranche; 9–12 outstanding (§10.2) |
+| 5. Views / frontend | ⚠️ **Foundation complete, screens partial** — items 1–6 and 8 done, 7 first tranche; 9–12 outstanding (§10.2) |
 
 ### 10.1 Build progress — items 1–12
 
@@ -640,6 +681,7 @@ Each line is written as the item lands.
 | 5. Payments & finance | ✅ Done | 5 (`TransactionPayment`, `Expense`, `ExpenseCategory`, `Account`, `CashRegister`) — 1,879 lines, 42 methods | 23 (`payment` index/create/edit/show + `_form`, `expense` index/create/edit/show + `_form`, `expense_category` index/create/edit + `_form`, `account` index/create/edit/show + `_form`, `cash_register` index/create/show/close) |
 | 6. Stock | ✅ Done | 3 (`StockAdjustment`, `StockTransfer`, `OpeningStock`) — 807 lines, 20 methods | 12 (`stock_adjustment` index/create/edit/show + `_form`/`_line`, `stock_transfer` index/create/show + `_line`, `opening_stock` index/edit) — 1,947 lines |
 | 7. Reports | 🟡 First tranche done (5 of 12) | 1 (`Report`) + `ReportService` + `<x-report-filters>` | 6 (`report` index/purchase-sell/stock/profit-loss/tax/expenses) — hub plus the five |
+| 8. Settings | ✅ Done | 9 (`Business`, `BusinessLocation`, `InvoiceScheme`, `InvoiceLayout`, `Barcode`, `Printer`, `NotificationTemplate`, `Role`, `ManageUser`) | 24 named GET screens over 6 view dirs — `business/settings`, `location` ×4, `invoice-layout` ×4, `notification_template` ×2, `role` ×4, `manage_user` ×4, and shared `crud/*` for invoice-schemes, barcodes and printers |
 
 **Item 5, verified rather than assumed:** 38 routes across the five modules — full CRUD plus
 the account operations (`deposit`, `withdraw`, `transfer`, `setClosed`, transaction
@@ -723,7 +765,31 @@ nothing else covers — the receive button, the in-transit banner, the pending-r
 and the warning-toned stat.
 
 
-**UI:** every Blade file was rebuilt against the v2 design system in three passes — shared
+**Item 8, verified rather than assumed:** 48 routes, of which 25 are GET — **24 named screens plus
+`business-location.toggle`**, which is an action rather than a screen. The nine controllers landed
+in `eefb941` alongside item 7 — the commit is mixed, and it is worth knowing that when reading
+history — and item 8 was *completed* by the pass that added its behavioural tests, fixed three
+defects and brought the translation files to exact parity. What is worth carrying forward from it is
+not the CRUD:
+
+- **Seven of the nine screens answer to four flat permission names**, not to four-verb groups, so
+  every settings subclass overrides `SimpleCrudController::ability()`. Forgetting one override
+  produces a permission name nobody holds, and it is **invisible under an admin** because
+  `permit()` short-circuits on `isAdmin()`. §14.1 has the 4 × 7 matrix that catches it.
+- **`SetSessionData` never re-hydrated the cache that `BusinessController` deliberately drops.**
+  Saving your settings emptied `session('business')` for the rest of the session — no currency
+  symbol anywhere, no sidebar module groups, and an empty permission list in the role editor. No
+  render walk could have seen it: a walk issues GETs and never saves. §14.5.
+- **`roles.index` was a 500 for every tenant** — `role/index.blade.php` read
+  `$role->permissions->count()` against an `index()` that eager-loaded only `withCount('users')`,
+  so it was a lazy-loading violation the moment a tenant had two roles, and `BusinessService`
+  seeds two. It had stayed hidden only because the walk had never reached that route with more
+  than one row in the table.
+- **Lang parity is now a test, not a number.** `tests/Feature/LangParityTest.php` asserts identical
+  recursive key sets across both locales, no key defined twice in one file, and no value left equal
+  to its own key. The counted total (1,404 leaves per locale) is recorded for orientation only.
+
+
 primitives, then the existing screens, then the outstanding sales screens authored
 directly to the new standard. 69 files: 53 screens and partials, 10 components, the layout
 and its 4 partials, and the published paginator. Decisions in §8.1–8.4. Item 6's 12 views were
@@ -762,7 +828,20 @@ valid.
 8. **Settings** — `BusinessController`, `BusinessLocationController`,
    `InvoiceSchemeController`, `InvoiceLayoutController`, `BarcodeController`,
    `PrinterController`, `NotificationTemplateController`, `RoleController`,
-   `ManageUserController`.
+   `ManageUserController`. ✅ **DONE 2026-08-24 — see §14.** All nine controllers, **48 routes / 24
+   named GET screens** (plus `business-location.toggle`, an action not a screen), `SettingsTest`
+   (24 tests) and `LangParityTest` (3 tests) green inside the 129-test suite, and the translation
+   files at exact parity (1,404 leaf keys per locale).
+   Three defects fixed on the way in: the `roles.index` lazy-load 500, `printers.path` validated
+   but never rendered, and the `SetSessionData` re-hydration bug that made *saving* your settings
+   break the rest of your session (§14.5).
+   **Deliberately deferred out of this item, and not gaps:** the business **logo upload** goes with
+   item 9 (needs a storage disk, image validation and a print path); the **module settings screens**
+   go with item 11; **email/SMS gateway credentials** never appear on a settings screen (§12.2); and
+   the 37 module-gated permission labels (`essentials`, `accounting`, `asset`, `superadmin`) arrive
+   with the screens they describe, covered in the interim by `Permissions::humanise()` (§14.9).
+   `UserController` stays what it was — the signed-in person's own profile — and `inventory.index`
+   remains item 11.
 9. **Printing** — `PrintPreviewController` + RTL layout templates.
 10. **Offline PWA** — `Api\OfflineDataController`, `Api\OfflineSyncController`, service
     worker, IndexedDB layer.
@@ -1446,6 +1525,18 @@ a calm re-read once the reports are actually in use — with real multi-manager 
 front of us instead of a guess. The concrete trigger for revisiting: a branch manager who should
 see their own branch's figures but not the whole business's profit.
 
+**Item 8 added a second cost to the same short-circuit, and it is a testing cost rather than an
+authorisation one.** Every settings screen was built while signed in as the admin, so `permit()`
+short-circuited on `isAdmin()` and *no permission name was ever really evaluated*. A subclass that
+forgot to override `SimpleCrudController::ability()` would have checked
+`invoice_settings.access.create` — a name no seeder creates and nobody can hold — and the screen
+would still have looked perfect right up to the first real user on the first real shift (§14.1).
+This does not change the decision; it changes what a test has to do to be worth anything. Any
+assertion about a permission must run as a **deliberately under-privileged** user, never as the
+admin, which is why `SettingsTest` builds one per settings area instead of trusting a green render
+walk. Filed here rather than in §14 because it is a property of `Gate::before()`, and it will apply
+to every item that follows.
+
 ### 12.4 ✅ Section-structure retrofit of the pre-v2.1 screens
 
 **Resolved.** Six view files, covering ten screens, now carry the §11.4 grouping:
@@ -1779,4 +1870,433 @@ directive asks for, and `.filter-bar` is already inside the print block's hide l
 report drops its filter strip for free. The directive is satisfied by the central system
 propagating, which is exactly what it asked for — a report needing a bespoke style would have been
 a sign the system was missing a component, not a sign the report was special.
+
+---
+
+## 14. Settings — the nine screens the rest of the app reads (item 8)
+
+Item 8 is the layer nothing else works properly without. Every screen in Souqly formats a number
+with `business.currency_precision`, gates a sidebar group on `business.enabled_modules`, numbers an
+invoice from an `invoice_schemes` row, and asks whether the signed-in user may stand at a given
+till. Those values are all *edited here*, which makes settings the one place where a quiet bug does
+not stay local: it changes what every other screen believes.
+
+Nine controllers, all under `routes/web.php:130–184` — **48 routes, 25 of them GET: 24 named
+screens plus `business-location.toggle`, which is an action rather than a screen:**
+
+| Screen | Controller | Gate |
+|---|---|---|
+| Business settings | `BusinessController` | `business_settings.access` |
+| Locations (+ activate/deactivate) | `BusinessLocationController` | `business_settings.access` |
+| Notification templates | `NotificationTemplateController` | `business_settings.access` |
+| Invoice schemes | `InvoiceSchemeController` | `invoice_settings.access` |
+| Invoice layouts | `InvoiceLayoutController` | `invoice_settings.access` |
+| Barcode / sticker presets | `BarcodeController` | `barcode_settings.access` |
+| Receipt printers | `PrinterController` | `access_printers` |
+| Roles | `RoleController` | `roles.view/create/update/delete` |
+| Users | `ManageUserController` | `user.view/create/update/delete` |
+
+`UserController` is untouched and stays what it was: the signed-in person's own profile.
+`inventory.index` remains out of scope — it belongs to item 11 with the rest of the module screens.
+
+### 14.1 Four permissions for seven screens, and the trap that hides
+
+Seven of the nine screens are gated by **four flat permission names**, not by the four-verb groups
+the rest of the app uses. There is no `invoice_settings.access.create`; there is
+`invoice_settings.access`, and holding it means you may read *and* write schemes and layouts.
+
+`SimpleCrudController` assumes the group shape — `ability()` returns
+`$this->permission.'.'.$action` — so **every settings subclass overrides `ability()`** to return the
+single flat name for all four verbs:
+
+```php
+protected function ability(string $action): string
+{
+    return $this->permission;   // flat: no per-verb split
+}
+```
+
+The trap is what happens if one is forgotten. The controller then checks
+`invoice_settings.access.create`, a name **no seeder creates and nobody holds** — so
+`Permission::findOrCreate()` never made a row and `hasPermissionTo()` can only ever be false. And it
+is *invisible in development*, because `Controller::permit()` short-circuits on `isAdmin()` and every
+screen is built while signed in as the admin. The create button renders, the form submits, and the
+first person to hit it is a real user on a real shift.
+
+That is why `SettingsTest::each_settings_area_answers_to_exactly_one_flat_permission()` walks a
+4 × 7 matrix as **four deliberately under-privileged users** rather than trusting a green render
+walk, and why it collects failures into an array instead of asserting one at a time: `assertOk()`
+takes no message argument, so a bare failure would say "expected 200, got 403" without naming which
+of twenty-eight combinations it was. Removing one `ability()` override makes it fail with
+
+```
+`barcode_settings.access` on `barcodes.index`: expected 200, got 403
+```
+
+which is the whole diagnosis in one line. (Mutation-checked — §14.11.)
+
+### 14.2 Two extension points carry the tenancy, and they fail in different shapes
+
+`SimpleCrudController` has two hooks that decide *which rows exist* for a subclass:
+
+- **`indexQuery()`** — what the list shows.
+- **`findRecord(int $id)`** — what `edit`, `update` and `destroy` may resolve.
+
+They must be kept in step, and where they deliberately differ that difference is the feature
+(§14.3). What matters for anyone writing a test against them is that **the same wrong id produces
+two different results depending on the verb**, because of where `findRecord()` sits relative to the
+try/catch:
+
+| Verb | `findRecord()` position | A foreign / unknown id gives |
+|---|---|---|
+| `edit`, `update` | **outside** the try | **HTTP 404** |
+| `destroy` | **inside** the try | a redirect with `status.success === 0` |
+
+Neither is wrong — a 404 is the honest answer to "show me this row", and a failed banner is the
+honest answer to "delete it" — but a test that asserts the wrong one passes for the wrong reason or
+fails for no reason. Both shapes are asserted explicitly in `SettingsTest`.
+
+`BarcodeController::indexQuery()` also documents a second-order trap worth repeating: the
+own-OR-global condition is wrapped in a closure, because `AND` binds tighter than `OR` and a flat
+`->where(...)->orWhere(...)` pair alongside a search term would have leaked **every** own row the
+moment somebody typed in the search box.
+
+### 14.3 Barcodes: the one settings table shared between tenants
+
+`barcodes` is the single settings table where `business_id` is nullable, and a null means *every
+tenant sees this row*. The presets are physical stationery — Avery sheet layouts, roll widths — and
+duplicating them per business would mean 500 identical rows and 500 places to fix a wrong margin.
+
+So `Barcode` **deliberately omits `BelongsToBusiness`**: the global scope would hide exactly the rows
+the feature exists to show. The trade is that the boundary becomes hand-written, and it is drawn
+asymmetrically on purpose:
+
+- **Reads are wide** — `indexQuery()` returns own + global.
+- **Writes are narrow** — `findRecord()` is own-only, so a shared preset is a 404 to `edit`/`update`
+  and a failed banner to `destroy`.
+- **`afterSave()` clears other defaults within `business_id = Tenancy::id()` only**, so one shop
+  choosing its default sheet cannot unset the flag on a preset every other shop is reading.
+
+That last clause is one `->where('business_id', …)` and would have been silently correct in
+development, where there is one tenant.
+`setting_a_default_sticker_sheet_leaves_the_shared_presets_alone()` is the assertion that it stays
+there.
+
+### 14.4 Business settings: what the screen owns, and what it must not reach
+
+`business` carries roughly a hundred columns; this screen edits about twenty-five. Three buckets are
+excluded deliberately, and the class docblock records them:
+
+1. **Module settings** — they belong to the module screens (item 11).
+2. **Email / SMS credentials** — a settings screen is not where secrets go (§12.2).
+3. **`logo`** — needs file upload, validation and a storage disk; deferred to item 9 with the rest of
+   the printing work.
+
+What makes the exclusion *safe* rather than merely tidy is that `fill()` is handed the **validated
+array and nothing else**. `Business` is guarded only by `id`, so a crafted POST carrying `owner_id`
+or `is_active` would otherwise be taken at face value.
+`business_settings_cannot_reach_the_columns_the_screen_does_not_own()` submits exactly that POST and
+asserts all four stay put.
+
+Two rules are tenant-scoped rather than plain `exists`:
+
+```php
+'default_sales_tax' => ['nullable', 'integer',
+    Rule::exists('tax_rates', 'id')->where('business_id', Tenancy::id())],
+'enabled_modules.*' => 'string|in:'.implode(',', array_keys($this->availableModules())),
+```
+
+`availableModules()` lists eight modules and **`superadmin` is absent on purpose** — it governs other
+businesses' subscriptions, so a business naming it in its own payload would be granting itself the
+group. Both are asserted.
+
+**The 14 feature toggles are read with `$request->boolean()`, not from the validated array.** An
+unticked checkbox is *absent* from the payload rather than present-and-false, so a toggle read from
+`$validated` can be switched on and then never switched off again — the save reports success and the
+box comes back ticked. The `foreach ($this->productToggles() as $toggle)` loop is what prevents it,
+and `an_unticked_feature_toggle_is_saved_as_off()` submits a payload with the field genuinely missing.
+
+`dateFormats()` is a six-entry whitelist rather than free text: the value is fed to `date()` on every
+screen that prints a date, so one typo corrupts all of them at once.
+
+### 14.5 The bug only a *save* could expose — `SetSessionData` never re-hydrated
+
+`SetSessionData` copies the whole business row into the session once per session, and everything
+downstream reads `session('business.*')` instead of re-querying. `updateSettings()` therefore ends
+with
+
+```php
+$request->session()->forget(['business', 'currency', 'financial_year']);
+```
+
+and its comment says why: *"Without this, every figure on every screen keeps the old precision and
+the old currency symbol until the user logs out."*
+
+**The comment was right about the need and wrong about the outcome.** The middleware re-hydrated only
+when the session was empty or belonged to a different user:
+
+```php
+if (empty($session->get('user'))
+    || (int) $session->get('user.id') !== (int) $user->id) { … }
+```
+
+`updateSettings()` forgets `business`, `currency` and `financial_year` — never `user`. So after the
+save both conditions were false, nothing was rebuilt, and `session('business')` stayed empty **for
+the rest of the session**. The consequences were not subtle:
+
+- `session('currency')` gone → every amount formatted with a null precision and no symbol.
+- `session('business.enabled_modules')` → `null`, and `(array) null === []`: the sidebar's module
+  groups vanish and `RoleController::visiblePermissionGroups()` collapses to nothing — **the role
+  editor shows an empty permission list**.
+- `session('financial_year')` gone → the year-to-date figures lose their window.
+
+In other words: saving your settings broke the rest of your session, and the screen that caused it
+looked like it had worked. Nothing threw, nothing logged, and no render walk could see it — the walk
+issues one GET per route and never saves anything.
+
+The fix is a third condition, extracted into a named predicate so the reason survives:
+
+```php
+protected function needsHydrating(Request $request, $user): bool
+{
+    $session = $request->session();
+
+    if (empty($session->get('user'))
+        || (int) $session->get('user.id') !== (int) $user->id) {
+        return true;
+    }
+
+    return ! empty($user->business_id) && empty($session->get('business'));
+}
+```
+
+`saving_business_settings_drops_the_cached_row_and_the_next_request_rebuilds_it()` was **written red
+and watched fail** before the fix, which is the only evidence that it tests anything. It asserts the
+contract in two halves so it does not depend on cookie carry-over between test requests: the PUT must
+leave the three keys missing, and a following GET that reproduces exactly the post-save session state
+— `user` cached, `business` gone — must come back with `business` rebuilt at the *new* precision.
+
+### 14.6 Roles: the name is load-bearing, so it is not a free-text field
+
+`Role::isAdmin()` matches the literal string `Admin#<business_id>`. That single fact constrains the
+whole screen:
+
+- **`Admin` and `Cashier` are reserved**, compared with `mb_strtolower()` after `stripSuffix()`, so
+  `admin`, `ADMIN` and `admin#7` are all refused. A second role displayed as "Admin" would not be an
+  escalation — the check is exact — but on screen it is indistinguishable from the role that is,
+  which is its own kind of dangerous.
+- **A submitted `#suffix` is stripped, never honoured.** `Manager#999999` is stored as
+  `Manager#<own business id>`. The suffix *is* the tenant boundary for a table spatie owns and no
+  global scope guards, so accepting it from input would mean accepting a tenant id from the browser.
+- **A default role is never renamed.** `update()` replaces the validated array with
+  `['name' => $role->display_name]` and skips the rename entirely, because renaming `Admin#7` would
+  strip every admin in that business of every permission in one request.
+- **Admin's permission set is never rewritten** — it holds none by design (§12.3) and every check
+  short-circuits on the role name, so syncing an empty list would be pointless and syncing a
+  non-empty one would be misleading. `role/index.blade.php` prints
+  `<span class="badge-success">full access</span>` for it rather than the literal `0`.
+
+`selectedPermissions()` intersects the submitted list against `visiblePermissionGroups()`, which is
+itself filtered by `session('business.enabled_modules')` through `Permissions::moduleMap()`. So a
+permission belonging to a module the business has not bought **cannot be granted by a hand-written
+POST**, only by enabling the module.
+`a_disabled_modules_permission_cannot_be_granted_by_a_crafted_post()` posts `essentials.add_todos`
+alongside a legitimate `product.view` and asserts the first is dropped and the second kept — a lone
+`assertNotContains` would have passed on an empty result set, which is why both halves are checked.
+
+### 14.7 Users: five separate ways to lock a business out of itself
+
+A business whose last Admin cannot sign in has nobody who can create one. There is no recovery
+screen, so every route to that state is blocked in the controller:
+
+| Attempt | Guard | Message key |
+|---|---|---|
+| Move the last admin to another role | `demotionBlockedBy()` | `cannot_demote_last_admin` |
+| Untick the last admin's `allow_login` | `demotionBlockedBy()` | `cannot_disable_last_admin` |
+| Set the last admin's status to inactive | `demotionBlockedBy()` | `cannot_disable_last_admin` |
+| Delete the last admin | `isLastAdmin()` | `cannot_delete_last_admin` |
+| Delete your own account | `$user->id === auth()->id()` | `cannot_delete_own_account` |
+
+`demotionBlockedBy()` returns `null` immediately unless `isLastAdmin($user)`, so **an ordinary edit to
+the only owner's name still saves** — the guard protects the *last way in*, not a particular row.
+`the_only_admin_can_neither_be_demoted_nor_locked_out()` asserts both directions, including that the
+demotion goes through the moment a second admin exists, which is what proves the guard counts admins
+rather than special-casing the owner.
+
+Three more properties of this screen, each asserted:
+
+- **`username` is absent from the update rules *and* from `update()`'s `fill()`.** It is the login
+  identifier, so renaming it is a support action, not a settings toggle. A submitted `username` on
+  update is ignored rather than rejected. The edit form shows it as **`.input-static`** — the one
+  new design-system class item 8 needed (`app.css:989`) — deliberately *not* a disabled input: a
+  greyed-out field reads as "you may change this later" and invites clicks that do nothing, and
+  browsers drop disabled inputs from the payload, so the markup would imply a field that is
+  silently not submitted. It is text borrowing the control's metrics so it lines up with the inputs
+  beside it in the grid.
+- **A blank password means "leave it alone".** The field renders empty because it is not a way to read
+  the current one; `if (filled($validated['password'] ?? null))` is the only thing that writes a hash.
+  This is also why `manage_user/_form.blade.php` is hand-written rather than reusing `crud/_form`,
+  which prints `value="{{ $value }}"` and would have put the bcrypt hash in the HTML.
+- **`access_all_locations` and an explicit location list are mutually exclusive.**
+  `syncLocationAccess()` keeps every non-location direct permission, then grants *either* the blanket
+  name *or* the `location.<id>` list. Holding both would make the list decorative — and a branch
+  opened next year would silently become visible to somebody who was deliberately given two.
+
+`findUser()` filters `business_id` by hand because **`users` has no tenant global scope**: login has
+to find a user before a tenant exists. `roles` has none either, because spatie owns the table. Those
+two hand-written filters are the entire boundary between one shop's settings screen and another
+shop's staff, so `another_businesss_staff_and_roles_are_out_of_reach()` probes it from four angles —
+`edit`, `update`, `destroy`, and a crafted `role_id` — and checks the index does not print the
+stranger's username.
+
+Note for future assertions: `users` soft-deletes, so "still there" is
+`assertDatabaseHas('users', ['id' => …, 'deleted_at' => null])`, not
+`assertDatabaseHas('users', ['id' => …])`.
+
+### 14.8 Notification templates: an upsert standing in for a missing index
+
+Sixteen fixed template types (`NotificationTemplate::templateTypes()`), no rows until somebody saves
+one, and **no unique index on `(business_id, template_for)`**. So the screen has no create or delete
+verb at all — only index, edit and update — and `update()` is a `firstOrNew()` upsert inside a
+transaction:
+
+```php
+$record = NotificationTemplate::firstOrNew([
+    'template_for' => $templateFor,
+    'business_id' => Tenancy::id(),
+]);
+$record->fill($validated)->save();
+```
+
+Without that, a second save would insert a second row, the screen would read whichever came back
+first, and roughly half the edits would appear to have been lost with no error anywhere.
+`a_notification_template_is_created_on_first_save_and_updated_after()` saves twice and asserts the row
+count is 1 both times.
+
+The route parameter is the **`template_for` slug**, not an id — the one place in the settings area
+where a bad parameter is not something the database would reject on its own — so both `edit()` and
+`update()` open with
+`abort_unless(in_array($templateFor, NotificationTemplate::templateTypes(), true), 404)`.
+
+### 14.9 Permission labels live in sub-arrays, and that is not a style choice
+
+`Permissions::grouped()` returns 15 groups holding ~181 names, and the names contain dots:
+`user.view`, `roles.delete`, `essentials.add_todos`. Labels are therefore stored **nested**:
+
+```php
+'perm_group' => [ 'user_management' => 'إدارة المستخدمين', … ],   //  15
+'perm'       => [ 'user.view' => 'عرض المستخدمين', … ],           // 144
+```
+
+A flat `'perm_user.view' => …` **could never be found**, because `__()` splits its argument on the
+first dot and would go looking for a `perm_user` file. Nesting is the only shape that works, and it is
+why `LangParityTest::flatten()` walks recursively instead of diffing `array_keys()` — a
+half-translated sub-array is exactly as broken as a missing top-level key, and a shallow diff would
+not see it.
+
+Four groups' labels are **deliberately absent** from `perm`: `essentials` (23), `accounting` (6),
+`asset` (6) and `superadmin` (2). All four are module-gated, so `visiblePermissionGroups()` filters
+them out for every tenant that has not enabled the module, and where one *is* enabled
+`Permissions::humanise()` renders a readable fallback from the name itself. Writing 37 Arabic labels
+for screens that do not exist yet would be inventing vocabulary for features built in item 11; they
+land with their modules.
+
+One rename while assembling the vocabulary: the person-title field became **`name_prefix`** ("Title" —
+Mr./Mrs.) so it stops colliding with **`prefix`**, the invoice-scheme prefix. Both appear on settings
+screens, and one key cannot mean both.
+
+### 14.10 `LangParityTest` — parity became a test instead of a number
+
+Up to item 7, lang parity was verified by *counting keys* and writing the count into NOTES
+(`ar = 974, en = 974`). That proved the totals matched, which is not the same as the keys matching,
+and it went stale the moment anyone edited a file without re-counting.
+
+`tests/Feature/LangParityTest.php` replaces the count with three properties, over **both** lang
+directories merged (so a file added to one locale and forgotten in the other is caught rather than
+quietly skipped):
+
+1. **Same keys in both locales**, compared as recursive dot-paths in both directions. `__()` returns
+   the key itself when it cannot resolve one, so a key present in `en` and missing from `ar` renders
+   the literal `lang_v1.stock_accounting_method` in the middle of an Arabic page — nothing throws,
+   nothing logs, and the only person who sees it is the one this was built for.
+2. **No key defined twice in one file.** PHP keeps the last duplicate and discards the rest in
+   silence: a second `'confirm_password' => …` appended 1,100 lines below the first is not a syntax
+   error, not a lint warning, and **invisible to any key-set comparison** — both locales still agree.
+   Only reading the source text finds it, which is what `duplicateKeys()` does, grouping by
+   indentation so `perm.name` does not collide with a top-level `name`.
+3. **No value left equal to its own key** — a `'gross_profit' => 'gross_profit'` placeholder passes
+   parity and then renders as raw snake_case on screen. Restricted to keys containing an underscore,
+   because `'and' => 'and'` is correct English rather than an oversight; that narrowing came from a
+   false positive on the first run.
+
+`ScreensRenderTest` still scans rendered bodies for `lang_v1.*`, but it only sees the locale it runs
+in and only keys some screen actually prints — nothing in a mail template, a validation message, a
+queued job, or a screen written next month. The two guards are complementary, and neither replaces
+the other.
+
+### 14.11 What the render walk found, and what only behaviour could
+
+Extending `ScreensRenderTest` to reach the settings screens meant `seedSettingsFixtures()` (a second
+invoice scheme and layout, an own **and** a global barcode, a network and a windows printer, an
+inactive branch, a non-default role, a staff user with an explicit `location.<id>` rather than
+`access_all_locations`, two notification-template rows) plus eight `resolveParameters()` mappings.
+That alone surfaced three defects:
+
+1. **`roles.index` was an HTTP 500** — `role/index.blade.php:73` read `$role->permissions->count()`
+   while `index()` eager-loaded only `withCount('users')`, so it was a
+   `LazyLoadingViolationException` the moment a tenant had two roles. **Every tenant has two**,
+   because `BusinessService` seeds Admin and Cashier. It stayed hidden only because the walk had never
+   reached the route with more than one row in the table — which is exactly what
+   `seedListingDuplicates()` exists to prevent. Fixed with `withCount(['users', 'permissions'])` and
+   `{{ $role->permissions_count }}`.
+2. **Nine settings `edit` routes were 404s** — `resolveParameters()` had no entry for any settings
+   parameter, so all nine fell through to `default => $this->fixtureProductId`. The screens were
+   fine; the walk was asking for row 12 of the wrong table. Worth recording because the symptom (a
+   404 on nine routes at once) reads like a routing bug and is not one.
+3. **`printers.path` was validated but never rendered** — the rule existed, the column existed, and
+   the field was missing from `formViewData()`, so a windows/linux printer could never be given the
+   device path it needs. Added, with `printer_path` / `printer_path_hint` in both locales.
+
+Per §12.4, assertions that never went red were checked by mutation rather than trusted:
+
+| Mutation | Expected to fail | Result |
+|---|---|---|
+| `BarcodeController::ability()` returns `$this->permission.'.'.$action` | flat-permission matrix | ✅ failed, naming the exact screen |
+| none needed — `SetSessionData` as it stood | session-cache contract | ✅ failed red first, green after the fix |
+
+### 14.12 Verified
+
+```bash
+php artisan test    # 129 tests, 672 assertions — all passing
+```
+
+- **`SettingsTest` — 24 tests, 167 assertions.** Groups: business settings (4), flat permissions (2),
+  notification templates (2), barcodes (2), invoice schemes (2), locations (2), roles (5), users (5).
+- `LangParityTest` — 3 tests, 11 assertions; all three guards mutation-proven.
+- `ScreensRenderTest` walks all nine settings screens, in Arabic, under the untranslated-key,
+  div-balance and empty-heading guards.
+- Lang parity: **1,404 leaf keys per locale** (1,245 top-level + 15 `perm_group` + 144 `perm`), exact
+  mirrors. The number is recorded for orientation only — `LangParityTest` is the assertion now.
+- Tests run as a real Admin via `BusinessService::register()`, **not** `createTenant()`.
+  `createTenant()` seeds no roles, so under it `permit()`'s `isAdmin()` short-circuit is never
+  exercised and a permission bug would pass unnoticed.
+- Any deliberately restricted test user needs `'allow_login' => 1` and `'status' => 'active'`, or
+  `CheckUserLogin` turns every 403 assertion into a 302 to `/home` and the test silently measures the
+  login gate instead.
+- **`npm run build` was not run.** The environment's safety classifier refused that specific command
+  on every attempt across two sessions, while `php artisan test` passed. Item 8 added exactly one
+  CSS class (`.input-static`, §14.7), so the expected delta on the 121.26 kB bundle is small — but
+  **that is an estimate, not a measurement, and the build stays unverified.** Recorded here rather
+  than quietly omitted, because "the suite is green" and "the assets compile" are two different
+  claims.
+
+### 14.13 Deliberately not done in item 8
+
+- **Logo upload** — needs a storage disk, image validation and a print path; goes with item 9.
+- **Module settings screens** — item 11, with the module controllers themselves.
+- **Email / SMS gateway credentials** — never on a settings screen (§12.2).
+- **37 module-gated permission labels** — `essentials`, `accounting`, `asset`, `superadmin`; they
+  arrive with the screens they describe, and `humanise()` covers the interim (§14.9).
+- **§12.3 stays 🟡 by your decision** — the admin remains unrestricted and `Gate::before()` is
+  untouched; documentation only, no behaviour change.
 
