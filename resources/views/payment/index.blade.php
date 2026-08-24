@@ -29,7 +29,7 @@
      came in and what went out. A net line would hide both behind one number that
      is meaningful to nobody. --}}
 <div class="section">
-    <div class="grid gap-4 sm:grid-cols-2">
+    <div class="rise-group grid gap-4 sm:grid-cols-2">
         <x-stat :label="__('lang_v1.money_in')"
                 :value="format_currency($totals['in'])"
                 icon="arrow-back"

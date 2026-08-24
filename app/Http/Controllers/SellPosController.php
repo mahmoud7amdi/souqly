@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\BusinessLocation;
 use App\Models\Contact;
+use App\Models\Product;
 use App\Models\SellingPriceGroup;
 use App\Models\TaxRate;
 use App\Services\FormattingService;
@@ -50,6 +51,14 @@ class SellPosController extends Controller
             // The terminal opens on a walk-in sale; anything else is a deliberate
             // choice the cashier makes per sale.
             'defaultCustomer' => Contact::query()->where('is_default', 1)->value('id'),
+            // Seeds the product grid's picture mode before the first fetch has
+            // answered, so the skeleton is already the shape of the tiles that
+            // will replace it. A hint, not the truth: this asks only whether a
+            // filename is recorded, where the feed also checks the file is on
+            // disk — the first response corrects the mode either way. EXISTS
+            // rather than a count, because one photo settles the question.
+            'hasProductImages' => Product::query()
+                ->whereNotNull('image')->where('image', '!=', '')->exists(),
         ]);
     }
 

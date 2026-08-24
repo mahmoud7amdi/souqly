@@ -25,7 +25,13 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        Model::preventLazyLoading($this->app->isLocal());
+        // Not isLocal(): that leaves it off under APP_ENV=testing, which is the
+        // one environment that could catch a violation before a user does. The
+        // products screen shipped reading $product->variations with the relation
+        // missing from the controller's with() — 100 screens walked green, then
+        // it 500ed on the first real catalogue. On in every environment but
+        // production, where a missing eager load should cost queries, not a page.
+        Model::preventLazyLoading(! $this->app->isProduction());
 
         // utf8mb4 index headroom on older MySQL; harmless on 8.x.
         Schema::defaultStringLength(191);

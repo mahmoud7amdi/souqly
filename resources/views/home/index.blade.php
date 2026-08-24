@@ -80,7 +80,14 @@
      expenses are normal costs and stay neutral, while returns are the one line
      an owner scans for a spike. --}}
 <div class="section">
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    {{-- `.rise-group` staggers the four figures in rather than fading the row as
+         one block. It composes with the page-level `.rise` in layouts/app.blade.php
+         rather than replacing it: the page carries the whole content up, and this
+         adds at most 80 ms of lag between the first tile and the fourth, so the row
+         settles at 420 ms instead of 340. Deliberate — a row of four identical
+         cards is the one place on the dashboard where arriving together reads as
+         flat. --}}
+    <div class="rise-group grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-stat :label="__('lang_v1.net_sales')"
                 :value="format_currency($totals['net_sales'])"
                 icon="receipt"

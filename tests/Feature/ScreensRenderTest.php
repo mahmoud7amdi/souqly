@@ -137,6 +137,96 @@ class ScreensRenderTest extends TestCase
          */
         $this->seedFinanceFixtures();
         $this->seedSellDocuments();
+
+        // Last of the documents, because it spends what the purchase and the
+        // sales left behind — see the note on quantities in the method itself.
+        $this->seedStockDocuments();
+
+        $this->seedListingDuplicates();
+    }
+
+    /**
+     * A SECOND row for every entity that has a listing screen.
+     *
+     * Not padding. `Builder::hydrate()` arms lazy-load detection per model
+     * instance, and only when the query returned more than one row:
+     *
+     *     if (count($items) > 1) {
+     *         $model->preventsLazyLoading = Model::preventsLazyLoading();
+     *     }
+     *
+     * So with one fixture apiece, an index screen that reaches through a
+     * relation its controller never eager loaded renders green here and throws
+     * LazyLoadingViolationException the moment a real database has two rows.
+     * That is exactly how `product.index` shipped reading `$product->variations`
+     * with `variations` absent from the controller's `with()` — 100 screens
+     * walked clean, then it 500ed on the first seeded catalogue.
+     *
+     * Two rows is the whole trick: it costs a handful of inserts and turns the
+     * walk into a real N+1 / missing-eager-load detector for every screen,
+     * including ones written later.
+     */
+    private function seedListingDuplicates(): void
+    {
+        Brands::create(['name' => 'Second brand', 'created_by' => $this->admin->id]);
+
+        Category::create([
+            'name' => 'Second category', 'category_type' => 'product',
+            'parent_id' => 0, 'created_by' => $this->admin->id,
+        ]);
+
+        Warranty::create(['name' => 'Second warranty', 'duration' => 6, 'duration_type' => 'months']);
+
+        SellingPriceGroup::create(['name' => 'Second group', 'is_active' => 1]);
+
+        \App\Models\CustomerGroup::create([
+            'name' => 'Second cg', 'amount' => 5,
+            'price_calculation_type' => 'percentage', 'created_by' => $this->admin->id,
+        ]);
+
+        Discount::create([
+            'name' => 'Second discount', 'discount_type' => 'fixed',
+            'discount_amount' => 5, 'is_active' => 0,
+        ]);
+
+        \App\Models\Unit::create([
+            'actual_name' => 'Second unit', 'short_name' => 'su',
+            'allow_decimal' => 1, 'created_by' => $this->admin->id,
+        ]);
+
+        \App\Models\TaxRate::create([
+            'name' => 'Second tax', 'calculation_type' => 'percentage',
+            'amount' => 5, 'created_by' => $this->admin->id,
+        ]);
+
+        $template = VariationTemplate::create(['name' => 'Second template']);
+        VariationValueTemplate::create(['variation_template_id' => $template->id, 'name' => 'L']);
+
+        app(\App\Services\AccountService::class)->create([
+            'name' => 'Second account',
+            'account_number' => 'FIX-ACC-2',
+            'opening_balance' => 0,
+            'created_by' => $this->admin->id,
+        ]);
+
+        // Variable rather than a second single: it gives the product listing two
+        // rows AND gives `variations` a multi-row collection of its own, which
+        // arms the guard one level deeper.
+        $variable = \App\Models\Product::create([
+            'name' => 'Second product', 'type' => 'variable',
+            'unit_id' => \App\Models\Unit::first()->id, 'tax_type' => 'exclusive',
+            'enable_stock' => 1, 'alert_quantity' => 2, 'sku' => 'FIX-2',
+            'barcode_type' => 'C128', 'created_by' => $this->admin->id,
+        ]);
+
+        app(\App\Services\ProductService::class)->createVariableVariations($variable, [[
+            'name' => 'Size',
+            'variation_template_id' => VariationTemplate::first()->id,
+            'variations' => [
+                ['name' => 'M', 'default_purchase_price' => 10, 'default_sell_price' => 18],
+                ['name' => 'L', 'default_purchase_price' => 12, 'default_sell_price' => 20],
+            ],
+        ]]);
     }
 
     /**
@@ -193,6 +283,20 @@ class ScreensRenderTest extends TestCase
             'user_id' => $this->admin->id,
             'opening_amount' => 100,
         ]);
+
+        /*
+         * Part of the expense settled in cash AFTER the register opened, so the
+         * drawer holds a `payout` row. Same reasoning as the sale ordering above:
+         * without one, `cash-register.show` renders four stat cards instead of
+         * five and the close rail's "paid out" line never appears, so the walk
+         * would pass over the markup NOTES.md §12.1 added.
+         */
+        \Illuminate\Support\Facades\DB::transaction(fn () => app(\App\Services\PaymentService::class)
+            ->addPayment($expense, [
+                'amount' => 30,
+                'method' => 'cash',
+                'created_by' => $this->admin->id,
+            ]));
 
         $this->fixtureAccountId = $account->id;
         $this->fixtureExpenseCategoryId = $category->id;
@@ -336,6 +440,89 @@ class ScreensRenderTest extends TestCase
         $this->fixturePaymentId = $sale->payment_lines()->first()->id;
     }
 
+    /**
+     * A second shop, an opening stock statement, one adjustment and one transfer
+     * still on the road.
+     *
+     * The second location is the reason this method exists at all: a transfer is
+     * the only document in the app that cannot be written with one shop, and
+     * every other fixture here is happy with `BusinessLocation::first()`. It
+     * also gives every location dropdown on every screen a second option, which
+     * is the only way the "pick two different ones" markup gets exercised.
+     *
+     * In transit rather than completed on purpose: it is the state that carries
+     * extra markup nothing else covers — the receive button, the in-transit
+     * banner, the pending-receipt wording and the warning-toned stat.
+     */
+    private function seedStockDocuments(): void
+    {
+        $from = \App\Models\BusinessLocation::first();
+
+        $to = \App\Models\BusinessLocation::create([
+            'business_id' => $this->admin->business_id,
+            'name' => 'Second shop',
+            'location_id' => app(\App\Services\ReferenceService::class)
+                ->generate('business_location', $this->admin->business_id),
+            'invoice_scheme_id' => $from->invoice_scheme_id,
+            'invoice_layout_id' => $from->invoice_layout_id,
+            'is_active' => true,
+            'receipt_printer_type' => 'browser',
+            'print_receipt_on_invoice' => 1,
+        ]);
+
+        // Its own permission, because an admin bypasses the location gate and
+        // would hide a missing one: a restricted role reads these dropdowns
+        // through `location.{id}`, and a location without that permission is
+        // invisible to everyone but the owner.
+        app(BusinessService::class)->createLocationPermission($to);
+
+        /*
+         * Quantities are deliberately small. The stock these documents spend is
+         * what the purchase above left after its return and the sales — so they
+         * are sized to fit inside that with room to spare, rather than being
+         * silently coupled to those figures. The opening statement runs first
+         * and adds five more, which is also what gives `opening-stock.edit` its
+         * recorded path, its `already_used` column and its position panel.
+         */
+        app(\App\Services\OpeningStockService::class)->save(
+            \App\Models\Product::find($this->fixtureProductId),
+            $from->id,
+            [$this->fixtureVariationId => 5],
+            [$this->fixtureVariationId => 9],
+            null,
+            $this->admin->id,
+        );
+
+        // Abnormal with a recovery amount: `stock-adjustments.index` totals the
+        // abnormal ones separately and shows what was recovered, so a normal
+        // adjustment of zero would leave both figures at nought.
+        $adjustment = app(\App\Services\StockAdjustmentService::class)->create([
+            'location_id' => $from->id,
+            'adjustment_type' => 'abnormal',
+            'total_amount_recovered' => 4,
+            'additional_notes' => 'Fixture adjustment',
+            'created_by' => $this->admin->id,
+        ], [[
+            'variation_id' => $this->fixtureVariationId,
+            'quantity' => 1,
+        ]]);
+
+        $transfer = app(\App\Services\StockTransferService::class)->create([
+            'location_id' => $from->id,
+            'transfer_location_id' => $to->id,
+            'status' => \App\Support\TransactionTypes::STATUS_IN_TRANSIT,
+            'shipping_charges' => 15,
+            'shipping_details' => 'Fixture van',
+            'created_by' => $this->admin->id,
+        ], [[
+            'variation_id' => $this->fixtureVariationId,
+            'quantity' => 2,
+        ]]);
+
+        $this->fixtureAdjustmentId = $adjustment->id;
+        $this->fixtureTransferId = $transfer->id;
+    }
+
     private int $fixtureProductId;
 
     private int $fixtureVariationId;
@@ -363,6 +550,10 @@ class ScreensRenderTest extends TestCase
     private int $fixtureExpenseId;
 
     private int $fixtureRegisterId;
+
+    private int $fixtureAdjustmentId;
+
+    private int $fixtureTransferId;
 
     private function createProductFor(): \App\Models\Product
     {
@@ -419,6 +610,9 @@ class ScreensRenderTest extends TestCase
             'accounts.edit' => $this->fixtureAccountId,
             'cash-register.show' => $this->fixtureRegisterId,
             'cash-register.closeForm' => $this->fixtureRegisterId,
+            'stock-adjustments.show' => $this->fixtureAdjustmentId,
+            'stock-adjustments.edit' => $this->fixtureAdjustmentId,
+            'stock-transfers.show' => $this->fixtureTransferId,
         ];
 
         $parameters = [];
@@ -521,10 +715,129 @@ class ScreensRenderTest extends TestCase
                         implode(', ', array_unique($matches[0]))
                     );
                 }
+
+                /*
+                 * Unbalanced divs, which is how a layout breaks without anything
+                 * failing. The POS cart lost its wrapping `<div>` to a Blade comment
+                 * whose terminator had a space in it (`--------- }}` rather than
+                 * `--------- --}}`), so the compiler ran the comment on to the next
+                 * real `--}}` and deleted the line between. The page still returned
+                 * 200 with every translation present; the only symptom was the cart
+                 * scattering itself across the terminal's grid cells.
+                 *
+                 * Scripts are cut out first: a `'<div>'` inside a JS string is not
+                 * markup, and counting it would make this guard cry wolf on any
+                 * screen that builds HTML in JavaScript.
+                 */
+                $markup = preg_replace('#<script\b[^>]*>.*?</script>#is', '', $body);
+                $open = preg_match_all('/<div\b/i', $markup);
+                $close = substr_count($markup, '</div>');
+
+                if ($open !== $close) {
+                    $failures[] = sprintf(
+                        '%s (%s) → %d <div> vs %d </div> (%+d): markup is unbalanced',
+                        $name,
+                        $url,
+                        $open,
+                        $close,
+                        $open - $close
+                    );
+                }
+
+                /*
+                 * Headings with no text. `<x-panel>` renders its header whenever it
+                 * has a title, an icon *or* an actions slot, so a panel given only
+                 * actions emits `<h3 class="card-title"><span></span></h3>` — a blank
+                 * line on screen and a heading a screen reader announces with nothing
+                 * to say. §11.4's grouping work makes this easy to hit: moving a
+                 * record count or a search box out of a card header and into a
+                 * `.section-head` leaves the panel titleless but still slotted.
+                 *
+                 * The check reads text content rather than the tag, because the defect
+                 * is an empty *name*: an icon-only header is just as silent as an
+                 * empty one, and both look like a rendering fault.
+                 */
+                foreach (['h1', 'h2', 'h3'] as $tag) {
+                    preg_match_all("#<{$tag}\b[^>]*>(.*?)</{$tag}>#is", $markup, $headings);
+
+                    foreach ($headings[1] as $inner) {
+                        /* "\xC2\xA0" is a decoded &nbsp;. PHP's default trim charlist
+                           is single-byte, so it leaves that pair in place and a
+                           heading padded out with &nbsp; would read as non-empty. */
+                        $text = trim(
+                            html_entity_decode(strip_tags($inner), ENT_QUOTES | ENT_HTML5),
+                            " \t\n\r\0\x0B\xC2\xA0"
+                        );
+
+                        if ($text === '') {
+                            $failures[] = sprintf(
+                                '%s (%s) → empty <%s>: a heading with no text',
+                                $name,
+                                $url,
+                                $tag
+                            );
+                        }
+                    }
+                }
             }
         }
 
         $this->assertGreaterThan(15, $checked, 'Expected to walk a meaningful number of screens.');
         $this->assertSame([], $failures, "Screens that did not render:\n".implode("\n", $failures));
+    }
+
+    /**
+     * The till's left column is one connected unit, not four loose pieces.
+     *
+     * `.pos-shell` is a two-column grid, so anything that escapes the cart wrapper
+     * becomes a grid item in its own right and gets placed in the next free cell —
+     * the counter in one, the rows in another, the total somewhere below. The
+     * cashier is then reading a scattered cart while serving a customer.
+     *
+     * Containment is asserted through the DOM rather than by searching the HTML,
+     * because the bug this guards against does not remove the four parts; it moves
+     * them out of their parent, which a substring check cannot see.
+     */
+    #[Test]
+    public function the_pos_cart_is_one_connected_column(): void
+    {
+        $this->actingAs($this->admin);
+
+        $response = $this->get(route('pos.create'));
+        $response->assertOk();
+
+        $dom = new \DOMDocument;
+        $dom->loadHTML($response->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING);
+        $xpath = new \DOMXPath($dom);
+
+        // Whole-word class match, so `pos-cart-scroll` is not mistaken for it.
+        $cart = $xpath->query(
+            "//div[contains(concat(' ', normalize-space(@class), ' '), ' pos-cart ')]"
+        );
+
+        $this->assertSame(1, $cart->length, 'the cart column wrapper is not in the rendered page');
+
+        /*
+         * In this order, top to bottom: what is in the cart, the cart itself, what
+         * it comes to, and the button that takes the money. The order is the screen's
+         * whole argument — a total above the lines it totals reads as a price.
+         */
+        $parts = ['cart-count', 'cart-rows', 'cart-total', 'open-payment'];
+
+        foreach ($parts as $id) {
+            $this->assertSame(
+                1,
+                $xpath->query(".//*[@id='{$id}']", $cart->item(0))->length,
+                "#{$id} is not inside the cart column"
+            );
+        }
+
+        $column = $dom->saveHTML($cart->item(0));
+
+        $positions = array_map(fn ($id) => strpos($column, 'id="'.$id.'"'), $parts);
+        $sorted = $positions;
+        sort($sorted);
+
+        $this->assertSame($sorted, $positions, 'the cart column is in the wrong order: '.implode(' → ', $parts));
     }
 }

@@ -24,19 +24,29 @@
     @endcan
 </x-page-head>
 
-<div class="grid gap-6 lg:grid-cols-3">
+<div class="section grid gap-6 lg:grid-cols-3">
 
     <x-panel :title="__('lang_v1.product_details')" icon="box" class="lg:col-span-2">
-        <x-attr-list :columns="2" :items="[
-            'lang_v1.sku' => $product->sku,
-            'lang_v1.type' => __('lang_v1.'.$product->type),
-            'lang_v1.unit' => $product->unit->actual_name ?? null,
-            'lang_v1.brand' => $product->brand->name ?? null,
-            'lang_v1.category' => $product->category->name ?? null,
-            'lang_v1.tax_rate' => $product->product_tax->name ?? null,
-            'lang_v1.warranty' => $product->warranty->name ?? null,
-            'lang_v1.alert_quantity' => $product->alert_quantity,
-        ]"/>
+        {{-- Picture and fields side by side, with the picture at the inline start
+             so it is the first thing read in both directions. `sm:` rather than
+             unconditional: on a phone a 5rem square beside a two-column attribute
+             grid squeezes the values into a ragged strip. --}}
+        <div class="flex flex-col gap-5 sm:flex-row sm:items-start">
+            <x-product-thumb :product="$product" size="lg" class="self-start"/>
+
+            <div class="min-w-0 flex-1">
+                <x-attr-list :columns="2" :items="[
+                    'lang_v1.sku' => $product->sku,
+                    'lang_v1.type' => __('lang_v1.'.$product->type),
+                    'lang_v1.unit' => $product->unit->actual_name ?? null,
+                    'lang_v1.brand' => $product->brand->name ?? null,
+                    'lang_v1.category' => $product->category->name ?? null,
+                    'lang_v1.tax_rate' => $product->product_tax->name ?? null,
+                    'lang_v1.warranty' => $product->warranty->name ?? null,
+                    'lang_v1.alert_quantity' => $product->alert_quantity,
+                ]"/>
+            </div>
+        </div>
 
         @if ($product->product_description)
             <p class="mt-5 border-t border-slate-100 pt-5 text-sm text-slate-600">
@@ -78,9 +88,25 @@
     </x-panel>
 </div>
 
-{{-- Variations and their price-group overrides. --}}
-<x-panel :title="__('lang_v1.variations')" icon="grid"
-         :count="$product->variations->count()" class="mt-6" flush>
+{{-- Variations and their price-group overrides. A section rather than a fourth
+     card: this is the product broken into the things that actually carry a SKU and
+     a price, which is a different subject from the summary above. The count moves
+     into `.section-actions`, where the canonical §11.4 head puts it. --}}
+<div class="section-head">
+    <div class="section-head-text">
+        <p class="section-eyebrow">{{ __('lang_v1.pricing') }}</p>
+        <h2 class="section-title">{{ __('lang_v1.variations') }}</h2>
+        <p class="section-desc">{{ __('lang_v1.each_variation_priced_separately') }}</p>
+    </div>
+
+    <div class="section-actions">
+        <span class="text-sm text-slate-500">
+            {{ trans_choice('lang_v1.record_count', $product->variations->count(), ['count' => $product->variations->count()]) }}
+        </span>
+    </div>
+</div>
+
+<x-panel flush>
     <div class="table-wrap table-flush">
         <table class="table">
             <thead>

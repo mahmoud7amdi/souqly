@@ -17,7 +17,9 @@
     $showSinglePricing = ! ($isEdit && $product->type === 'variable');
 @endphp
 
-<div class="grid gap-6 lg:grid-cols-3">
+{{-- What the product *is*: its identity, and how it is taxed, stocked and priced.
+     One section, so the availability group below reads as a separate question. --}}
+<div class="section grid gap-6 lg:grid-cols-3">
 
     <x-panel :title="__('lang_v1.product_details')" icon="box" class="lg:col-span-2">
         <div class="form-grid">
@@ -199,15 +201,26 @@
     </div>
 </div>
 
-{{-- Location availability. No selection = available everywhere. --}}
 @if (count($locations) > 1)
     @php $selected = old('location_ids', $isEdit ? $product->product_locations->pluck('id')->all() : []); @endphp
 
-    <x-panel :title="__('lang_v1.available_at')" icon="store" class="mt-6">
-        <x-slot:actions>
-            <span class="hint mt-0">{{ __('lang_v1.locations_empty_means_all') }}</span>
-        </x-slot:actions>
+    {{-- Where the product may be sold, which is a different question from what it
+         is — so it gets a section head rather than a fourth card in the grid above.
+         The "no selection means all" rule moves into the section description: it is
+         the one thing to know *before* ticking anything, and a hint tucked into a
+         card's action slot is precisely where it went unread. --}}
+    <div class="section-head">
+        <div class="section-head-text">
+            <p class="section-eyebrow">{{ __('lang_v1.availability') }}</p>
+            <h2 class="section-title">{{ __('lang_v1.available_at') }}</h2>
+            <p class="section-desc">{{ __('lang_v1.locations_empty_means_all') }}</p>
+        </div>
+    </div>
 
+    {{-- `.section` here and not on the caller: product/edit follows this partial
+         with its variation-price section, and `.section-head` carries no top
+         margin of its own, so the gutter has to come from the block above it. --}}
+    <x-panel class="section">
         <div class="grid gap-2 sm:grid-cols-3">
             @foreach ($locations as $id => $name)
                 <label class="checkbox-row">

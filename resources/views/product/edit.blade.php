@@ -14,10 +14,25 @@
     @include('product._form')
 
     {{-- Variable products price each variation individually, which is why
-         product._form drops its single-price panel for them. --}}
+         product._form drops its single-price panel for them. These figures are the
+         authoritative ones, so they get a section head of their own rather than
+         trailing the form as one more card. --}}
     @if ($product->type === 'variable')
-        <x-panel :title="__('lang_v1.variation_prices')" icon="layers"
-                 :count="$product->variations->count()" class="mt-6" flush>
+        <div class="section-head">
+            <div class="section-head-text">
+                <p class="section-eyebrow">{{ __('lang_v1.pricing') }}</p>
+                <h2 class="section-title">{{ __('lang_v1.variation_prices') }}</h2>
+                <p class="section-desc">{{ __('lang_v1.each_variation_priced_separately') }}</p>
+            </div>
+
+            <div class="section-actions">
+                <span class="text-sm text-slate-500">
+                    {{ trans_choice('lang_v1.record_count', $product->variations->count(), ['count' => $product->variations->count()]) }}
+                </span>
+            </div>
+        </div>
+
+        <x-panel flush>
             <div class="table-wrap table-flush">
                 <table class="table">
                     <thead>

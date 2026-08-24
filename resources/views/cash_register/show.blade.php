@@ -16,6 +16,10 @@
     $isOver = $variance !== null && $variance > 0.0001;
 
     $denominations = (array) ($register->denominations ?? []);
+
+    /* Payouts only earn a card on a shift that had one. Most do not, and a
+       permanent zero would spend a fifth of the row saying "nothing happened". */
+    $hasPayouts = abs($summary['payouts']) > 0.0001;
 @endphp
 
 <x-page-head :title="'#'.$register->id" :back="route('cash-register.index')"
@@ -49,7 +53,11 @@
 </x-page-head>
 
 <div class="section">
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div @class([
+        'rise-group grid gap-4 sm:grid-cols-2',
+        'xl:grid-cols-4' => ! $hasPayouts,
+        'xl:grid-cols-5' => $hasPayouts,
+    ])>
         <x-stat :label="__('lang_v1.opening_float')" :value="format_currency($summary['opening'])" icon="wallet"/>
 
         <x-stat :label="__('lang_v1.total_collected')"
@@ -69,6 +77,14 @@
                 :value="format_currency($summary['refunds'])"
                 icon="undo"
                 :tone="$summary['refunds'] > 0 ? 'warning' : null"/>
+
+        @if ($hasPayouts)
+            <x-stat :label="__('lang_v1.paid_out')"
+                    :value="format_currency($summary['payouts'])"
+                    icon="minus-circle"
+                    tone="warning"
+                    :hint="__('lang_v1.paid_out_of_this_drawer')"/>
+        @endif
     </div>
 </div>
 
@@ -225,6 +241,7 @@
                         'initial' => __('lang_v1.opening_float'),
                         'refund' => __('lang_v1.refund'),
                         'transfer' => __('lang_v1.transfer'),
+                        'payout' => __('lang_v1.payout'),
                         default => __('lang_v1.sale'),
                     };
                 @endphp

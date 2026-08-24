@@ -101,7 +101,9 @@
     @endunless
 </x-page-head>
 
-<div class="grid gap-6 lg:grid-cols-4">
+{{-- The document itself: what was sold, and what it came to. One section, so the
+     fulfilment block below reads as a separate matter rather than more of this. --}}
+<div class="section grid gap-6 lg:grid-cols-4">
 
     <x-panel :title="__('lang_v1.items')" icon="box"
              :count="$document->sell_lines->count()"
@@ -284,11 +286,24 @@
 @unless ($isSalesOrder)
     {{-- Shipping sits below the document rather than beside it: it is what happens
          after the invoice, and a form nested in the summary column would be too
-         narrow for an address. --}}
+         narrow for an address.
+
+         The group is named by a section head rather than by the panel's own title,
+         because it is a second subject on the screen and not a third card in the
+         document's grid. The panel therefore carries no title — two headings for
+         one block is exactly what the eyebrow exists to replace. --}}
+    <div class="section-head">
+        <div class="section-head-text">
+            <p class="section-eyebrow">{{ __('lang_v1.fulfilment') }}</p>
+            <h2 class="section-title">{{ __('lang_v1.shipping') }}</h2>
+            <p class="section-desc">{{ __('lang_v1.where_the_goods_went') }}</p>
+        </div>
+    </div>
+
     @if ($canShip)
-        <form method="POST" action="{{ route('sells.updateShipping', $document->id) }}" class="mt-6 block">
+        <form method="POST" action="{{ route('sells.updateShipping', $document->id) }}" class="block">
             @csrf
-            <x-panel :title="__('lang_v1.shipping')" icon="truck">
+            <x-panel>
                 <div class="form-grid-3">
                     <div class="field">
                         <label for="shipping_status" class="label label-required">
@@ -357,7 +372,7 @@
             </x-panel>
         </form>
     @else
-        <x-panel :title="__('lang_v1.shipping')" icon="truck" class="mt-6">
+        <x-panel>
             @if ($hasShipping)
                 {{-- Read-only for anyone without the shipping permission: the delivery
                      is still part of the record they are looking at. --}}

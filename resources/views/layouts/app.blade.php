@@ -33,16 +33,19 @@
 
     {{-- ================= Sidebar =================
          Off-canvas below lg, permanent above it. Uses logical `start-0` plus a
-         direction-aware translate so one rule serves LTR and RTL. --}}
+         direction-aware translate so one rule serves LTR and RTL.
+
+         `.app-sidebar` carries the surface and the soft edge — it replaced a
+         `border-e border-slate-200` hairline, which was the last piece of chrome
+         still drawing a line where the rest of the system draws a shadow. --}}
     <aside id="sidebar"
-           class="fixed inset-y-0 start-0 z-40 flex w-64 -translate-x-full flex-col
-                  border-e border-slate-200 bg-white transition-transform rtl:translate-x-full
+           class="app-sidebar fixed inset-y-0 start-0 z-40 flex w-64 -translate-x-full flex-col
+                  transition-transform rtl:translate-x-full
                   lg:translate-x-0 lg:rtl:translate-x-0 no-print"
            aria-label="{{ __('lang_v1.main_navigation') }}">
 
-        <div class="flex h-16 shrink-0 items-center gap-2.5 border-b border-slate-200 px-5">
-            <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-600
-                         text-sm font-bold text-white">
+        <div class="app-brand">
+            <span class="app-brand-mark">
                 {{ mb_substr(session('business.name', 'S'), 0, 1) }}
             </span>
             <span class="min-w-0">
@@ -57,7 +60,7 @@
             </span>
         </div>
 
-        <nav class="flex-1 space-y-0.5 overflow-y-auto px-3 pb-6">
+        <nav class="flex-1 space-y-0.5 overflow-y-auto px-3 pt-2 pb-6">
             @include('layouts.partials.sidebar')
         </nav>
     </aside>
@@ -72,8 +75,7 @@
 
         {{-- One header on every screen: navigation toggle, where-am-I title,
              then account-level controls pinned to the inline end. --}}
-        <header class="sticky top-0 z-20 flex h-16 items-center gap-2 border-b border-slate-200
-                       bg-white/95 px-4 backdrop-blur lg:px-6 no-print">
+        <header class="app-header no-print">
             <button type="button" id="sidebar-toggle"
                     class="btn-icon lg:hidden"
                     aria-label="{{ __('lang_v1.toggle_navigation') }}"
@@ -105,10 +107,17 @@
         {{-- Content is capped and centred: a data table stretched across a 27"
              monitor is unreadable, because the eye loses the row on the way from
              the name to the figure. Screens that genuinely need the full width
-             (the POS terminal, label sheets) declare @section('full_bleed'). --}}
+             (the POS terminal, label sheets) declare @section('full_bleed').
+
+             `.rise` is applied here and nowhere else, which is the point: one
+             class on one wrapper gives every screen in the application the same
+             fade-and-lift on load, and no view has to know it exists. It sits on
+             the inner wrapper rather than on <main> so the animation's final
+             `transform` cannot make the scroll container a containing block for
+             anything a screen positions fixed. --}}
         <main id="main" class="flex-1 p-4 lg:p-6">
             <div @class([
-                'w-full',
+                'rise w-full',
                 'mx-auto max-w-[96rem]' => ! View::hasSection('full_bleed'),
             ])>
                 @include('components.status-banner')
@@ -117,7 +126,7 @@
             </div>
         </main>
 
-        <footer class="border-t border-slate-200 px-4 py-4 text-xs text-slate-500 lg:px-6 no-print">
+        <footer class="app-footer no-print">
             {{ $app_title ?? config('constants.app_title') }}
             &middot; {{ __('lang_v1.all_rights_reserved') }}
         </footer>

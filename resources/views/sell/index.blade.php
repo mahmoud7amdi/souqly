@@ -52,7 +52,7 @@
 {{-- Total, paid, due for invoices; a lone total for the flavours where the other
      two would be a claim about money that has not been agreed yet. --}}
 <div class="section">
-    <div @class(['grid gap-4', 'sm:grid-cols-3' => $showMoneyOwed])>
+    <div @class(['rise-group grid gap-4', 'sm:grid-cols-3' => $showMoneyOwed])>
         <x-stat :label="__('lang_v1.total')" :value="format_currency($totals['total'])" icon="receipt"/>
 
         @if ($showMoneyOwed)

@@ -205,12 +205,115 @@
     --shadow-raised: 0 1px 2px 0 rgb(24 33 31 / 0.05), 0 6px 16px -6px rgb(24 33 31 / 0.12);
     --shadow-overlay: 0 24px 48px -16px rgb(24 33 31 / 0.20), 0 4px 12px -4px rgb(24 33 31 / 0.10);
 
+    /* The hover partner of `--shadow-panel`: the same three layers pushed down
+       and widened. A surface that lifts has to cast further, or the 2px of
+       travel reads as a rendering glitch rather than as movement. */
+    --shadow-lift:
+        0 2px 4px -2px rgb(24 33 31 / 0.07),
+        0 8px 18px -6px rgb(24 33 31 / 0.09),
+        0 20px 44px -16px rgb(24 33 31 / 0.10);
+
+    /* Pressed state for tiles and keys — the surface goes *into* the page. */
+    --shadow-sunken: inset 0 1px 2px 0 rgb(24 33 31 / 0.10);
+
+    /* The 1px of white along the top edge of a filled surface. This is what does
+       most of the work in making a fill look physical — more than any gradient —
+       and it costs one shadow layer.
+
+       In `@theme` under the `--inset-shadow-*` namespace rather than as a loose
+       `:root` variable, and that is the whole point: it gives an
+       `inset-shadow-highlight` utility that Tailwind composes into the same
+       `box-shadow` as `ring-1` and `shadow-*`. Writing the highlight as a raw
+       `box-shadow:` on any element that also has a ring silently erases the ring,
+       because Tailwind implements rings as box-shadow layers. */
+    --inset-shadow-highlight: inset 0 1px 0 0 rgb(255 255 255 / 0.14);
+
+    /* --- Motion ----------------------------------------------------------
+       Two curves and three durations for the whole application, because
+       inconsistent easing is the thing that makes an interface feel
+       hand-assembled even when every colour is right.
+
+       `--ease-out-soft` is the default: fast at the start, settling without
+       overshoot — the right feel for a hover or a colour change, where the
+       user is not waiting for anything. `--ease-out-quart` decelerates harder
+       and is for travel the eye follows: an element arriving, a ripple
+       spreading.
+
+       Durations are short on purpose. This is a till: 180 ms is perceptible as
+       smoothness, 400 ms is perceptible as lag, and a cashier ringing up 200
+       items a day pays the difference every time. No state change the user is
+       waiting on may exceed `--duration-base`. The slow step is only for motion
+       that either happens once per page load, or trails an action already
+       acknowledged some other way — the ripple decays over 340 ms, but the
+       button had already changed colour on press, so nothing is being waited
+       for while it fades. */
+    --ease-out-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+    --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+    --duration-fast: 110ms;
+    --duration-base: 180ms;
+    --duration-slow: 340ms;
+
     /* --- Control sizing --------------------------------------------------
        POS hardware is touch. 2.75rem = 44px, the smallest target a finger
        hits reliably; every interactive control is at least this tall. */
     --size-control: 2.75rem;
     --size-control-sm: 2.25rem;
     --size-control-lg: 3.5rem;
+}
+
+/* ==========================================================================
+   Gradients
+   --------------------------------------------------------------------------
+   Declared here rather than in `@theme` because none of them map to a Tailwind
+   namespace: they are only ever read with `var()` from the component layer, and
+   a plain `:root` guarantees they survive to the build.
+
+   All of them run `to bottom`. That is not a stylistic preference — a
+   horizontal gradient has a light end and a dark end, so the same button would
+   be lit from the left in English and from the right in Arabic. Vertical is the
+   only axis that means the same thing in both directions, and it is also the
+   one that reads as a lit surface rather than as decoration.
+
+   The range is deliberately narrow — about 8% lightness across a button. Enough
+   that the fill has a direction and a top edge that catches light; not enough to
+   be seen as a gradient, which on a screen worked for eight hours is the
+   difference between depth and noise.
+   ========================================================================== */
+:root {
+    /* --- Sheens (hue-agnostic) -------------------------------------------
+       These are what every *interactive* fill uses, and they are alpha rather
+       than colour on purpose. CSS cannot interpolate between two gradients: a
+       `background-image` that changes on hover is swapped discretely at the
+       midpoint of the transition, which reads as a stutter. Layering one fixed
+       alpha sheen over `background-color` gives the light *and* a hover that
+       transitions smoothly, with one token instead of a pair per hue. */
+    --sheen: linear-gradient(
+        to bottom,
+        rgb(255 255 255 / 0.13) 0%,
+        rgb(255 255 255 / 0.02) 48%,
+        rgb(0 0 0 / 0.06) 100%
+    );
+
+    /* Quarter strength, for light fills (secondary buttons, table headers,
+       inputs) where the dark stop at the bottom would show as a grey band. */
+    --sheen-soft: linear-gradient(
+        to bottom,
+        rgb(255 255 255 / 0.65) 0%,
+        rgb(255 255 255 / 0) 100%
+    );
+
+    /* --- Fixed fills -----------------------------------------------------
+       For surfaces that never change colour on hover, where a real two-stop
+       colour gradient is richer than an alpha wash over a flat fill. */
+    --gradient-brand: linear-gradient(to bottom, #009b68 0%, #00845d 100%);
+    --gradient-accent: linear-gradient(to bottom, #006e66 0%, #005a54 100%);
+
+    /* Light surfaces. `--gradient-surface` is the near-invisible top-lit wash
+       that separates a white card from a white page; `--gradient-tint` is its
+       brand-tinted counterpart for headers and icon chips. */
+    --gradient-surface: linear-gradient(to bottom, #ffffff 0%, #fbfdfc 100%);
+    --gradient-tint: linear-gradient(to bottom, #f4fbf7 0%, #eaf6f0 100%);
+    --gradient-canvas: linear-gradient(to bottom, #fbfdfc 0, rgb(251 253 252 / 0) 26rem);
 }
 
 @layer base {
@@ -224,6 +327,16 @@
     body {
         @apply bg-slate-100 text-slate-700 antialiased;
         font-family: var(--font-sans);
+        /* A wash, not a gradient: the canvas is a shade lighter where the eye
+           starts and settles into the flat tint by the fold. Painted on the body
+           with no `background-attachment: fixed`, so it costs one paint and
+           nothing on scroll. */
+        background-image: var(--gradient-canvas);
+        background-repeat: no-repeat;
+    }
+
+    ::selection {
+        @apply bg-brand-200 text-brand-900;
     }
 
     /* Arabic needs a touch more line-height for diacritics and taller glyphs. */
@@ -252,19 +365,81 @@
         * { -webkit-tap-highlight-color: transparent; }
     }
 
+    /* Honoured for real, not just shortened. Duration alone is not enough:
+       `animation-delay` would still hold a staggered tile invisible for its
+       90 ms, and the skeleton shimmer's `infinite` at a 0.01 ms duration is a
+       repaint loop rather than an animation. Zeroing the delay and capping the
+       count leaves every animated element on its final keyframe on frame one,
+       which is the state it was going to end in anyway. */
     @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after {
             animation-duration: 0.01ms !important;
+            animation-delay: 0ms !important;
+            animation-iteration-count: 1 !important;
             transition-duration: 0.01ms !important;
         }
     }
-
     /* Never render a raw scrollbar over the sidebar on Windows. */
     ::-webkit-scrollbar { width: 10px; height: 10px; }
     ::-webkit-scrollbar-track { @apply bg-transparent; }
     ::-webkit-scrollbar-thumb { @apply rounded-full bg-slate-300; }
     ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
 }
+
+/* ==========================================================================
+   Motion — the four movements the whole application uses
+   --------------------------------------------------------------------------
+   Kept at the top level rather than inside a layer so they are never reordered
+   or dropped, and kept to four — rise, fade, pop, shimmer — so that "an element
+   appearing" looks the same everywhere.
+
+   `rise` animates `transform`, never the `translate` property, because the
+   hover states below use Tailwind's `-translate-y-*` utilities — which compile
+   to `translate` — and the two must be able to coexist on one element without
+   one clobbering the other.
+
+   `shimmer` exists twice. A skeleton's highlight sweeps in the reading
+   direction, so in Arabic it has to travel right-to-left; a single keyframe set
+   would sweep backwards on every RTL screen. This is the one place in the
+   stylesheet where a direction needs two rules instead of a logical property.
+
+   The `prefers-reduced-motion` block above collapses every one of these to
+   0.01 ms. Combined with `both` fill mode that lands the element on its final
+   keyframe immediately, so nothing animated is ever left invisible.
+
+   Both entry animations end on `transform: none` rather than on an identity
+   transform. `both` fill mode makes the last keyframe stick forever, and any
+   transform value other than `none` — `scale(1)` included — makes the element a
+   containing block for `position: fixed` descendants. That would silently pin a
+   modal or a sticky bar to the animated wrapper instead of to the viewport, on
+   whatever screen happened to put one inside animated content.
+   ========================================================================== */
+@keyframes rise {
+    from { opacity: 0; transform: translateY(0.5rem); }
+    to   { opacity: 1; transform: none; }
+}
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* Modal/popover entry: arrives slightly small so it reads as coming forward. */
+@keyframes pop-in {
+    from { opacity: 0; transform: scale(0.97) translateY(0.375rem); }
+    to   { opacity: 1; transform: none; }
+}
+
+@keyframes shimmer {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(100%); }
+}
+
+@keyframes shimmer-rtl {
+    from { transform: translateX(100%); }
+    to   { transform: translateX(-100%); }
+}
+
 
 /* ==========================================================================
    Composable primitives
@@ -274,12 +449,56 @@
    These are the bases the variants below build on.
    ========================================================================== */
 
+/* The transition list is spelled out rather than left as Tailwind's `transition`
+   shorthand, which includes `transform`. `transform` has to stay untouched: the
+   ripple below animates the pseudo-element's `transform`, and the entry
+   animations animate the host's, while press feedback uses `translate` — three
+   separate properties so none of them can clobber another.
+
+   Click feedback, with no JavaScript and no per-button markup
+   ----------------------------------------------------------
+   `::after` is a `currentColor` blot that sits at rest fully spread and fully
+   transparent. Pressing collapses it to nothing and makes it visible with
+   `transition: 0s` — instant, and invisible because a scale-0 element paints
+   nothing. Releasing lets both properties ease back to rest, which is the eye
+   seeing a circle grow out from the middle and fade.
+
+   The ripple therefore fires on *release*, not on press. That is the honest
+   limit of doing this in CSS, and it is the right trade here: the press itself
+   is already acknowledged instantly by the colour change and the 1px of travel,
+   so the ripple is confirmation, not feedback.
+
+   `currentColor` is why this needs no per-rank variants — it is white on a
+   filled button and slate on a ghost one, automatically. And a radial from the
+   centre has no left or right, so it is the same gesture in both directions. */
 @utility btn {
-    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg
-           px-4 text-sm font-semibold transition select-none
+    @apply relative inline-flex cursor-pointer items-center justify-center gap-2
+           overflow-hidden rounded-lg px-4 text-sm font-semibold select-none
            active:translate-y-px
            disabled:cursor-not-allowed disabled:opacity-45 disabled:active:translate-y-0;
     min-height: var(--size-control);
+    transition-property: color, background-color, border-color, box-shadow, translate, opacity;
+    transition-duration: var(--duration-base);
+    transition-timing-function: var(--ease-out-soft);
+
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(circle at center, currentColor 12%, transparent 12.5%);
+        opacity: 0;
+        transform: scale(8);
+        pointer-events: none;
+        transition:
+            transform var(--duration-slow) var(--ease-out-quart),
+            opacity var(--duration-slow) var(--ease-out-quart);
+    }
+
+    &:active:not(:disabled)::after {
+        opacity: 0.26;
+        transform: scale(0);
+        transition: 0s;
+    }
 }
 
 @utility badge {
@@ -291,38 +510,72 @@
     @apply flex items-start gap-3 rounded-lg border p-4 text-sm;
 }
 
+/* `--sheen-soft` over white: the top 40% of a field is a shade brighter than the
+   bottom, which is what makes an input read as recessed next to a raised button
+   without needing an inset shadow that would fight the focus ring. */
 @utility input {
     @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2
-           text-sm text-slate-900 transition
+           text-sm text-slate-900
            placeholder:text-slate-400
            focus:border-brand-500 focus:ring-2 focus:ring-brand-500/25
            disabled:bg-slate-50 disabled:text-slate-500;
     min-height: var(--size-control);
+    background-image: var(--sheen-soft);
+    transition-property: color, background-color, border-color, box-shadow;
+    transition-duration: var(--duration-base);
+    transition-timing-function: var(--ease-out-soft);
 }
 
 /* The one surface primitive. No border: a 5%-alpha ring plus the three-layer
    `--shadow-panel` gives the same definition without the boxed-in look that a
    page full of grey-outlined rectangles has. Everything that used to be
-   "rounded-xl border border-slate-200 bg-white shadow-card" is this. */
+   "rounded-xl border border-slate-200 bg-white shadow-card" is this.
+
+   The surface wash is the third layer of the same idea: a card lit from the top
+   has an edge even where its shadow is hidden behind another card. Deliberately
+   *no* hover state — most cards are containers, not controls, and a container
+   that lifts under the cursor is a lie about what clicking it will do. Cards
+   that really are clickable use `.card-interactive`. */
 @utility card {
     @apply rounded-xl bg-white ring-1 ring-slate-900/5 shadow-panel;
+    background-image: var(--gradient-surface);
 }
 
 @utility nav-link {
-    @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium
-           text-slate-600 transition hover:bg-slate-100 hover:text-slate-900;
+    @apply relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium
+           text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+    transition-property: color, background-color, box-shadow, translate;
+    transition-duration: var(--duration-base);
+    transition-timing-function: var(--ease-out-soft);
 }
 
 /* Touch target that is also a surface — POS product buttons, pickable options.
    Keeps a ring rather than a border for the same reason .card does, but at 8%:
    a tile is pressed, so its edge has to be findable by a thumb, not merely
-   implied. The hover state tints toward the brand instead of darkening. */
+   implied. The hover state tints toward the brand instead of darkening, and
+   lifts 2px on a deepened shadow — this one is a control, so the lift is true.
+
+   Tailwind 4 compiles `hover:` inside `@media (hover: hover)`, so none of the
+   lift reaches a POS touchscreen; a tap there gets the `active:` state and
+   nothing sticky. The `active:` rules deliberately cancel the lift rather than
+   add to it: pressing a raised thing pushes it back down.  */
 @utility tile {
     @apply flex cursor-pointer flex-col rounded-xl bg-white p-3 text-start
-           ring-1 ring-slate-900/[0.08] shadow-card transition select-none
-           hover:bg-brand-50 hover:ring-brand-300
-           active:translate-y-px
-           disabled:cursor-not-allowed disabled:opacity-45;
+           ring-1 ring-slate-900/[0.08] shadow-card select-none
+           hover:bg-brand-50 hover:ring-brand-300 hover:shadow-raised hover:-translate-y-0.5
+           active:translate-y-0 active:shadow-card
+           disabled:cursor-not-allowed disabled:opacity-45
+           disabled:hover:translate-y-0 disabled:hover:bg-white disabled:hover:shadow-card;
+    background-image: var(--gradient-surface);
+
+    /* `--tw-ring-color` is deliberately absent from this list. Tailwind registers
+       it with `syntax: "*"`, which is un-interpolatable — a transition on it
+       would jump at the midpoint rather than blend, which is worse than not
+       transitioning at all. The ring snaps; at 1px and 8→30% alpha, under a
+       shadow and a colour that are both moving, nobody sees it. */
+    transition-property: color, background-color, box-shadow, translate;
+    transition-duration: var(--duration-base);
+    transition-timing-function: var(--ease-out-soft);
 }
 
 /* Inline link inside prose and table cells. Underline appears on hover only:
@@ -337,6 +590,7 @@
 @utility avatar {
     @apply grid shrink-0 place-items-center rounded-full bg-brand-100
            font-semibold text-brand-800 uppercase select-none;
+    background-image: var(--sheen-soft);
 }
 
 /* One pagination cell. The active/disabled variants build on this, which is why
@@ -347,6 +601,17 @@
            hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900;
     min-height: var(--size-control-sm);
     min-width: var(--size-control-sm);
+}
+
+/* Image frame. Every product picture in the application goes through one of the
+   four variants in the component layer, so a missing image, a square photo and a
+   wide one all occupy exactly the same box and no table row or POS tile can be
+   shoved out of alignment by whatever a supplier uploaded. The ring is the same
+   6% as a card's so a thumbnail reads as part of the surface it sits on. */
+@utility thumb {
+    @apply grid shrink-0 place-items-center overflow-hidden rounded-lg
+           bg-slate-50 text-slate-300 ring-1 ring-slate-900/[0.06];
+    background-image: var(--sheen-soft);
 }
 
 @layer components {
@@ -512,25 +777,76 @@
        arrives raised. Note that controls keep real 1px borders (.btn-secondary,
        .input, .stepper) while surfaces do not — a border on a thing you click is
        an affordance, a border on a thing you read is a fence.
-    */
+
+       Every filled rank gets `--sheen` plus `--inset-shadow-highlight`. The sheen is one
+       alpha wash over whatever `background-color` is underneath, so the hover
+       colour still animates smoothly (see the `:root` note on why a per-hue
+       gradient pair cannot); the highlight is the 1px of white along the top
+       edge, and it is the part that actually makes a fill look like a surface
+       rather than a coloured rectangle.
+
+       Elevation now also moves. Accent rests raised and lifts further on hover;
+       primary and danger rest flat and gain a shadow on hover; pressing any of
+       them drops the shadow entirely, which together with the 1px of `translate`
+       is the whole press gesture. */
     .btn-accent {
-        @apply btn bg-accent-700 text-white shadow-raised
+        @apply btn bg-accent-700 text-white
                hover:bg-accent-800 active:bg-accent-900;
+        background-image: var(--sheen);
+        box-shadow: var(--inset-shadow-highlight), var(--shadow-raised);
+    }
+
+    .btn-accent:hover:not(:disabled) {
+        box-shadow: var(--inset-shadow-highlight), var(--shadow-lift);
+    }
+
+    .btn-accent:active:not(:disabled) {
+        box-shadow: var(--inset-shadow-highlight), var(--shadow-card);
     }
 
     .btn-primary {
         @apply btn bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800;
+        background-image: var(--sheen);
+        box-shadow: var(--inset-shadow-highlight), var(--shadow-card);
     }
 
+    .btn-primary:hover:not(:disabled) {
+        box-shadow: var(--inset-shadow-highlight), var(--shadow-raised);
+    }
+
+    .btn-primary:active:not(:disabled) {
+        box-shadow: var(--inset-shadow-highlight), var(--shadow-card);
+    }
+
+    /* The one rank whose sheen is `--sheen-soft`: on a white fill the dark stop
+       at the bottom of `--sheen` shows as a grey band instead of as shading. */
     .btn-secondary {
         @apply btn border border-slate-300 bg-white text-slate-700
                hover:border-slate-400 hover:bg-slate-50;
+        background-image: var(--sheen-soft);
+        box-shadow: var(--shadow-card);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+        box-shadow: var(--shadow-raised);
+    }
+
+    .btn-secondary:active:not(:disabled) {
+        box-shadow: none;
     }
 
     .btn-danger {
-        @apply btn bg-rose-600 text-white hover:bg-rose-700;
+        @apply btn bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800;
+        background-image: var(--sheen);
+        box-shadow: var(--inset-shadow-highlight), var(--shadow-card);
     }
 
+    .btn-danger:hover:not(:disabled) {
+        box-shadow: var(--inset-shadow-highlight), var(--shadow-raised);
+    }
+
+    /* No fill at rest, so no sheen and no elevation — a ghost button that cast a
+       shadow would be a filled button wearing a disguise. */
     .btn-ghost {
         @apply btn text-slate-600 hover:bg-slate-100 hover:text-slate-900;
     }
@@ -792,6 +1108,7 @@
     .table thead th {
         @apply whitespace-nowrap bg-slate-100/70 px-4 py-3 text-start text-xs
                font-bold uppercase tracking-wide text-slate-600;
+        background-image: var(--sheen-soft);
     }
 
     .table tbody td {
@@ -800,6 +1117,13 @@
 
     .table tbody tr:last-child td {
         @apply border-b-0;
+    }
+
+    /* Transitioned, not instant. A row of twenty-five that snaps to green as the
+       cursor crosses it flickers; 110 ms is enough for the eye to read the
+       highlight as following the pointer instead of chasing it. */
+    .table tbody tr {
+        transition: background-color var(--duration-fast) var(--ease-out-soft);
     }
 
     .table tbody tr:hover {
@@ -865,21 +1189,42 @@
     }
 
     /* --- Empty states ----------------------------------------------------
-       An empty table is a dead end without one of these. */
+       An empty table is a dead end without one of these.
+
+       The whole block fades in rather than appearing: an empty state that
+       materialises the instant a filter returns nothing reads as an error
+       flashing up. Arriving over 340 ms reads as an answer. */
     .empty-state {
         @apply flex flex-col items-center gap-3 px-6 py-14 text-center;
+        animation: fade-in var(--duration-slow) var(--ease-out-soft) both;
     }
 
+    /* Redesigned from a flat grey disc. Three things changed and all three
+       matter: a squircle instead of a circle, so it belongs to the same family
+       as the cards around it; a brand tint instead of grey, so "nothing here" is
+       part of the product rather than a system message; and a ring plus an inner
+       highlight, so the chip has an edge and a lit top like every other surface.
+       The icon inside is drawn at 6 by empty-state.blade.php — this is the one
+       piece of decoration a dead end gets, so it is worth drawing properly.
+
+       Elevation via the `inset-shadow-highlight` / `shadow-card` utilities, not a
+       raw `box-shadow`: this element has a ring, and a raw box-shadow would
+       overwrite the layer the ring lives in. */
     .empty-state-icon {
-        @apply grid size-12 place-items-center rounded-full bg-slate-100 text-slate-400;
+        @apply grid size-14 place-items-center rounded-2xl text-brand-600
+               ring-1 ring-brand-600/[0.12] inset-shadow-highlight shadow-card;
+        background-image: var(--gradient-tint);
     }
 
+    /* Bumped from text-sm. This is the line that answers "why is this screen
+       blank", so it has to outrank the sentence under it by more than weight —
+       size, weight and full-strength ink together. */
     .empty-state-title {
-        @apply text-sm font-semibold text-slate-700;
+        @apply text-base font-bold text-slate-900;
     }
 
     .empty-state-text {
-        @apply max-w-sm text-sm text-slate-500;
+        @apply max-w-sm text-sm leading-relaxed text-slate-500;
     }
 
     /* Compact variant for a panel rather than a page. The dashboard stacks four
@@ -892,7 +1237,11 @@
     }
 
     .empty-state-compact .empty-state-icon {
-        @apply size-10;
+        @apply size-11 rounded-xl;
+    }
+
+    .empty-state-compact .empty-state-title {
+        @apply text-sm font-semibold;
     }
 
     /* --- Badges ---------------------------------------------------------- */
@@ -904,9 +1253,27 @@
     .badge-accent  { @apply badge bg-accent-100 text-accent-800; }
     .badge-muted   { @apply badge bg-slate-200 text-slate-700; }
 
-    /* --- Navigation ------------------------------------------------------ */
+    /* --- Navigation ------------------------------------------------------
+       The active item gains a 3px bar on its inline-start edge on top of the
+       tint. The tint alone is a 5%-alpha wash — findable when you are looking
+       for it, easy to miss when you are scanning a sidebar of twenty entries —
+       and a bar at full brand strength is the one mark that survives a glance.
+
+       `inset-inline-start` is what makes this work in both directions with one
+       rule: the bar sits on the left in English and the right in Arabic without
+       a single `[dir='rtl']` override, which a `left: 0` would have needed. */
     .nav-link-active {
         @apply bg-brand-50 font-semibold text-brand-800 hover:bg-brand-50 hover:text-brand-800;
+
+        &::before {
+            content: '';
+            position: absolute;
+            inset-block: 0.375rem;
+            inset-inline-start: 0;
+            width: 3px;
+            border-radius: 9999px;
+            background-image: var(--gradient-brand);
+        }
     }
 
     .nav-section {
@@ -987,13 +1354,20 @@
 
     /* Tinted with the brand rather than grey. The icon is the only decoration a
        stat tile gets, so it may as well tie the figure to the system; four grey
-       chips in a row is the single most template-looking thing a dashboard does. */
+       chips in a row is the single most template-looking thing a dashboard does.
+       Same lit-chip treatment as .empty-state-icon, one size down. */
     .stat-icon {
-        @apply grid size-8 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700;
+        @apply grid size-9 shrink-0 place-items-center rounded-lg text-brand-700
+               ring-1 ring-brand-600/[0.10] inset-shadow-highlight;
+        background-image: var(--gradient-tint);
     }
 
+    /* Up from text-2xl. On a dashboard the figure IS the content and the label
+       above it is a caption — a 3:1 size ratio between them is what makes the
+       row readable from across a counter, and it is cheaper than any amount of
+       extra colour or bordering. */
     .stat-value {
-        @apply font-mono text-2xl font-bold tabular-nums text-slate-900;
+        @apply font-mono text-3xl font-bold tabular-nums leading-tight text-slate-900;
         direction: ltr;
     }
 
@@ -1056,17 +1430,27 @@
     .alert-warning { @apply alert border-amber-200 bg-amber-50 text-amber-900; }
     .alert-info    { @apply alert border-sky-200 bg-sky-50 text-sky-900; }
 
-    /* --- Modals / popovers ----------------------------------------------- */
+    /* --- Modals / popovers -----------------------------------------------
+       Both arrive rather than appear. A dialog that is simply *there* on the
+       next frame makes the user re-read the screen to work out what changed; a
+       97%-to-100% scale over 180 ms says "this came forward, the page behind it
+       is still where you left it". The backdrop fades on its own timing so the
+       panel is never seen against an un-dimmed page. */
     .modal-backdrop {
         @apply fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4 backdrop-blur-sm;
+        animation: fade-in var(--duration-base) var(--ease-out-soft) both;
     }
 
     .modal-panel {
         @apply w-full max-w-lg rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-overlay;
+        background-image: var(--gradient-surface);
+        animation: pop-in var(--duration-base) var(--ease-out-quart) both;
     }
 
     .popover {
         @apply rounded-xl bg-white p-1.5 ring-1 ring-slate-900/5 shadow-overlay;
+        background-image: var(--gradient-surface);
+        animation: pop-in var(--duration-fast) var(--ease-out-quart) both;
     }
 
     .popover-item {
@@ -1115,35 +1499,333 @@
     }
 
     /* ==================================================================
+     | Application chrome
+     |  The sidebar, header and footer were the last three places still
+     |  separated from the content by a 1px grey line, which is exactly the
+     |  look the rest of the system was rebuilt to get away from. They now
+     |  use the same tool as every card: a soft shadow.
+     |
+     |  Chrome shadows are the one case where direction cannot be handled by
+     |  a logical property, because `box-shadow` takes signed offsets and
+     |  there is no logical equivalent. The sidebar therefore casts to the
+     |  right in LTR and to the left in RTL, set by a `[dir='rtl']`
+     |  override — the alternative, a symmetric shadow, spills a dark band
+     |  off the left edge of the window.
+     ================================================================== */
+    .app-sidebar {
+        @apply bg-white;
+        background-image: var(--gradient-surface);
+        box-shadow: 1px 0 0 0 rgb(24 33 31 / 0.04), 6px 0 24px -12px rgb(24 33 31 / 0.10);
+    }
+
+    [dir='rtl'] .app-sidebar {
+        box-shadow: -1px 0 0 0 rgb(24 33 31 / 0.04), -6px 0 24px -12px rgb(24 33 31 / 0.10);
+    }
+
+    /* Brand block at the top of the sidebar. Separated from the nav by the same
+       soft edge rather than by a border, so the sidebar has no internal fences. */
+    .app-brand {
+        @apply flex h-16 shrink-0 items-center gap-2.5 px-5;
+        box-shadow: 0 1px 0 0 rgb(24 33 31 / 0.05), 0 6px 14px -10px rgb(24 33 31 / 0.10);
+    }
+
+    /* The business initial. Sized and lit like a stat icon, but filled: this is
+       the one piece of pure brand on the screen, so it gets the real gradient. */
+    .app-brand-mark {
+        @apply grid size-9 shrink-0 place-items-center rounded-lg text-sm font-bold text-white;
+        background-image: var(--gradient-brand);
+        box-shadow: var(--inset-shadow-highlight), var(--shadow-card);
+    }
+
+    /* Sticky, so its shadow is what separates it from content scrolling
+       underneath — a border cannot express "this is above that". */
+    .app-header {
+        @apply sticky top-0 z-20 flex h-16 items-center gap-2 bg-white/95 px-4
+               backdrop-blur lg:px-6;
+        box-shadow: 0 1px 0 0 rgb(24 33 31 / 0.05), 0 8px 20px -14px rgb(24 33 31 / 0.14);
+    }
+
+    .app-footer {
+        @apply px-4 py-4 text-xs text-slate-500 lg:px-6;
+        box-shadow: inset 0 1px 0 0 rgb(24 33 31 / 0.05);
+    }
+
+    /* ==================================================================
+     | Interactive surfaces
+     |  `.card` has no hover state on purpose — see the note on the utility.
+     |  A card that really is a link opts in here, and then the lift is
+     |  telling the truth. Applied to the <a>, never to a card containing
+     |  one, or the whole panel moves when the cursor grazes its footer.
+     |
+     |  The lift uses the `shadow-lift` utility rather than a raw
+     |  `box-shadow`, and that is load-bearing: Tailwind implements `ring-1`
+     |  as a box-shadow layer, so writing `box-shadow:` here would erase the
+     |  card's ring at exactly the moment the card is under the cursor.
+     ================================================================== */
+    .card-interactive {
+        @apply cursor-pointer
+               hover:-translate-y-0.5 hover:shadow-lift hover:ring-brand-300
+               active:translate-y-0 active:shadow-panel;
+        transition-property: box-shadow, translate;
+        transition-duration: var(--duration-base);
+        transition-timing-function: var(--ease-out-soft);
+    }
+
+    /* ==================================================================
+     | Entry animation
+     |  One class, applied once in layouts/app.blade.php, so every screen in
+     |  the application fades and rises into place without any view knowing
+     |  about it. 340 ms and half a rem — enough to register as "the page
+     |  arrived", not enough to be waited on. Navigating is not blocked by
+     |  it: the content is at full opacity by the time a hand reaches the
+     |  mouse.
+     |
+     |  `.rise-group` is the staggered form, for a grid of tiles or a row of
+     |  stat cards where a single block fade looks flat. The delays are
+     |  written out rather than generated because six is the honest limit —
+     |  a seventh tile waiting 300 ms to appear stops reading as a flourish
+     |  and starts reading as a slow page. Beyond the sixth child everything
+     |  arrives together on the same 90 ms.
+     |
+     |  It composes with the page-level `.rise` rather than replacing it: the
+     |  layout carries the whole content up, and this adds at most 80 ms of lag
+     |  between the first child and the last, so a staggered row settles at
+     |  420 ms instead of 340. Nesting the two is intended, not an oversight —
+     |  but it is why the stagger is capped where it is.
+     ================================================================== */
+    .rise {
+        animation: rise var(--duration-slow) var(--ease-out-quart) both;
+    }
+
+    .rise-group > * {
+        animation: rise var(--duration-slow) var(--ease-out-quart) both;
+        animation-delay: 90ms;
+    }
+
+    .rise-group > *:nth-child(1) { animation-delay: 0ms; }
+    .rise-group > *:nth-child(2) { animation-delay: 40ms; }
+    .rise-group > *:nth-child(3) { animation-delay: 65ms; }
+    .rise-group > *:nth-child(4) { animation-delay: 80ms; }
+    .rise-group > *:nth-child(5) { animation-delay: 90ms; }
+
+    /* Content that is being replaced, not content that is missing. A skeleton
+       is the right answer to an empty region; it is the wrong answer to a
+       region that already holds valid, usable data — swapping working results
+       for grey boxes takes something away from the user in order to tell them
+       something is coming. This dims instead, and deliberately keeps pointer
+       events: in the POS the previous results stay tappable while the next
+       search is in flight, and the cashier is looking at a real product. */
+    .is-busy {
+        @apply opacity-55;
+        transition: opacity var(--duration-base) var(--ease-out-soft);
+    }
+
+    /* ==================================================================
+     | Skeletons
+     |  What a screen shows while it is fetching, instead of a blank white
+     |  area or a spinner. A skeleton is worth the code because it answers
+     |  two questions a spinner cannot: how much is coming, and where it
+     |  will be — so nothing jumps when the data lands.
+     |
+     |  The sweep is a real animation on a `::after` overlay rather than an
+     |  animated `background-position`, because a transform-only animation
+     |  is composited and a 25-tile POS grid mid-shimmer must not cost the
+     |  main thread anything while a fetch is in flight.
+     |
+     |  RTL is the one case in this stylesheet that needs two keyframe sets
+     |  instead of a logical property: a highlight sweeping against the
+     |  reading direction looks like a rewind. There is no logical-property
+     |  equivalent for the direction of an animation, so the [dir='rtl']
+     |  override is the correct tool rather than a shortcut.
+     ================================================================== */
+    .skeleton {
+        @apply relative overflow-hidden rounded-lg bg-slate-200/70;
+
+        &::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: linear-gradient(
+                to right,
+                transparent 0%,
+                rgb(255 255 255 / 0.6) 50%,
+                transparent 100%
+            );
+            animation: shimmer 1.4s var(--ease-out-soft) infinite;
+        }
+    }
+
+    [dir='rtl'] .skeleton::after {
+        animation-name: shimmer-rtl;
+    }
+
+    /* A line of body text. `.skeleton-text:last-child` is short on purpose —
+       a paragraph's final line never reaches the margin, and a stack of
+       equal-length bars reads as a table, not as prose. */
+    .skeleton-text {
+        @apply h-3.5 w-full rounded-md;
+    }
+
+    .skeleton-text:last-child {
+        @apply w-3/5;
+    }
+
+    .skeleton-title {
+        @apply h-5 w-2/5 rounded-md;
+    }
+
+    /* Stands in for one .tile in the POS grid: same minimum height, same 1:1
+       image box, same two lines of label underneath, so the grid does not
+       reflow when the real products arrive. Every value here is copied from
+       `.product-tile` — that is the point of it. */
+    .skeleton-tile {
+        @apply flex min-h-24 flex-col justify-between gap-2 rounded-xl bg-white
+               p-3 ring-1 ring-slate-900/[0.06];
+    }
+
+    .skeleton-tile-thumb {
+        @apply aspect-square w-full rounded-lg;
+    }
+
+    .skeleton-row {
+        @apply flex items-center gap-3 px-4 py-3.5;
+    }
+
+    /* ==================================================================
+     | Thumbnails
+     |  Four variants and no others, so a product picture is the same box in
+     |  a table cell, a POS tile and a document header — and so changing one
+     |  of them changes it everywhere.
+     ================================================================== */
+    .thumb-sm { @apply thumb size-9; }
+    .thumb-md { @apply thumb size-12; }
+    .thumb-lg { @apply thumb size-20; }
+
+    /* The POS/catalogue variant: fills its column and stays square, because a
+       grid of tiles whose images are each a different height is unreadable no
+       matter how good the individual photos are. */
+    .thumb-tile { @apply thumb aspect-square w-full; }
+
+    /* One rule for all five rather than a nested rule on the primitive:
+       `@apply thumb` copies declarations, it does not copy nested selectors, so
+       an `& img` inside `@utility thumb` would reach `.thumb` and none of its
+       variants. `object-cover` crops to the frame instead of letterboxing —
+       a catalogue of product shots in mixed aspect ratios needs one silhouette,
+       and a cropped edge costs less than a row of different-shaped grey gaps. */
+    .thumb > img,
+    .thumb-sm > img,
+    .thumb-md > img,
+    .thumb-lg > img,
+    .thumb-tile > img {
+        @apply size-full object-cover;
+    }
+
+    /* ==================================================================
      | POS terminal
      |  A cashier works this screen without reading: big targets, one
      |  accent, and a cart that never moves. The product grid scrolls; the
      |  cart and the pay button do not.
      ================================================================== */
 
-    /* Products on the inline-start, cart docked on the inline-end. */
+    /*
+     * A terminal, not a document: the shell is exactly as tall as the room it
+     * has, and each zone scrolls inside itself. Nothing about this screen
+     * scrolls the page.
+     *
+     * That is the fix for a real defect, not a preference. With the shell free
+     * to grow, a search returning 25 products makes the grid taller than the
+     * window and pushes the cart — the lines just rung up, the total, and the
+     * button that takes the money — below the fold, so the cashier cannot see
+     * what they are selling. It happened stacked on a narrow window, and it
+     * happened two-column as well: capping the cart against `100vh - 6.5rem`
+     * assumed it began at its sticky offset, when at scroll 0 it begins some
+     * 160px lower, hiding the pay button by exactly that much.
+     *
+     * --pos-offset is the distance from the top of the viewport to the top of
+     * the shell. It is measured at runtime (see pos/create.blade.php) because
+     * what sits above is not a fixed height — the selector bar wraps to two or
+     * three rows on a narrow window. The literal below is the unwrapped case,
+     * and covers the first paint before that measurement lands.
+     */
     .pos-shell {
-        @apply grid gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start;
+        --pos-offset: 9.5rem;
+        @apply flex flex-col gap-4;
+        height: calc(100dvh - var(--pos-offset));
+        min-height: 26rem;
     }
 
+    /* Takes whatever the cart leaves; the grid inside it does the scrolling. */
     .pos-panel {
-        @apply card flex flex-col overflow-hidden;
+        @apply card flex min-h-32 flex-1 flex-col overflow-hidden;
     }
 
-    /* The cart sticks below the header so the total is always on screen. */
+    /* Never grows, always yields: its own footer must stay on screen. */
     .pos-cart {
-        @apply card flex flex-col overflow-hidden lg:sticky lg:top-20;
-        max-height: calc(100vh - 6.5rem);
+        @apply card flex flex-col overflow-hidden;
+        flex: 0 1 auto;
+        max-height: 55%;
     }
 
     .pos-cart-scroll {
-        @apply min-h-32 flex-1 overflow-y-auto;
+        @apply flex-1 overflow-y-auto;
+        /* 0, not 8rem: on a short window the rows give way so the total and the
+           pay button underneath them are never the part that gets cut off. */
+        min-height: 0;
+    }
+
+    /* Products inline-start, cart docked inline-end — left, in an RTL till.
+       Both zones stretch to the shell, so the row height caps them and each
+       one's own cap above is redundant here.
+
+       48rem, not 64rem: a 1366px laptop at 150% display scaling reports 910 CSS
+       px, and stacking there is what buried the cart under the product grid.
+       Stacked is for a phone; anything wider gets the two zones side by side. */
+    @media (min-width: 48rem) {
+        .pos-shell {
+            @apply grid;
+            grid-template-columns: minmax(0, 1fr) 19rem;
+        }
+
+        .pos-cart {
+            max-height: none;
+        }
+
+        .pos-cart-scroll {
+            @apply min-h-32;
+        }
+    }
+
+    /* Room to give the cart its full width back. */
+    @media (min-width: 64rem) {
+        .pos-shell {
+            grid-template-columns: minmax(0, 1fr) 24rem;
+        }
     }
 
     /* Product buttons: 96px tall minimum, name first, price loud. */
     .product-grid {
         @apply grid gap-2.5 p-4;
         grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+    }
+
+    /* The grid decides whether it is a picture grid, and the tiles follow.
+       `.product-grid-media` is added when at least one product in the current
+       result set has a photo; without it no tile draws an image box at all.
+
+       Per grid rather than per tile, for two reasons. A catalogue with no
+       photos would otherwise show a screen of identical placeholder icons —
+       which is not information, and costs the vertical room for four more
+       products the cashier can see at a glance. And a mixed grid decided per
+       tile comes out ragged: CSS grid stretches every tile in a row to the
+       tallest one, so a text-only tile next to a picture tile ends up as a
+       tall box with its name and price pushed to opposite ends.
+
+       Once any photo exists the box is drawn for every tile, and the ones
+       without a picture show the muted icon — at that point the grid really is
+       a picture grid and a missing photo is a fact about that product. */
+    .product-grid:not(.product-grid-media) .thumb-tile,
+    .product-grid:not(.product-grid-media) .skeleton-tile-thumb {
+        display: none;
     }
 
     .product-tile {
@@ -1164,8 +1846,19 @@
         direction: ltr;
     }
 
+    /* Out of stock: flagged, not blocked — see the tile's click handler.
+
+       Both halves of the surface have to be restated. `.tile` now paints an
+       opaque white gradient over its background-colour, so a tint set only as a
+       colour is invisible; and `.tile` has no border, so a `border-color` has no
+       width to land on and the outline has to be the ring. The wash is
+       `--sheen-soft` rather than `--gradient-surface` because it is alpha, which
+       both lets the rose through and leaves `background-color` free to
+       transition on hover. */
     .product-tile-out {
-        @apply border-rose-200 bg-rose-50/60;
+        @apply bg-rose-50 ring-rose-300
+               hover:bg-rose-100 hover:ring-rose-400;
+        background-image: var(--sheen-soft);
     }
 
     /* Cart rows: name + qty stepper + line total, nothing else. */

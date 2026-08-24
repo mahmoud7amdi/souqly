@@ -51,6 +51,12 @@ class AddAccountTransaction
     /**
      * Money received into the account is a credit; money paid out a debit.
      *
+     * The list of incoming types lives on {@see TransactionTypes::moneyIn()} and
+     * is shared with the cash drawer, so a payment cannot show up as a receipt in
+     * one ledger and a payment in the other. That sharing corrected one type:
+     * `purchase_return` used to fall through to debit here, which booked a
+     * supplier's refund as money *leaving* the account (NOTES.md §12.1).
+     *
      * A `is_return` payment on a sale is change given back to the customer,
      * so it reverses the direction.
      */
@@ -58,11 +64,8 @@ class AddAccountTransaction
     {
         $transaction = $payment->transaction;
 
-        $incoming = ! empty($transaction) && in_array($transaction->type, [
-            TransactionTypes::SELL,
-            TransactionTypes::SALES_ORDER,
-            TransactionTypes::EXPENSE_REFUND,
-        ], true);
+        $incoming = ! empty($transaction)
+            && in_array($transaction->type, TransactionTypes::moneyIn(), true);
 
         // Contact-due settlements carry the direction on the payment itself.
         if (empty($transaction)) {

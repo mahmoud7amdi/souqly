@@ -30,7 +30,7 @@
      toned, and only when there is something outstanding — a zero balance is the
      normal state and colouring it trains the eye to ignore the colour. --}}
 <div class="section">
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="rise-group grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-stat :label="__('lang_v1.net_due')"
                 :value="format_currency($summary['net_due'])"
                 icon="wallet"

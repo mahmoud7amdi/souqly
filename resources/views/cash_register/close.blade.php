@@ -173,6 +173,17 @@
                     </div>
                 @endif
 
+                {{-- Stated, not netted. Cash handed to a supplier or spent on an
+                     expense has already come off the expected figure above, and a
+                     cashier who cannot see why it dropped has no way to tell a
+                     payout from a shortage. --}}
+                @if (abs($summary['payouts']) > 0.0001)
+                    <div class="dl-row">
+                        <dt class="dl-key">{{ __('lang_v1.paid_out') }}</dt>
+                        <dd class="dl-value text-amber-700">@format_currency($summary['payouts'])</dd>
+                    </div>
+                @endif
+
                 {{-- Filled in as the counting happens. Blank until then, because a
                      difference of zero before anything has been counted is not a
                      balanced drawer — it is an unasked question. --}}

@@ -35,7 +35,12 @@
     $showShipping = ! $isSalesOrder;
 @endphp
 
-<div class="grid gap-6 lg:grid-cols-4">
+{{-- Sections, in the order the document is filled in: who it is for, any order it
+     fulfils, what is on it, what it comes to, and how it leaves. Each block carries
+     its own bottom gutter; the last carries none, so the commit strip sits close to
+     the thing it commits. The first has no section head — the page head above
+     already names the document. --}}
+<div class="section grid gap-6 lg:grid-cols-4">
 
     <x-panel :title="__('lang_v1.document_details')" icon="receipt" class="lg:col-span-3">
         <div class="form-grid-3">
@@ -188,7 +193,7 @@
     {{-- Raising an invoice against orders the customer already placed. Picking
          one pulls in only what is still outstanding on it, so part-shipping an
          order twice cannot double-count. --}}
-    <x-panel :title="__('lang_v1.link_sales_order')" icon="clipboard" class="mt-6">
+    <x-panel :title="__('lang_v1.link_sales_order')" icon="clipboard" class="section">
         <div class="flex flex-wrap items-end gap-3">
             <div class="field min-w-64 flex-1">
                 <label for="sales-order-picker" class="label">{{ __('lang_v1.sales_orders') }}</label>
@@ -211,9 +216,17 @@
     </x-panel>
 @endif
 
-{{-- Line items --}}
-<x-panel :title="__('lang_v1.items')" icon="box" class="mt-6" flush>
-    <x-slot:actions>
+{{-- Line items. The search box and Add button move up into `.section-actions`:
+     they act on the whole section, and a card header carrying both a title and
+     the controls that fill it was doing two jobs at one type level. --}}
+<div class="section-head">
+    <div class="section-head-text">
+        <p class="section-eyebrow">{{ __('lang_v1.contents') }}</p>
+        <h2 class="section-title">{{ __('lang_v1.items') }}</h2>
+        <p class="section-desc">{{ __('lang_v1.what_is_being_sold') }}</p>
+    </div>
+
+    <div class="section-actions">
         <div class="input-search-wrap">
             <span class="input-search-icon"><x-nav-icon name="search" :size="4"/></span>
             <input id="product-search" class="input-search w-72"
@@ -224,8 +237,10 @@
             <x-nav-icon name="plus" :size="4"/>
             {{ __('lang_v1.add') }}
         </button>
-    </x-slot:actions>
+    </div>
+</div>
 
+<x-panel flush class="section">
     <div class="table-wrap table-flush">
         <table class="table" id="lines-table">
             <thead>
@@ -264,8 +279,18 @@
     </div>
 </x-panel>
 
-{{-- Charges, and what they add up to --}}
-<div class="mt-6 grid gap-6 lg:grid-cols-3">
+{{-- What it comes to. Below the items rather than beside them: the discount and
+     the order tax are computed off the lines, so reading them first would be
+     reading an answer before its question. --}}
+<div class="section-head">
+    <div class="section-head-text">
+        <p class="section-eyebrow">{{ __('lang_v1.settlement') }}</p>
+        <h2 class="section-title">{{ __('lang_v1.charges_and_total') }}</h2>
+        <p class="section-desc">{{ __('lang_v1.what_it_comes_to') }}</p>
+    </div>
+</div>
+
+<div class="section grid gap-6 lg:grid-cols-3">
 
     <x-panel :title="__('lang_v1.charges_and_discount')" icon="percent" class="lg:col-span-2">
         <div class="form-grid">
@@ -357,7 +382,11 @@
 </div>
 
 @if ($showShipping || ! $isEdit)
-    <div class="mt-6 grid gap-6 lg:grid-cols-2">
+    {{-- No section head on this one, deliberately. Which of the two panels appears
+         depends on the document — a sales order has no shipping, an edit takes no
+         up-front payment — so any fixed heading here would name a card that is not
+         on the screen. Two titled cards side by side already read as two groups. --}}
+    <div class="grid gap-6 lg:grid-cols-2">
 
         @if ($showShipping)
             <x-panel :title="__('lang_v1.shipping')" icon="truck">

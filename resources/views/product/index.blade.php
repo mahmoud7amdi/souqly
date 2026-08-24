@@ -110,8 +110,18 @@
                 @php $variation = $product->variations->first(); @endphp
                 <tr>
                     <td>
-                        <span class="cell-primary">{{ $product->name }}</span>
-                        <span class="cell-meta force-ltr">{{ $product->sku }}</span>
+                        {{-- Picture beside the name, not in a column of its own.
+                             A dedicated image column costs 3rem of a table that
+                             already runs to seven columns, and it separates the
+                             thumbnail from the thing it identifies — the eye has
+                             to travel back to the name to know what it saw. --}}
+                        <div class="flex items-center gap-3">
+                            <x-product-thumb :product="$product" size="sm"/>
+                            <div class="min-w-0">
+                                <span class="cell-primary">{{ $product->name }}</span>
+                                <span class="cell-meta force-ltr">{{ $product->sku }}</span>
+                            </div>
+                        </div>
                     </td>
                     <td>{{ or_dash($product->category->name ?? null) }}</td>
                     <td>{{ or_dash($product->brand->name ?? null) }}</td>

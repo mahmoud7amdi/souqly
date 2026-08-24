@@ -24,7 +24,11 @@
     $hasLines = $isEdit && $document->purchase_lines->isNotEmpty();
 @endphp
 
-<div class="grid gap-6 lg:grid-cols-4">
+{{-- Three sections, in the order the document is actually filled in: who it is
+     from, what is on it, what it comes to. The first carries no section head —
+     the page head above already names the document, and a heading repeating it
+     would be the fifth type level §11.4 rules out. --}}
+<div class="section grid gap-6 lg:grid-cols-4">
 
     <x-panel :title="__('lang_v1.document_details')" icon="receipt" class="lg:col-span-3">
         <div class="form-grid-3">
@@ -140,9 +144,17 @@
     </x-panel>
 </div>
 
-{{-- Line items --}}
-<x-panel :title="__('lang_v1.items')" icon="box" class="mt-6" flush>
-    <x-slot:actions>
+{{-- Line items. The search box and Add button move up into `.section-actions`:
+     they act on the whole section, and a card header carrying both a title and
+     the controls that fill it was doing two jobs at one type level. --}}
+<div class="section-head">
+    <div class="section-head-text">
+        <p class="section-eyebrow">{{ __('lang_v1.contents') }}</p>
+        <h2 class="section-title">{{ __('lang_v1.items') }}</h2>
+        <p class="section-desc">{{ __('lang_v1.what_is_being_bought') }}</p>
+    </div>
+
+    <div class="section-actions">
         <div class="input-search-wrap">
             <span class="input-search-icon"><x-nav-icon name="search" :size="4"/></span>
             <input id="product-search" class="input-search w-72"
@@ -153,8 +165,10 @@
             <x-nav-icon name="plus" :size="4"/>
             {{ __('lang_v1.add') }}
         </button>
-    </x-slot:actions>
+    </div>
+</div>
 
+<x-panel flush class="section">
     <div class="table-wrap table-flush">
         <table class="table" id="lines-table">
             <thead>
@@ -198,8 +212,18 @@
     </div>
 </x-panel>
 
-{{-- Totals and payment --}}
-<div class="mt-6 grid gap-6 lg:grid-cols-2">
+{{-- What it comes to. Kept below the items rather than beside them: the discount
+     and the order tax are computed off the lines, so reading them first would be
+     reading an answer before its question. --}}
+<div class="section-head">
+    <div class="section-head-text">
+        <p class="section-eyebrow">{{ __('lang_v1.settlement') }}</p>
+        <h2 class="section-title">{{ __('lang_v1.charges_and_payment') }}</h2>
+        <p class="section-desc">{{ __('lang_v1.what_it_comes_to') }}</p>
+    </div>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-2">
 
     <x-panel :title="__('lang_v1.charges_and_discount')" icon="percent">
         <div class="form-grid">

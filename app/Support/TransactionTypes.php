@@ -93,6 +93,36 @@ final class TransactionTypes
         return [self::SELL, self::SELL_TRANSFER];
     }
 
+    /**
+     * Types whose payments bring money IN. Every other type pays money out.
+     *
+     * The single answer to "which way did this money move", asked by both mirrors
+     * of a payment: the bank account
+     * ({@see \App\Listeners\AddAccountTransaction::direction()}) and the cash
+     * drawer ({@see \App\Services\CashRegisterService::isOutgoing()}). It lives
+     * here because the two disagreeing is not a cosmetic difference — it is one
+     * payment appearing as a receipt in one ledger and a payment in the other.
+     *
+     * `sell_return` is deliberately absent: a return hands money back to the
+     * customer, so it pays out even though the document sits on the sell side.
+     * `purchase_return` is deliberately present, for the mirror-image reason —
+     * goods go back to the supplier and the supplier's money comes to us.
+     *
+     * `is_return` on a payment reverses whatever this returns (change handed over
+     * on a sale, an over-refund taken back), and is applied by the caller.
+     *
+     * @return array<int, string>
+     */
+    public static function moneyIn(): array
+    {
+        return [
+            self::SELL,
+            self::SALES_ORDER,
+            self::PURCHASE_RETURN,
+            self::EXPENSE_REFUND,
+        ];
+    }
+
     /* --------------------------------------------------------------------
      | transactions.status
      -------------------------------------------------------------------- */

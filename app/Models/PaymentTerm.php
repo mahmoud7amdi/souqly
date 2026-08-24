@@ -31,6 +31,10 @@ class PaymentTerm extends Model
 
     /**
      * Money amount this term represents on its parent invoice.
+     *
+     * Needs `transaction`. Loading terms through Transaction::terms() supplies
+     * it free (that relation is chaperoned); a standalone PaymentTerm query has
+     * to eager load it, and strict mode will say so rather than pay per row.
      */
     public function getAmountAttribute(): float
     {

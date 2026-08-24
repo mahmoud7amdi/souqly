@@ -25,7 +25,7 @@
 {{-- Total, paid, due — in that order, so the eye lands on what is still owed
      last. Only due is toned, and only when it is not zero. --}}
 <div class="section">
-    <div class="grid gap-4 sm:grid-cols-3">
+    <div class="rise-group grid gap-4 sm:grid-cols-3">
         <x-stat :label="__('lang_v1.total')" :value="format_currency($totals['total'])" icon="truck"/>
         <x-stat :label="__('lang_v1.paid')" :value="format_currency($totals['paid'])" icon="check-circle"/>
         <x-stat :label="__('lang_v1.due')"

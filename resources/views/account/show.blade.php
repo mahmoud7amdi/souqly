@@ -54,7 +54,7 @@
 
 @if ($canSeeBalance)
     <div class="section">
-        <div class="grid gap-4 sm:grid-cols-3">
+        <div class="rise-group grid gap-4 sm:grid-cols-3">
             <x-stat :label="__('lang_v1.money_in')" :value="format_currency($totals['in'])" icon="download"/>
             <x-stat :label="__('lang_v1.money_out')" :value="format_currency($totals['out'])" icon="upload"/>
             {{-- Toned only when it is negative, and then because an overdraft is

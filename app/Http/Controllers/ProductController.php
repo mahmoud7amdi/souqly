@@ -36,7 +36,10 @@ class ProductController extends Controller
     {
         $this->permit('product.view');
 
-        $products = Product::with(['brand', 'unit', 'category', 'product_tax'])
+        // `variations` is not decoration: the row shows the default sell price,
+        // which lives on the variation, so every row touches it. Left lazy it is
+        // 25 extra queries per page — and a LazyLoadingViolationException locally.
+        $products = Product::with(['brand', 'unit', 'category', 'product_tax', 'variations'])
             ->when($request->filled('search'), function ($query) use ($request) {
                 $term = '%'.$request->string('search').'%';
                 $query->where(fn ($q) => $q->where('name', 'like', $term)
@@ -313,6 +316,13 @@ class ProductController extends Controller
                 : null,
             'tax_id' => $variation->product->tax,
             'tax_type' => $variation->product->tax_type,
+
+            // null rather than the placeholder URL when there is no picture, so
+            // the POS grid can draw a muted icon instead of 25 identical grey
+            // rectangles. See Product::hasImage().
+            'image_url' => $variation->product->hasImage()
+                ? $variation->product->image_url
+                : null,
         ]));
     }
 

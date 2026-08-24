@@ -46,6 +46,35 @@ the source documentation is recorded with its reason. Nothing here is a silent a
 
 ---
 
+## ▶️ عند العودة — النقطة التالية / Next on return
+
+**Last session ended 2026-08-24.** Roadmap items A (§12.1, cash-drawer payout) and C (§12.4,
+section-structure retrofit) are both **complete and verified** — see those sections. Working tree
+committed clean; nothing is half-finished on disk.
+
+**The next task is roadmap item 7 — Reports.** Roughly 40 screens. Two locked decisions bind it
+directly: **#2** — Indian GST reports are excluded (`gstSalesReport`/`gstPurchaseReport`, market
+is Egypt), so do not build them; and **#3** — full Arabic + RTL is a hard requirement on every
+screen **and report**, acceptance criteria in §5. This was deliberately *not* started in the last
+session: it is a large new scope that the standing instruction (finish §12.1, then item C) did not
+cover, so it waits for an explicit go-ahead.
+
+**Two items remain owed and are best paid alongside Reports, not after:**
+
+| Item | What is owed | Why it pairs with Reports |
+|---|---|---|
+| **§12.5** | A small API-response test for JSON endpoints, plus coverage for `Product::scopeForLocation()` | `ScreensRenderTest`'s walk cannot see JSON endpoints at all, and Reports adds many more of them. A latent SQL error already hid there once. |
+| **§12.3** | Decide whether an admin should be restrictable at all | Reports are the first screens where "this role may see figures, that one may not" becomes a real question rather than a theoretical one. |
+
+Then items 8–12: Settings, Printing, Offline PWA, module controllers/views, scheduled commands.
+
+**Before writing a single report screen, read §11.4 and §12.4.** They carry the section
+vocabulary and the two traps that cost time last session — `.section-head` has no top margin, and
+a class-name grep does not measure §11.4 compliance because `<x-panel quiet>` emits the classes a
+layer down.
+
+---
+
 ## 0. Environment as built
 
 | Item | Value |
@@ -229,7 +258,13 @@ updated in separate code paths and drifted. In the rebuild:
 - Editing a purchase below the quantity already issued from it **throws** instead of
   corrupting the lot.
 
-All of this is covered by tests (§9).
+All of this is covered by tests (§9). One caveat the design makes explicit rather than hides:
+`adjustCachedQuantity()` is a **separate call the caller has to make** — `consume()`,
+`release()` and `reduceLotQuantity()` deliberately touch only the FIFO map and the lot
+counters. That is the one seam where the two records can still drift, and it is why every
+document that moves stock (item 6's three included) is tested by asserting
+`reconcile()['difference'] === 0.0` after the movement rather than by inspecting either record
+alone.
 
 ---
 
@@ -312,8 +347,11 @@ so its decisions are recorded individually.
 | Decision | Rationale |
 |---|---|
 | **The only view that declares `@section('full_bleed')`** | Capped at 96 rem the product grid is four tiles wide with empty space either side. The terminal is the one screen that wants the whole monitor. |
-| **Two zones and nothing else** — `.pos-shell` = product grid + `24rem` cart | Requirement 2 of the brief. Anything that is not choosing a product or reading the basket is behind a toggle. |
-| **Both zones sticky, each scrolling inside itself** — matched `lg:top-20` and `max-height: calc(100vh - 6.5rem)` | The cart and the pay button never move, no matter how long the basket gets. The two numbers must stay identical or the columns visibly misalign; both call sites say so. |
+| **Two zones and nothing else** — `.pos-shell` = product grid + cart (`19rem`, `24rem` from `lg`) | Requirement 2 of the brief. Anything that is not choosing a product or reading the basket is behind a toggle. |
+| **The shell is pinned to the viewport — `height: calc(100dvh - var(--pos-offset))` — and each zone scrolls inside itself** | Replaced the original model (both zones `position: sticky` with a matched `max-height: calc(100vh - 6.5rem)`), which had a real defect: the cap assumed each zone began at its sticky offset, when at scroll 0 the shell begins ~160 px lower — so the total and the pay button sat that far below the fold until the cashier scrolled. Pinning the shell instead means the page never scrolls at all, and nothing can be pushed off-screen by a long product list. `--pos-offset` is measured at runtime because the register bar above wraps to two or three rows on a narrow window; the CSS literal covers the first paint. |
+| **Side by side from `48rem`, not `64rem`** | Stacked, the product grid sits above the cart and buries it — the reported symptom. A 1366 px laptop at Windows' 150 % display scaling reports 910 CSS px, which is *below* `lg`, so the two-column layout the terminal was drawn for silently never engaged on ordinary hardware. Stacked is now the phone layout only. In RTL the cart lands on the left, which is where it was asked for. |
+| **The cart never grows and always yields** — `flex: 0 1 auto`, `max-height: 55%`, and `min-height: 0` on the rows and on the empty state | Inside a capped shell something has to give way, and it must not be the footer: the total and the button that takes the money are the last things allowed to be clipped. So the rows scroll, the empty-state artwork gets cut before the total does, and the extras panel scrolls rather than pushing the footer out when opened on a short window. |
+| **The cart column is one wrapper with four parts in a fixed order** — counter, scrolling rows, total, pinned button — and a test asserts it | `.pos-shell` is a two-column grid, so anything that escapes `.pos-cart` becomes a grid item in its own right and auto-placement drops it in the next free cell. A single missing wrapper therefore does not degrade the layout, it scatters it: counter in one cell, rows in another, total below. That is not hypothetical — it shipped, from one malformed Blade comment terminator, and is written up in §9.2 along with the two guards added. The order is the column's whole argument: a total placed above the lines it totals reads as a price. |
 | **Exactly one added tone on the whole screen** — `bg-brand-50/60` on the cart header | White surfaces and slate text, per requirement 1. One 6 %-opacity tint is enough to separate the zones; a second colour would start competing with the pay button. |
 | **`.btn-accent` (`accent-700` #005a54) for *Finalize sale*, at `.btn-lg btn-block`** | The documented "commits money, one per screen" rank, and deliberately **not red**: red on a button pressed two hundred times a day reads as a warning and stops meaning anything (requirement 3). Under v2 this rank was a warm copper; v2.1 replaced the second hue with a deeper register of the brand — the rank is now carried by depth and elevation, not by colour. See §11. |
 | **Every target ≥ 36 px; tiles 152 × 96** | Requirement 7 — sized for a thumb on a tablet, not a mouse. Two primitives were added to reach it: `.input-lg` for the search field (a size modifier must be the last word in the cascade to win, so it sits after `.input-search`), and a `min-height` on `.stepper`, which without one is only as tall as its input's line box — about 24 px. |
@@ -336,20 +374,76 @@ so its decisions are recorded individually.
 | **`recalc()` implements the same arithmetic as `SellService::recalculateTotals()`, in the same order** | The figure the customer is asked for must be the figure that gets saved. No line tax, shipping or round-off, because the terminal does not offer them — a sale made here has none. Both sides carry a comment saying that if one changes, so must the other. |
 | **Redirects to an empty terminal, not to the invoice** | The next customer is already at the counter. The receipt is reachable from the status banner, so the sale is not lost — it just is not what the screen becomes. |
 
+### 8.4 Stock (item 6)
+
+Three documents that move stock without selling it, and the first item where the *screens* can
+produce a defect that no error and no red figure would ever show: a cached quantity that
+disagrees with the FIFO map. So the controllers here are deliberately the thinnest in the
+application — every rule about what may happen to stock lives in the three services, which are
+the only code that touches the map. What the controllers own is vocabulary: filters, totals,
+the two adjustment kinds, the two transfer states.
+
+**Shape of the three documents**
+
+| Decision | Rationale |
+|---|---|
+| **A transfer has no `edit` and no `update`; `stock_transfer.update` guards *receiving* instead** | Editing a document whose goods are on a van would have to decide what the van is now carrying. The app declines to invent an answer: a wrong transfer is deleted and re-entered while it is still in transit. That makes receiving the one legitimate change to an existing transfer, so it is what the update permission protects. |
+| **The transfer listing shows out-legs only** | A transfer is two `transactions` rows, but it is one event to the person who arranged the van. Listing both halves would double every row and invite somebody to delete the wrong one. The destination and its status are read through `transfer_child`. |
+| **Opening stock has no `create` and no `store` — `opening-stock.edit` *is* the create screen** | "What this product's opening quantity is at this shop" is a single statement that has either been made or not. A create/edit split would ask the user which of those they are doing, when the screen can simply open and show what is currently on file. |
+| **Its route parameter is `{productId}`, not `{id}`** | It addresses a product, not a document — the document may not exist yet. Naming it `{id}` would have been a lie that also fooled `ScreensRenderTest`'s parameter resolver into passing a transaction id. |
+| **Location travels in the query string on opening stock, in the path on nothing** | It is a key to the document, but it is also the thing the user switches while working — checking one product across three shops. In the path that is a redirect per switch and three URLs for what feels like one screen. |
+| **An adjustment edit reverses the whole document and rewrites it; opening stock edits its lot in place** | Opposite choices for opposite reasons. An adjustment *line* only points at lots, so reversing it is cheap and exact. An opening-stock line **is** a lot — destroying it would orphan every sale that had consumed from it, so it is edited in place and the shrink guard is what keeps the edit honest. |
+| **`updateStatus` (receive) is POST, not GET** | It books stock at the destination. Same rule as `sells.convert`: anything a link-prefetcher or a browser history replay could fire must not move stock. |
+| **Adjustment totals are never netted** | `listTotals()` returns loss, recovered, net *and* abnormal separately. A month where breakages doubled but insurance paid for them is a different month from one where nothing broke, and a single net figure cannot tell them apart. |
+| **One location filter matches either leg of a transfer** | "Which shop was it to or from?" is one question to a user. A transfer between two shops is relevant to both, so one `location_id` filter checks `location_id` *or* `transfer_child.location_id` rather than making the user pick a direction first. |
+| **`opening-stock.index` lists only `enable_stock = 1` products** | A service or an untracked product has no opening position to state. Listing them and refusing on save would be a screen that offers work it cannot do. |
+| **Its summary figures come from one grouped query, not one per row** | 25 documents-with-lines per page is the difference between one query and fifty, and this listing needs only a quantity and a value per product. |
+
+**Screens and behaviour**
+
+| Decision | Rationale |
+|---|---|
+| **No money column anywhere in the adjustment line editor** | What a write-off is *worth* is the FIFO cost of the specific units it takes, and that is not knowable until the document saves and the lots are allocated. So the editor shows the two facts a person can check while typing — what is on the shelf, and how much is gone — and the valuation appears on the document screen, where it is a fact rather than a guess. |
+| **"Available" on an existing adjustment line means current stock *plus what this line already took*** | Those units are already written off, so live stock excludes them. `available: 0` beside `quantity: 3` reads as a bug; the number the row needs is what this document may take. |
+| **Changing location blanks every "available" figure on screen rather than leaving it** | Each one was read at the old location. A stale number here is worse than no number, because it is the single figure the user is trusting. The rows are kept — the products are usually still the right ones. |
+| **A transfer's product lookup is scoped to the *source* location** | The quantities it returns are the ones the transfer is bounded by. A product the destination happens to stock is irrelevant if the source has none of it. |
+| **Same shop on both sides is caught three times** | `different:location_id` on the server, `setCustomValidity()` on the destination select, and the source-change handler clearing a now-invalid destination. The server rule is the one that matters; the other two exist so the mistake costs a keystroke instead of a round trip and a lost form. |
+| **A "how this works" panel on both create forms** | "Why can't I add stock here?" is the first question the adjustment screen gets, and every rule listed (decrease only, never past zero, valued at cost; two documents, in-transit, at cost, no edit) is one the service will otherwise teach by refusing to save. Answering in place is cheaper than answering in support. |
+| **Freight is shown beside the goods value, never inside a unit price** | A transfer's unit costs stay what the goods were bought for — that is what makes the destination's stock still reconcile against its lots. Shipping is a cost of the move, so `transfer_freight_hint` says so on both the form and the document. |
+| **The `in_transit` and `abnormal` stats are toned only when non-zero** | Both are figures that need acting on rather than reading — stock that has left a shop and been confirmed nowhere, and losses somebody should look into. A permanently-warning tile is wallpaper; one that lights up is a reminder. |
+| **`stock_transfer/show` leads with the route, full width, above everything else** | A transfer's identity is which two shops it is between, and the in-transit case needs the direction of travel to be unmissable. Both halves are then listed again with their own statuses, because "where is the other document" is the first question anyone reconciling a transfer asks — and a missing child gets a danger badge rather than a blank. |
+| **The in-transit banner states the invariant in words** | The goods are counted at neither shop, and somebody has to confirm arrival before the destination can sell them. That is surprising enough to be worth saying on the document rather than leaving it to be discovered as a missing quantity. |
+| **Opening stock's location filter has no "All" option and submits on change** | Every figure on the screen is "at this shop", and there is no such thing as opening stock without one. Switching shop is the main thing done here, so asking for a click on *Apply* as well would be a step for nothing. |
+| **A `recorded=yes/no` filter on the opening-stock listing** | The actual job on that screen is finding the products whose opening position has *not* been stated yet. Without the filter that is a manual scan of the whole catalogue. |
+| **No permitted location renders an empty state, not an empty table** | Nothing on that screen can be true without one, and an empty product table reads as "no products" — a different and wrong message. |
+
 ---
 
 ## 9. Verification — what is actually proven
 
 ```bash
-php artisan migrate:fresh --seed   # 18 migrations, 131 tables, 55 currencies, 181 permissions
-php artisan test                   # 40 tests, 163 assertions — all 40 passing
-php scripts/verify-models.php      # 109 models, 321 relations, 460 casts — clean
-php scripts/add-lang-keys.php      # 637 ar / 637 en — parity OK
-npm run build                      # 101.9 KB CSS, builds clean
+php artisan migrate:fresh --seed   # 19 migrations, 131 tables, 55 currencies, 181 permissions
+php artisan test                   # 71 tests, 336 assertions — all 71 passing
+php scripts/verify-models.php      # 109 models, 323 relations, 460 casts — clean
+php scripts/add-lang-keys.php      # 906 ar / 906 en — parity OK, zero orphans either way
+npm run build                      # 121.26 KB CSS (gzip 14.92 KB), builds clean
 php artisan route:list             # all routes resolve
+
+php artisan db:seed --class=DemoDataSeeder   # demo catalogue, idempotent — see below
 ```
 
-**The suite is fully green as of 2026-08-23.** The failure recorded here previously —
+**`DemoDataSeeder` — a catalogue big enough to actually use the screens.** Deliberately not
+registered in `DatabaseSeeder`: the suite runs `migrate:fresh --seed` against `souqly_test`,
+and 49 products would break every count-based assertion in it. Run it by name, against the
+development database. It seeds 10 brands, 27 categories (8 parents + 19 children), 4 units,
+4 variation templates, 4 suppliers + 4 customers, and **49 products — 41 `single`, 5
+`variable` (18 variations between them) and 3 `combo`, 62 sellable variations** — then gives
+every stock-enabled product an opening-stock document and adds a second FIFO lot at 1.08×
+cost to every fourth single product, so the costing code has more than one lot to choose
+from. Combos carry `enable_stock = 0` on purpose: their availability derives from their
+components. It is idempotent — a second run reports "already seeded" and inserts nothing.
+
+**The suite is fully green as of 2026-08-24.** The failure recorded here previously —
 `ScreensRenderTest` reporting 19 screens as HTTP 500/404 because item 5's routes were
 registered before its views existed — is resolved: those views were written, and the walk now
 renders all of them. The guard did exactly what it was built to do.
@@ -366,11 +460,87 @@ defines. The code was correct; the test database was stale.
 | Suite | Covers |
 |---|---|
 | `FifoStockTest` (8) | Oldest-lot-first consumption, weighted cost, cache-vs-FIFO agreement, overselling shortfall, release on edit/delete, partial return crediting newest lot first, explicit lot override, adjustments tracked separately, purchase-shrink guard |
+| `StockMovementsTest` (19) | The three documents that move stock without selling it. Adjustments: write-off priced at what those units actually cost, refusal above what the location holds, delete returning units to their lots, edit reversing the whole document before rewriting it. Transfers: cost carried to the destination with freight kept outside unit price, **goods in transit counted at neither shop**, receive booking stock in, double-receive refused, same-location refused, source overdraw refused, in-transit delete crediting the source *only*, received delete unwinding both halves, delete refused once the destination has sold. Opening stock: a sellable lot, restatement editing the same lot in place, refusal to cut below what has been sold, zeroing withdrawing the document, per-location statement. Plus all three refusing products that are not stock-tracked |
 | `ProcureToPayCycleTest` (10) | Received vs pending purchase, full purchase→sale→payment→return cycle, purchase return capped at remaining lot, PO fulfilment `ordered→partial→completed`, payment terms + >100 % rejection, contact-due allocation with advance banking, credit-limit breach, pre-sale shortfall detection, sale deletion restoring stock |
 | `StockTransactionGuardTest` (6) | Every stock/payment mutation refuses to run outside a DB transaction |
 | `ApplicationSmokeTest` (10) | Login page, guest redirect, sign-in → dashboard **rendering RTL Arabic**, default tenant resources, brand creation stamped with tenant, **cross-tenant isolation**, permission refusal, `allow_login=0` block, `/api/ping`, print-agent token rejection |
 | `UsernameLoginTest` (5) | Username-based sign-in against the seeded admin, whose password comes from `SEED_ADMIN_PASSWORD` (§12.2) |
-| `ScreensRenderTest` (1) | Every named GET route rendered as an admin — **100 of them**, up from 81 as item 5 landed — asserting no 4xx/5xx, and no raw `lang_v1.*` key in any response body. 20 routes are in its `SKIP` list, each with a stated reason (JSON endpoints, file downloads, guest-only). **No item-5 route is skipped.** |
+| `ScreensRenderTest` (2) | Every named GET route rendered as an admin — **109 of them**, up from 100 as item 6 landed — asserting no 4xx/5xx, no raw `lang_v1.*` key in any response body, and **balanced `<div>` markup** (§9.2). 20 routes are in its `SKIP` list, each with a stated reason (JSON endpoints, file downloads, guest-only). **No item-5 or item-6 route is skipped.** The second test asserts the POS cart is one connected column, through the DOM rather than by substring — see §9.2 |
+| `CashDrawerTest` (11) | What a shift's drawer knows and in which direction: cash to a supplier and an expense at the till as `payout`, a purchase return netting payouts down instead of counting as takings, a contact-due settlement writing one parent row and no allocation rows, a corrected payment updated in place, a card payout stated without moving `cash_in_hand`, plus the four original movements — the `initial/sell/refund` sequence, change handed back, advance balances staying out, no-register-open writing nothing and not being acquired by the next shift, and deletion removing its row (§12.1) |
+
+### 9.1 Why the 100-screen walk let a 500 through, and what changed
+
+The products screen shipped reading `$product->variations` in its row loop with `variations`
+absent from `ProductController@index`'s `with()`. The walk rendered it green; it threw
+`LazyLoadingViolationException` the moment a real catalogue was seeded. Two independent
+causes, both now fixed:
+
+1. **Strict mode was off in the one environment that could have caught it.**
+   `Model::preventLazyLoading($this->app->isLocal())` is false under `APP_ENV=testing`, so
+   no test has ever had the guard on. Now `! $this->app->isProduction()` — on everywhere
+   except production, where a missing eager load should cost queries, not a page.
+2. **One fixture row per entity cannot trip the guard even when it is on.**
+   `Builder::hydrate()` arms detection per model instance and only for result sets of more
+   than one row (`if (count($items) > 1)`), so a single-row index is permanently exempt.
+   `ScreensRenderTest::seedListingDuplicates()` now creates a *second* row for every entity
+   that has a listing screen — a handful of inserts that turn the walk into a real
+   missing-eager-load detector for every screen, including ones written later.
+
+Turning the guard on immediately found a second instance of the same bug: `purchase/show`
+renders `$term->amount` per instalment, and that accessor reads back through
+`PaymentTerm::transaction` — so any purchase with a two-part payment schedule would have
+500ed on that screen. Fixed at the relation with `Transaction::terms()->chaperone('transaction')`,
+which hands each child the parent it was loaded from at no query cost.
+
+### 9.2 A Blade comment ate a `<div>`, and every guard we had said the page was fine
+
+Reported by you on 2026-08-24: the POS cart's contents were appearing in the middle of the
+screen under the products, instead of inside the cart column. **The cause was one missing pair
+of dashes.** A banner comment in `pos/create.blade.php` was terminated
+`--------------------------------------------------------------- }}` — a space between the
+dashes and the braces, so it is not `--}}`. Blade's comment pattern is
+`/\{\{--(.*?)--\}\}/s`: non-greedy, but unanchored and multi-line, so it simply kept scanning
+to the **next real `--}}`** three lines later and deleted everything between — including
+`<div class="pos-cart">`, the line that made the cart a single column.
+
+The closing `</div>` survived. `.pos-shell` is a two-column grid, so the cart's four parts
+became grid items in their own right and auto-placement scattered them across free cells: the
+items counter in one, the rows in another, the total below, the pay button somewhere else
+again. Exactly what the screenshot showed.
+
+**What makes this worth a section is how quiet it was.** The page returned 200. Every
+translation key resolved. The CSS was correct and freshly built. `git status` was clean. The
+compiled view in `storage/framework/views` was *faithful* — it really did lack the wrapper —
+so the early suspicion of a stale cache was wrong, and `view:clear` changed nothing. Two of my
+own diagnostic checks also lied before the real evidence appeared: a PowerShell-quoted
+`php artisan tinker --execute` where `\"` was consumed by the shell rather than reaching PHP,
+so the probe searched for a literal backslash and reported the wrapper missing from the
+*source* too; and a `Grep` context line that rendered a `//` JS comment as `\`, which briefly
+looked like a second bug in the same file. Both were artifacts of the tooling, not facts about
+the code. The lesson is narrow and practical: when a check disagrees with a file you have read,
+suspect the check.
+
+**Two guards added, and both verified by re-breaking the view deliberately** — a guard that has
+never failed is not a guard:
+
+1. **Balanced `<div>` markup on every screen**, inside the existing route walk. Unbalanced
+   markup is how a layout breaks without anything erroring, and this is generic: it would
+   catch any swallowed or orphaned wrapper on any of the 109 screens, not just this one. With
+   the typo reintroduced it reported `pos.create → 67 <div> vs 68 </div> (-1)`. `<script>`
+   blocks are stripped before counting, because a `'<div>'` inside a JS string is not markup
+   and counting it would make the guard cry wolf on every screen that builds HTML in
+   JavaScript.
+2. **`the_pos_cart_is_one_connected_column`**, which asserts through `DOMDocument` + XPath that
+   `#cart-count`, `#cart-rows`, `#cart-total` and `#open-payment` are all *descendants of*
+   `.pos-cart` and appear in that order. Containment is asserted through the DOM and not by
+   searching the HTML on purpose: this bug does not remove the four parts, it moves them out of
+   their parent, and a substring check cannot see the difference.
+
+A tree-wide sweep for the same signature (`-{2,}\s+\}\}`) found the defect **twice**, both in
+`pos/create.blade.php`. The second, on the Zone 1 banner, happened to swallow only the comment
+that followed it, so no markup was lost and nothing was visibly wrong — a latent version of
+the same bug that would have deleted any markup later inserted there. Both are fixed. The
+other 105 Blade files are clean, as is the check for an opener with no closer at all.
 
 
 ---
@@ -379,13 +549,13 @@ defines. The code was correct; the test database was stale.
 
 | Stage | Status |
 |---|---|
-| 1. Migrations & database | ✅ **Complete** — 18 migrations, 131 tables |
+| 1. Migrations & database | ✅ **Complete** — 19 migrations, 131 tables |
 | 2. Models & relationships | ✅ **Complete** — 51 core + 58 module models, all verified |
 | 4. Middleware, roles & permissions | ✅ **Complete** — 5 middleware, 2 groups, 181 permissions, tenant-namespaced roles, tenant provisioning |
 | 6. Services / events / listeners | ✅ **Core complete** — 8 services, 11 events, 3 listeners |
 | 7. Run migrations & verify | ✅ **Complete** — all green (§9) |
-| 3. Routes & controllers | ⚠️ **Partial** — items 1–5 done; 6–12 outstanding (§10.2) |
-| 5. Views / frontend | ⚠️ **Foundation complete, screens partial** — items 1–5 done; 6–12 outstanding (§10.2) |
+| 3. Routes & controllers | ⚠️ **Partial** — items 1–6 done; 7–12 outstanding (§10.2) |
+| 5. Views / frontend | ⚠️ **Foundation complete, screens partial** — items 1–6 done; 7–12 outstanding (§10.2) |
 
 ### 10.1 Build progress — items 1–12
 
@@ -398,6 +568,7 @@ Each line is written as the item lands.
 | 3. Purchases | ✅ Done | 4 (`Purchase`, `PurchaseOrder`, `PurchaseRequisition`, `PurchaseReturn`) | 10 (purchase index/create/edit/show + shared `_form`/`_line`/`pdf`, order index/create/edit/show, requisition index/create/edit/show, return index/create/show — all served by the shared purchase views) |
 | 4. Sales / POS | ✅ Done | 5 (`Sell`, `SellPos`, `SalesOrder`, `SellReturn`, `Shipment`) | 11 (sell index/create/edit/show + shared `_form`/`_line`, sales-order index/create/edit/show served by those same views, **`pos/create` — the terminal**, sell-return index/create/show, shipments index) |
 | 5. Payments & finance | ✅ Done | 5 (`TransactionPayment`, `Expense`, `ExpenseCategory`, `Account`, `CashRegister`) — 1,879 lines, 42 methods | 23 (`payment` index/create/edit/show + `_form`, `expense` index/create/edit/show + `_form`, `expense_category` index/create/edit + `_form`, `account` index/create/edit/show + `_form`, `cash_register` index/create/show/close) |
+| 6. Stock | ✅ Done | 3 (`StockAdjustment`, `StockTransfer`, `OpeningStock`) — 807 lines, 20 methods | 12 (`stock_adjustment` index/create/edit/show + `_form`/`_line`, `stock_transfer` index/create/show + `_line`, `opening_stock` index/edit) — 1,947 lines |
 
 **Item 5, verified rather than assumed:** 38 routes across the five modules — full CRUD plus
 the account operations (`deposit`, `withdraw`, `transfer`, `setClosed`, transaction
@@ -408,16 +579,86 @@ green. Note the view directories are singular and underscored (`payment/`, `expe
 hyphenated (`payments.*`, `expense-categories.*`, `cash-register.*`); looking for
 `resources/views/payments/` finds nothing and invites the wrong conclusion.
 
-One known functional gap remains inside this item, deferred with approval and tracked as
-**§12.1**: cash paid *out* of the drawer (a supplier payment or expense settled in cash) writes
-no drawer row, so `cash_in_hand` reads high. The screens are complete; that enum change is a
-feature in its own right.
+The one functional gap that remained inside this item, deferred with approval and tracked as
+**§12.1**, is now closed: cash paid *out* of the drawer (a supplier payment or an expense
+settled in cash) wrote no drawer row, so `cash_in_hand` read high. **Fixed 2026-08-24** by a
+separate additive migration that widened the `transaction_type` enum with `ALTER TABLE` — see
+§12.1 and §10.2 item A.
+
+**Item 6, verified rather than assumed:** 17 routes across the three modules, 9 of them named
+GET screens, and **all 9 are walked by `ScreensRenderTest`** — none is in the `SKIP` list.
+Seventeen is fewer than three CRUD resources would produce (21 before counting the receive
+action), because two of the three documents deliberately offer less than full CRUD. The shapes
+are worth stating, since they read as gaps and are not:
+
+- **A transfer has no edit and no update.** Its only mutation after saving is
+  `stock-transfers.updateStatus` — receiving it. Editing a document whose goods are already on
+  a van would have to decide what the van is now carrying; the app declines to invent an
+  answer, so a wrong transfer is deleted and re-entered while it is still in transit.
+- **Opening stock has no create and no store.** `opening-stock.edit` *is* the create screen:
+  "this product's opening position at this shop" is one fact that either has been stated or has
+  not, so the route table is `index` / `edit` / `update` / `destroy` keyed by `{productId}`.
+  This is also why its route parameter is named `{productId}` and not `{id}` — it addresses a
+  product, not a document.
+- **Only the adjustment is ordinary CRUD**, and even it has no `update`-by-line semantics: the
+  service reverses the entire document and rewrites it (§8.4).
+
+**The walk grew from 100 screens to 109, and that is the weakest of the three guards here.**
+A render walk proves a screen returns 200 with no untranslated key — it proves nothing about
+whether stock arithmetic is right, because a screen that displays a wrong number displays it
+with an HTTP 200. So the walk was extended *and* backed by
+`tests/Feature/Inventory/StockMovementsTest.php` — 19 behavioural tests, 128 assertions, built
+around one assertion repeated in every single one of them:
+
+```php
+$reconcile = $this->stock->reconcile($variation->id, $location->id);
+$this->assertSame(0.0, $reconcile['difference']);
+```
+
+Two records have to agree — the cached `variation_location_details.qty_available` and the FIFO
+map in `transaction_sell_lines_purchase_lines` — and they are written by **separate calls**
+(`consume()`/`release()`/`reduceLotQuantity()` touch only the map; `adjustCachedQuantity()` is
+the caller's job). Every path that updates one and forgets the other is a silent divergence
+that no screen would show and no error would report, which is exactly the class of bug a render
+walk cannot see. Three of those tests are shaped to catch specific mistakes rather than to
+demonstrate the happy path: the refusal tests assert **nothing survives** the abort (zero
+document rows *and* stock still reconciling, which is what proves the rollback rather than just
+proving an exception was thrown); the in-transit delete test asserts the destination lands on
+`0.0` and not `−4.0`, which is the bug a symmetrical-looking delete invites; and the
+opening-stock restate test asserts the **same** `PurchaseLine` id survives the edit, because a
+delete-and-recreate there would orphan every sale that had consumed from that lot.
+
+**Extending the walk needed three route registrations and one service signature change.**
+`stock-transfers.show`, `stock-adjustments.show` and `stock-adjustments.edit` are bare `{id}`
+routes, so they fell through `resolveParameters()`'s `default => $this->fixtureProductId`, were
+handed a product id, and 404ed — outside the accepted `[200, 302]`. They now resolve against
+real seeded documents. Seeding those documents is what forced the signature change:
+`ScreensRenderTest::setUp()` has no authenticated user (it calls `actingAs` inside the test
+method), and `OpeningStockService::save()` was reading `auth()->id()` directly, so the insert
+failed on a non-nullable `created_by`. It now takes a trailing `?int $createdBy = null` that
+falls back to `auth()->id()` — chosen over adding `actingAs()` to `setUp()` because the other
+two stock services already accept `created_by` in their data array, so this made the odd one
+out consistent instead of adding hidden auth state to every fixture.
+
+The stock fixtures are also the first in the suite to need a **second business location** — a
+transfer is the only document in the app that cannot be written with one shop. It is created
+with its own `location.{id}` permission even though an admin bypasses the location gate, so a
+restricted role sees it too; without that the fixture would be silently owner-only, and
+`BusinessLocation::forDropdown()` would hide it from everybody else. It has a second effect
+worth having: every location dropdown on every screen in the app now has two options, which is
+the only way the "pick two different ones" markup gets exercised at all. The transfer is seeded
+**in transit** rather than completed, because in-transit is the state that carries markup
+nothing else covers — the receive button, the in-transit banner, the pending-receipt wording
+and the warning-toned stat.
 
 
 **UI:** every Blade file was rebuilt against the v2 design system in three passes — shared
 primitives, then the existing screens, then the outstanding sales screens authored
 directly to the new standard. 69 files: 53 screens and partials, 10 components, the layout
-and its 4 partials, and the published paginator. Decisions in §8.1–8.3.
+and its 4 partials, and the published paginator. Decisions in §8.1–8.4. Item 6's 12 views were
+then authored straight against v2.2 (§11.7) with no retrofit pass — the first item where that
+was true, which is the whole point of having put the depth and motion work into the primitives
+before building them.
 
 **Regression guard added:** `tests/Feature/ScreensRenderTest.php` walks the route table and
 renders every GET screen as an admin. New screens are covered automatically — no test to
@@ -426,12 +667,14 @@ write per item. It already caught 4 real parameter-resolution gaps.
 ### 10.2 What remains
 
 Still to build, in dependency order — all of it sits on services that already exist and
-are pinned by passing tests, so this is wiring, not design. **Item 5 is done and has moved to
-§10.1**; numbering is kept as-is so references elsewhere in this file stay valid.
+are pinned by passing tests, so this is wiring, not design. **Items 5 and 6 are done and have
+moved to §10.1**; the numbering below is kept as-is so references elsewhere in this file stay
+valid.
 
-6. **Stock** — `StockAdjustmentController`, `StockTransferController`,
-   `OpeningStockController`.
 7. **Reports** — `ReportController` (≈40 reports; excludes Indian GST per decision #2).
+   ⬅️ **NEXT ON RETURN.** Pair it with §12.5 (JSON-endpoint test coverage) and settle §12.3
+   (admin restrictability) while here — see the marker at the top of this file for why both
+   belong with this item rather than after it.
 8. **Settings** — `BusinessController`, `BusinessLocationController`,
    `InvoiceSchemeController`, `InvoiceLayoutController`, `BarcodeController`,
    `PrinterController`, `NotificationTemplateController`, `RoleController`,
@@ -443,6 +686,40 @@ are pinned by passing tests, so this is wiring, not design. **Item 5 is done and
     AssetManagement, Cms, InventoryManagement, ProductCatalogue (models + schema done).
 12. **Scheduled commands** — recurring invoices/expenses, reward-point expiry, payment
     reminders, low-stock alerts, backup.
+
+**Queued fixes, in the order you set for them:**
+
+- **A — the drawer payout fix (§12.1). ✅ DONE 2026-08-24.** Approved by you on 2026-08-23 and
+  deferred deliberately so it would not interrupt item 6; taken as its own task once item 6
+  landed. A fifth `payout` value was added to `cash_register_transactions.transaction_type` by
+  a **separate additive migration using `ALTER TABLE`**, per your instruction — no
+  `migrate:fresh`, no data loss, and the development database and its admin account untouched.
+  `isDrawerMovement()` now admits the purchase and expense document types, `summary()` reports
+  `payouts` net of reversals, and the close rail and session screen state the figure instead of
+  netting it silently. Covered by `CashDrawerTest` (11 tests). Full write-up in §12.1,
+  including the one edge (`opening_balance`) deliberately left out and why.
+- **B — the frontend design overhaul. ✅ DONE 2026-08-24 — see §11.7.** Your directive of
+  2026-08-24: real SaaS-grade depth (layered shadows, subtle gradients, consistent radii),
+  micro-interactions on hover/focus/click and on element entry, genuine hierarchy through
+  size/weight/contrast and whitespace, and the professional details — consistent icons,
+  designed empty states, skeleton loading, distinctive cards. Applied to the central design
+  system so every screen inherits it; CSS-only for performance, every effect RTL-safe. The
+  adopted principles are now written up in **§11.7** as the reference for later screens.
+  `image_url` display landed in the same pass: `Product::hasImage()`, the
+  `<x-product-thumb>` component, thumbnails on the product table and detail panel, and
+  pictures in the POS grid behind the grid-level `.product-grid-media` decision. What was
+  deliberately left out is recorded at the end of §11.7. §12.4 was a separate concern from this
+  one — the *section-structure* retrofit rather than the visual overhaul — and has since landed
+  as item C below.
+- **C — the §12.4 section-structure retrofit of the pre-v2.1 screens. ✅ DONE 2026-08-24 — see
+  §12.4.** Not a new decision: §12.4 has always been scheduled *after item 6 and before Reports*,
+  so that no screen is edited twice, and item 6 landing is what opened that window. Sequenced
+  after A because A was the smaller and more consequential of the two — a drawer that does not
+  reconcile is a wrong number, and a screen without eyebrow headings is a less-good screen.
+  Six view files covering ten screens were retrofitted; the rest of the 51 needed nothing, because
+  §12.4 is conditional on a screen *having* several distinct groups and index screens are already
+  grouped by their `.filter-bar`. The audit that established this, the two deliberate non-edits,
+  the `.section-head` gutter trap and the new empty-heading guard are all recorded in §12.4.
 
 ---
 
@@ -610,6 +887,23 @@ New vocabulary, all in `@layer components`:
 | `.surface-quiet` | **groups content by tone alone** — `rounded-2xl bg-slate-50 p-5`, no ring, no shadow, no title bar. This is the "visual grouping without divider lines" tool; reach for it before a second nested card, which is what makes a screen look like a template. |
 | `.card-subtitle` | secondary line in a card header |
 
+**`.section-head` has no top margin — the block above it must supply the gutter.** It is
+`mb-3.5 flex flex-wrap items-end justify-between gap-3`, nothing more, so a head placed after a
+plain `<div class="grid …">` sits flush against it. The preceding block carries `.section`
+(`mb-8`) or `.section-tight` (`mb-5`); across an `@include` boundary the *partial's* last block
+has to carry it, since only the partial knows it is last. Two related notes: `.filter-bar` and
+`.tab-bar` each already carry `mb-4` and read as a grouped strip in their own right, so an index
+screen with a filter bar needs no `.section-tight` on top of it; and `.form-actions` is sticky
+with its own `mt-6`, so the last section before a commit strip should carry no bottom gutter.
+
+**Two headings for one block is the thing the eyebrow replaces.** When a block gets a
+`.section-head`, the panel inside it drops its own `title`/`icon` — a `.section-title` repeating
+what the head above already says is the forbidden fifth type level. Controls that act on the whole
+section (a search box, an Add button, a record count) belong in `.section-actions`, not in the
+card header. Beware the corollary: `<x-panel>` still renders a header if it has an actions slot,
+so a titleless panel with actions emits an empty `<h3>` — guarded against in `ScreensRenderTest`,
+see §12.4.
+
 Two consequences worth noting. `.table thead th` is now marked off by its `slate-100/70`
 tint with **no** rule under it — one line doing a job already done. And `.stat-icon` is
 tinted `brand-50`/`brand-700` rather than grey: four identical grey chips in a row is the
@@ -652,38 +946,356 @@ that still carried a hard-coded colour would show up in that list.
 
 ---
 
+## 11.7 Depth, motion and detail — the design principles (v2.2)
+
+**This section is the reference for every screen written from here on.** Anything below that
+reads as a rule is a rule: a new screen that needs an effect not listed here needs a token
+added to `resources/css/app.css` first, not an inline style.
+
+The whole of this pass lives in **one file** — `resources/css/app.css`, which went from 1,291
+lines to 1,790 as the pass first landed and stands at **1,984** once the two Tailwind 4 traps
+and the `.product-tile-out` regression documented below had been fixed; 105.4 KB →
+**120.9 KB** compiled (gzip 14.9 KB). Fourteen views changed, and **eight
+of those changed by exactly one class** (`.rise-group`, on the nine stat rows). Only three
+needed real work: `layouts/app.blade.php` for the app chrome, `pos/create.blade.php` for the
+picture grid and skeleton, and the new `components/product-thumb.blade.php`. That ratio is the
+point: the effects reached ~53 screens because they were written into the primitives those
+screens already use, not applied screen by screen — and item 6's 12 screens then inherited all
+of it without a line of CSS being added for them, which is the actual test of whether the pass
+worked.
+
+### The four movements, and nothing else
+
+Every animation in the application is one of these. There is no fifth.
+
+| Keyframe | What it is for | Where |
+|---|---|---|
+| `rise` | Content arriving — 0.5 rem up, opacity 0→1 | `.rise` on every page, `.rise-group` for a staggered row |
+| `fade-in` | A layer appearing behind something | `.modal-backdrop`, `.empty-state` |
+| `pop-in` | A layer appearing *in front* — 0.97 scale + 0.375 rem | `.modal-panel`, `.popover` |
+| `shimmer` | Work in progress | `.skeleton::after` (and `shimmer-rtl`, the one mirrored keyframe) |
+
+**Both `rise` and `pop-in` end on `transform: none`, never on `translateY(0)` or `scale(1)`.**
+This is not style. `animation-fill-mode: both` makes the final keyframe permanent, and *any*
+transform value other than `none` creates a containing block — so a `scale(1)` end state on
+`.modal-panel` silently reparents every `position: fixed` descendant inside it. The bug does
+not appear until someone puts a fixed-position element in a modal, and then it is invisible in
+the CSS and obvious only in the DOM.
+
+### Three durations, and where the ceiling is
+
+`--duration-fast: 110ms` · `--duration-base: 180ms` · `--duration-slow: 340ms`, with
+`--ease-out-soft` for state changes and `--ease-out-quart` for arrivals.
+
+**No state change the user is waiting on may exceed `--duration-base`.** The slow step is only
+for motion that either happens once per page load, or trails an action already acknowledged
+some other way — the ripple decays over 340 ms, but the button had already changed colour on
+press. If a hover or a focus ring takes 340 ms the interface feels *soft*, which on a POS
+being used eight hours a day reads as slow.
+
+`.rise-group` composes with the page-level `.rise` rather than replacing it, and the stagger is
+capped at 90 ms with the delays written out longhand. Six is the honest limit: a seventh tile
+waiting 300 ms to appear stops reading as a flourish and starts reading as a slow page.
+
+### Depth is a rank, not a decoration
+
+Five elevations, and an element's shadow states its rank in the hierarchy — it is not chosen
+for looks. `--shadow-card` (resting surface) → `--shadow-raised` (hover) → `--shadow-panel`
+(pressed / floating panel) → `--shadow-lift` (a card lifted off the page) → `--shadow-sunken`
+(inset — a well, not a surface). Every one is layered: a tight contact shadow plus a wide soft
+one, because a single blur reads as a drop shadow from 2011.
+
+`--inset-shadow-highlight` is the top-edge light line that makes a filled control look like a
+physical object. It lives in `@theme`, not in `:root`, **specifically so it also registers an
+`inset-shadow-highlight` utility** — see the ring trap below.
+
+### Gradients: vertical, 8 %, and alpha where they can be
+
+All five gradients run `to bottom`. Not one runs `to right`, and this is an RTL decision rather
+than a taste one: a horizontal gradient lights the same button from the left in English and
+from the right in Arabic, so the two languages get two different-looking buttons from one rule.
+
+The lightness range is about 8 %. Above roughly 12 % a "subtle" gradient becomes a visible
+band, and on a screen of 25 POS tiles it becomes a pattern.
+
+`--sheen` and `--sheen-soft` are **alpha** washes, not colour gradients, for a mechanical
+reason: **CSS cannot interpolate gradients.** A `background-image` swap on hover jumps
+discretely at the transition midpoint. One fixed alpha sheen over an animatable
+`background-color` gives a real transition; two gradients give a flicker.
+
+### Honest affordances
+
+`.card` gets the surface gradient and **deliberately no hover state**. A container that lifts
+under the cursor claims to be a control. Cards that really are clickable opt in with
+`.card-interactive`; `.tile` and `.btn` are controls by definition and carry their own.
+
+Hover states are safe on touchscreens for free: Tailwind 4 compiles `hover:` inside
+`@media (hover: hover)`. (The `@media (hover: none)` block in this stylesheet only kills the
+tap highlight — it is not what suppresses the lift, and an earlier comment here claiming
+otherwise was wrong.)
+
+### Click feedback with no JavaScript and no per-button markup
+
+`.btn::after` is a `currentColor` radial gradient, spread and transparent at rest, and on
+`:active` it snaps to `scale(0)` at 0.26 opacity with `transition: 0s` before easing back out
+over 340 ms. Because it is `currentColor` it inherits each button rank's own colour
+automatically, so `.btn-primary`, `.btn-danger` and `.btn-ghost` all get a correctly-tinted
+ripple from one rule and no button anywhere needs an extra element. It fires on *release*, not
+press, which is what a physical button does. `.btn` gained `overflow-hidden` to clip it —
+checked against the notification badge, which hangs outside its button, but `.btn-icon` does
+not `@apply btn` so the badge is unaffected.
+
+### Two Tailwind 4 traps that cost real bugs in this pass
+
+**1. A raw `box-shadow` beside `@apply ring-1` silently erases the ring.** Tailwind emits
+plain declarations as a *separate, later rule with the same specificity*, and `ring-*` is
+implemented as a `box-shadow` layer (`--tw-ring-shadow`). So this looks right and is not:
+
+```css
+.empty-state-icon {
+    @apply ring-1 ring-brand-600/[0.12];
+    box-shadow: var(--inset-shadow-highlight), var(--shadow-card);  /* ← ring gone */
+}
+```
+
+The rule: **never write a raw `box-shadow` on a ringed element.** Use the utilities
+(`shadow-card`, `inset-shadow-highlight`) so Tailwind composes them into the *same*
+`box-shadow` as the ring. Both `.empty-state-icon` and `.stat-icon` shipped with this bug and
+were only caught by reading the compiled CSS back — source review had passed them twice.
+Buttons carry no ring, which is why raw `box-shadow` is still correct there.
+
+**2. `--tw-ring-color` cannot be transitioned.** Tailwind registers it as
+`@property --tw-ring-color { syntax: "*" }` — untyped, therefore un-interpolatable, so a
+transition on it jumps at the midpoint instead of easing. It is out of every
+`transition-property` list in this file; a 1 px ring simply snapping is the correct trade.
+
+Also worth knowing: **`@apply` copies declarations, never nested rules.** An `& img {}` inside
+`@utility thumb` reaches `.thumb` and none of `.thumb-sm` / `.thumb-md` / `.thumb-lg` /
+`.thumb-tile`, which is why their image sizing is one explicit selector list. And Tailwind 4
+refuses `@apply` of a class declared in the same `@layer components` block, which is why a
+couple of rules here are written out twice rather than composed.
+
+### Skeletons, empty states, and the difference between them
+
+A **skeleton** is the right answer to a region with nothing in it. It is the wrong answer to a
+region that already holds valid, usable data — swapping working results for grey boxes takes
+something away from the user in order to tell them something is coming. Hence `.is-busy`,
+which dims to 55 % and **keeps pointer events**: in the POS the previous results stay tappable
+while the next search is in flight, and the cashier is looking at a real product.
+
+`.skeleton-tile` copies every value from `.product-tile` — same `min-h-24`, same
+`justify-between`, same padding and ring. That is the entire purpose of it: if the two ever
+drift, the grid reflows when the products land, which is the exact jump a skeleton exists to
+prevent.
+
+An **empty state** distinguishes *nothing exists yet* from *your filter matched nothing*.
+"Add your first product" is useless advice to someone whose search simply missed, so
+`product/index.blade.php` checks every filter, not just the search box, before choosing which
+message and which action to show.
+
+### Product pictures: `<x-product-thumb>` and the grid-level decision
+
+Four sizes and no others — `.thumb-sm` (table cell), `.thumb-md`, `.thumb-lg` (detail panel),
+`.thumb-tile` (POS / catalogue) — all `object-cover` in a fixed box, so a portrait photo, a
+wide banner and a missing file occupy identical space and no row or tile can be knocked out of
+alignment by whatever a supplier uploaded.
+
+`Product::hasImage()` exists because `image_url` **never returns null** — it falls back to a
+placeholder SVG so an `<img>` is never broken, which means it cannot answer "is there a
+picture". The distinction matters: a screen showing the same placeholder bitmap in every cell
+of a half-populated catalogue looks *defective*, where the same screen showing a muted icon
+looks *incomplete*, which is what it is. `ProductController::getProducts()` gates the JSON
+field on it and sends `null`, not the placeholder URL, so the POS can branch.
+
+**The POS grid decides whether it is a picture grid; the tiles follow.**
+`.product-grid-media` is added when at least one product in the *current result set* has a
+photo, and without it no tile draws an image box at all. Two reasons, both concrete:
+
+* A catalogue with no photos would otherwise show a screen of identical placeholder icons —
+  which is not information, and costs the vertical room for roughly four more products the
+  cashier can see at a glance.
+* Decided per *tile* the grid comes out ragged: CSS grid stretches every tile in a row to the
+  tallest, so a text-only tile beside a picture tile becomes a tall box with its name and
+  price pushed to opposite ends.
+
+It is re-decided per response, not once per page, because a mostly-photographed catalogue can
+easily have a search that returns the three products nobody photographed. `SellPosController`
+seeds the flag from `EXISTS(image)` so the *first* skeleton already has the shape of the tiles
+about to replace it — a hint, not the truth, since it cannot check the file is on disk; the
+first response corrects it either way.
+
+### RTL is structural, not a patch
+
+Logical properties throughout — `ms`/`me`, `ps`/`pe`, `start`/`end`, `inset-inline-start`. The
+nav active bar is `inset-inline-start: 0`, so it moves to the correct edge with no override.
+All gradients are vertical (above). **Exactly two things could not be done logically**, and
+both carry an explicit `[dir='rtl']` rule:
+
+* **Chrome shadows** (`.app-sidebar`, `.app-brand`, `.app-header`, `.app-footer`).
+  `box-shadow` offsets are signed numbers with no logical equivalent, so the sidebar's shadow
+  is mirrored by hand.
+* **The skeleton shimmer**, which sweeps in the reading direction — `shimmer-rtl` is the same
+  keyframe with the translate reversed.
+
+If a third exception ever appears, it belongs in this list.
+
+### Reduced motion, honestly
+
+```css
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-delay: 0ms !important;          /* ← without this, staggered */
+        animation-iteration-count: 1 !important;  /*    children stay invisible */
+        transition-duration: 0.01ms !important;
+    }
+}
+```
+
+Zeroing the duration alone is the version everyone ships and it is not enough. The delay
+override is load-bearing: `.rise-group` children would still wait out their `animation-delay`
+with nothing painted, so a user who asked for less motion would get a *blank row* instead of
+no animation. And `infinite` at 0.01 ms is a repaint loop, which is why the shimmer is pinned
+to one iteration.
+
+### Performance
+
+Only `opacity`, `transform`/`translate`, `box-shadow` and `background-color` are animated —
+compositor-friendly properties, no layout thrash. No JavaScript animation library, and the
+ripple, the skeleton sweep, the page rise and the stagger are all pure CSS. Total cost for the
+whole pass: **+14 KB uncompressed, +2.3 KB gzipped, zero KB of JavaScript.**
+
+One JavaScript consequence worth recording, because it is not obvious: the page-level `.rise`
+broke the POS shell measurement. `fitShell()` used `getBoundingClientRect().top`, which
+*includes* the 8 px rise transform, so for the animation's first 340 ms it read the shell 8 px
+low and sized it 8 px short. It now walks `offsetTop` up the `offsetParent` chain — pure
+layout, transform-immune. `.rise` also sits on the inner wrapper inside `<main>`, never on
+`<main>` itself, so the animation's end state cannot turn the scroll container into a
+containing block.
+
+### Deliberately not done
+
+`sell/_line.blade.php` and `purchase/_line.blade.php` did **not** get thumbnails. They are
+line-item editors, not product cards: every row already carries qty and price inputs, and the
+user picked the product a second earlier. The picture would cost first-column width on a dense
+editing table to identify something not in question. Recorded as a decision, not an omission —
+if it turns out to be wanted on the *edit* screens (where 20 saved lines really are being
+audited), the data is already there via `$line->variations->product`.
+
+### 11.7.1 Verified
+
+```bash
+npm run build    # 121.26 KB CSS (gzip 14.92 KB), builds clean
+php artisan test # 71 tests, 336 assertions — all passing
+```
+
+**The compiled CSS was read back and asserted on, not trusted from source.** Source review
+passed twice on rules that were broken, so the checks that matter were run against
+`public/build/assets/app-*.css`:
+
+* `.empty-state-icon` and `.stat-icon` both still carry `--tw-ring-shadow` inside their final
+  composed `box-shadow` — the ring-erasure bug is gone.
+* `.app-brand-mark` keeps its raw `box-shadow`, and the dump confirms it has **no**
+  `--tw-ring-shadow` to erase, so that one is correct as written.
+* No `transition-property` anywhere in the bundle contains `ring`.
+* `@keyframes rise` ends on `transform: none`, not `translateY(0)`.
+* `.product-tile-out`'s rose fill and ring are emitted *after* `.product-tile`'s gradient and
+  hover rules, so the override actually wins — verified by byte offset, since these are
+  equal-specificity rules decided purely by source order.
+* The reduced-motion block carries all four `!important` declarations.
+
+`pos.create` is inside `ScreensRenderTest`'s walk and not in its `SKIP` list, so the suite
+passing is also the proof that `$hasProductImages` reaches the view and the new markup renders.
+
+**Corrected 2026-08-24 — that last sentence claimed more than the walk could deliver.** At the
+time it was written the walk asserted only a status code and the absence of raw `lang_v1.*`
+keys, neither of which can see whether markup is *structured* correctly. It rendered
+`pos.create` green while the cart's wrapping `<div>` was missing and the column was scattered
+across the terminal's grid cells. The walk now also asserts balanced `<div>` markup on every
+screen, and a second test asserts the cart column's containment and order through the DOM, so
+the sentence is true as of §9.2 — but it was not true when first written, and the distinction
+between "the screen returned 200" and "the screen is correct" is the whole lesson.
+
+**One regression this pass introduced and fixed.** `.product-tile-out` (the out-of-stock POS
+tile) was `@apply border-rose-200 bg-rose-50/60` — written when `.tile` had a border. It now
+has a *ring*, so the `border-color` had no width to land on, and worse, `.tile`'s new **opaque**
+`--gradient-surface` painted straight over the rose `background-color`, making the out-of-stock
+flag invisible on the busiest screen in the shop. Fixed to `bg-rose-50 ring-rose-300` with
+`--sheen-soft` (alpha) as the wash. The whole stylesheet and every view were then swept for the
+same shape — a `background-color` tint over an opaque `background-image` — and this was the only
+instance: `.badge-*`, `.alert-*` and `.btn-icon-*` carry no gradient, and `.btn-danger`'s sheen
+is alpha.
+
+---
+
 ## 12. أمور يجب معالجتها قبل الإطلاق — Must fix before launch
 
 Deferred deliberately, each with your approval or under decision #8, and each recorded here
 so that nothing silently ships. **This section is a release gate, not a wish list.** Order is
 by consequence, not by effort.
 
-### 12.1 🔴 Cash paid out of the drawer is not counted in the shift
+### 12.1 ✅ RESOLVED — cash paid out of the drawer is now counted in the shift
 
-**Approved for deferral (your instruction), on condition it is tracked here.**
+**Fixed 2026-08-24.** Deferred once with your approval so it would not interrupt item 6, then
+taken as its own task rather than folded into Reports.
 
-`CashRegisterService::recordableTypes()` returns sell-side documents only, so a payment to a
-supplier or an expense settled in cash out of the till writes **no** drawer row. The money
-physically left the drawer; the register does not know it.
-
-*Effect on figures:* `summary()['cash_in_hand']` reads **higher** than the cash actually in
-the drawer, by the total of such payments. At close, the counted denominations come in short
-and the variance is attributed to the cashier. The mis-attribution is the real damage — the
+`CashRegisterService::recordableTypes()` returned sell-side documents only, so a payment to a
+supplier or an expense settled in cash out of the till wrote **no** drawer row. The money
+physically left the drawer; the register did not know it. `summary()['cash_in_hand']` therefore
+read **higher** than the cash actually present, the counted denominations came in short, and
+the variance was attributed to the cashier. That mis-attribution was the real damage — the
 arithmetic is recoverable, a cashier wrongly recorded as short is not.
 
-*Why not done now:* `cash_register_transactions.transaction_type` is a four-value enum
-(`initial | sell | transfer | refund`) with no term for money paid out. Naming that movement
-touches the enum, `summary()`, the session screen and the close rail — a feature in its own
-right, not a side-effect of wiring payments to the drawer.
+**The enum gained a fifth value, by `ALTER TABLE` and not by rebuild.**
+`2026_08_24_000100_add_payout_to_cash_register_transaction_type.php` widens
+`cash_register_transactions.transaction_type` from four values to five
+(`initial | sell | transfer | refund | payout`) with a raw `ALTER TABLE ... MODIFY`, and
+narrows it again on `down()`. This was your explicit instruction and it is the right one: the
+enum is declared in the original create-table migration, so the alternative — editing that
+file and running `migrate:fresh` — would have rebuilt the development database and destroyed
+both your data and the admin account. A separate additive migration costs one file and loses
+nothing. Widening an enum needs no data backfill, because no existing row can hold the new
+value.
 
-*Why not half-done:* recording it as `transfer` would be worse than recording nothing —
-`summary()` deliberately excludes transfers from `cash_in_hand`, so the figure would stay
-wrong **and** the row would be filed under the wrong meaning.
+**Naming the movement, and keeping direction separate from it.** `transaction_type` says
+*what happened*; the `type` column says *which way the money went*. Keeping those two
+independent is what lets one value serve both directions:
+`drawerType()` files anything on the purchase side of the business as `payout`, and
+`isOutgoing()` decides the direction by asking `TransactionTypes::moneyIn()` — the same
+predicate the bank mirror asks, so no payment can be a receipt in one ledger and a payment in
+the other. A supplier refunding cash is consequently a `payout` row with `type = credit`: it
+lands against the payouts it reverses instead of inflating the shift's takings.
 
-*Fix, when taken:* add a fifth enum value (`payout`), teach `isDrawerMovement()` the
-purchase/expense document types, subtract payouts in `summary()`, and give the close screen a
-"paid out" line so the expected total is arrived at honestly rather than netted silently.
-Until then, the close screen's note field is where the cashier explains the difference.
+The sell side still splits by direction instead (`sell` in, `refund` out). That is an
+inconsistency inherited from the original four values and left alone on purpose — renaming
+`refund` would rewrite rows in live registers to fix nothing a reader gets wrong.
+
+**`summary()` states payouts; it does not net them silently.** `payouts` is accumulated net of
+reversals and reported as a positive quantity, because "paid out" reads as an amount rather
+than as a direction. `cash_in_hand` already has the money removed, so the close rail shows the
+"paid out" line explicitly (`cash_register/close.blade.php`): a cashier who watches the
+expected figure drop with no explanation has no way to tell a payout from a shortage. The
+session screen (`cash_register/show.blade.php`) earns a fifth stat card only on a shift that
+actually had one — a permanent zero would spend a fifth of the row saying nothing happened.
+
+**Covered by `tests/Feature/Finance/CashDrawerTest.php` (11 tests).** Six exercise the new
+term — a supplier paid in cash, an expense settled at the till, a purchase return netting
+payouts down rather than counting as takings, a contact-due settlement writing exactly one
+parent row and no child allocation rows, a corrected payment updated in place rather than
+duplicated, and a card payout that is stated without touching `cash_in_hand`. Five guard the
+four movements that already worked: the exact row sequence `['initial', 'sell', 'refund']`,
+change handed back reversing direction, advance balances staying out of the drawer, a payment
+taken with no register open writing nothing *and* not being retroactively acquired by the next
+shift, and deletion removing its row.
+
+**One edge deliberately left open, stated rather than hidden.**
+`TransactionPaymentController::documentFromRequest()` accepts any transaction id, so an
+`opening_balance` document can in principle take a direct payment. `OPENING_BALANCE` is
+excluded from `recordableTypes()` because its direction is genuinely ambiguous — a customer's
+opening balance and a supplier's are opposite movements under the same document type — and
+guessing would put a wrong sign in a cashier's drawer. Such a payment writes no drawer row,
+which is the same behaviour as any back-office payment and is safe; it is recorded here so the
+silence is a known decision and not an oversight.
 
 ### 12.2 ✅ RESOLVED — credentials were in plaintext in tracked files
 
@@ -732,13 +1344,103 @@ admin. It is recorded here because it means **permission changes cannot restrict
 all** — there is no way to grant an administrator less than everything. Fine for a single
 operator; revisit before multi-admin tenants.
 
-### 12.4 🟡 Section-structure retrofit of the pre-v2.1 screens
+### 12.4 ✅ Section-structure retrofit of the pre-v2.1 screens
 
-The 51 screens built before design system v2.1 use the v2 section rhythm. They are correct
-and consistent — the tokens reached them automatically — but they do not yet use the §11.4
-grouping (eyebrow headings, `.surface-quiet`, the wider section gutter) where a screen has
-several distinct groups. Scheduled after item 6 and before Reports, so no screen is edited
-twice.
+**Resolved.** Six view files, covering ten screens, now carry the §11.4 grouping:
+`sell/show`, `sell/_form`, `purchase/_form`, `product/_form`, `product/show`, `product/edit`.
+Eleven keys were added to each of `lang/en/lang_v1.php` and `lang/ar/lang_v1.php`.
+
+The pattern applied, in each case:
+
+- **An eyebrow head names a second subject, not a third card.** Where a block answered a
+  different question from the one above it — shipping after an invoice, where a product may be
+  sold as against what it is — it got a `.section-head` and the panel *lost* its own title.
+  Two headings for one block is exactly what the eyebrow exists to replace.
+- **Controls and counts moved up into `.section-actions`.** A card header carrying both a title
+  and the search box that fills the card was doing two jobs at one type level.
+- **`mt-6` became `.section`**, so the gutter comes from the vocabulary rather than a one-off.
+
+**The retrofit was conditional, and most of the backlog correctly needed nothing.** §12.4's own
+text scopes it to *"where a screen has several distinct groups"*, and an audit found that most of
+the 51 already satisfy it or have nothing to group:
+
+- **Index screens are already named by their filter strip.** `.filter-bar` is
+  `mb-4 rounded-xl bg-slate-50 p-4 ring-1 ring-slate-900/5` — a tone-grouped region in its own
+  right — and `.tab-bar` also carries `mb-4`. Adding `.section-tight` would double the gutter.
+- **One content group needs no head.** `purchase/show` (items plus its summary column) and
+  `contact/_form` (one group in a grid) were left alone deliberately; a head there is chrome.
+- **`contact/show` and `stock_transfer/show` match the canonical shape.** `cash_register/show`
+  is the §11.4 reference and it deliberately leaves its stats row and its panel grid unheaded,
+  heading only the ledger table. The two screens shaped like it minus that table need nothing.
+
+#### Correcting this section's own wording
+
+The claim that item 6's screens "already use the grouping" was true but misleadingly phrased,
+and it cost a survey. **They group through `<x-panel quiet>`, not through hand-written eyebrows:**
+`components/panel.blade.php:58-60` renders `.surface-quiet` in place of `.card` and swaps
+`card-header` for `section-head` when `quiet` is passed. A screen therefore satisfies §11.4 with
+neither class ever appearing in its source. Grepping the twelve item-6 screens for
+`section-eyebrow|section-head|surface-quiet` returns zero hits, which reads as a total absence of
+the vocabulary and is a **false negative** — the classes are emitted a layer down.
+
+The general lesson, alongside §9.2's *"when a check disagrees with a file you have read, suspect
+the check"*: **in a system with a component layer, a class-name grep measures authoring style,
+not compliance.** Read the component before believing the survey.
+
+#### The trap the next retrofit will hit
+
+**`.section-head` is `mb-3.5 flex flex-wrap items-end justify-between gap-3` — it has no top
+margin at all.** The gutter above a section head comes entirely from the preceding block
+carrying `.section` (`mb-8`) or `.section-tight` (`mb-5`). Adding a head without checking what
+sits above it collides the two. This bit twice during the retrofit:
+
+- `product/show`'s first grid needed `.section` added before its new variations head.
+- `product/_form`'s availability panel carries `.section` **even though it is the partial's last
+  block**, because `product/edit` follows the `@include` with its variation-price head. The
+  gutter has to cross the include boundary, and only the partial can supply it.
+
+Note also that `.form-actions` is `sticky bottom-0 … -mx-4 mt-6 … border-t bg-white/95`, so the
+last section before a commit strip should carry *no* bottom gutter — the strip sits close to the
+thing it commits.
+
+#### New guard: headings with no text
+
+`<x-panel>` renders its header when it has a title, an icon **or** an actions slot
+(`panel.blade.php:59`), so a panel given only actions emits
+`<h3 class="card-title"><span class="truncate"></span></h3>` — a blank line on screen and a
+heading a screen reader announces with nothing to say. This retrofit made that easy to hit:
+moving a record count out of a card header and into a `.section-head` leaves the panel titleless
+but still slotted.
+
+`ScreensRenderTest` now fails on any `<h1>`/`<h2>`/`<h3>` whose text content is empty, checked
+across every screen in the route walk. It reads text content rather than the tag, because the
+defect is an empty accessible *name*: an icon-only header is just as silent as an empty one.
+Verified by injecting an empty `<h2>` into `product/show` and confirming the walk reported
+`products.show → empty <h2>: a heading with no text`, then reverting.
+
+#### Coverage gap, stated honestly
+
+`product/edit`'s new head sits inside `@if ($product->type === 'variable')`, so the route walk
+only reaches it when the fixture product happens to be variable. The head itself is verified by
+structural check rather than by render.
+
+#### Verified
+
+```bash
+php artisan view:clear && php artisan test   # 71 tests, 336 assertions — all passing
+# lang parity: ar=906 en=906, missing_in_ar=0 missing_in_en=0, all 11 new keys present in both
+```
+
+**The assertion count is unchanged at 336 on purpose, and that is not evidence the guard is
+inert.** The empty-heading check appends to the walk's existing `$failures` array and is reported
+by the one `assertSame([], $failures)` already there, so it adds coverage without adding an
+assertion. Because a guard that never matches anything would also be green, it was verified by
+mutation rather than by the suite passing — see above.
+
+All six touched files were additionally checked structurally: each compiles, each balances
+`<div>` at +0, each has the expected head/eyebrow/section counts, and none contains the §9.2
+run-on-comment signature `/-{2,}[ \t]+\}\}/`.
+
 
 ### 12.5 🟡 `Product::scopeForLocation()` has no test coverage
 

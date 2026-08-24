@@ -172,7 +172,7 @@ class CashRegisterService
             'amount' => $amount,
             'pay_method' => $payment->method ?: 'cash',
             'type' => $outgoing ? 'debit' : 'credit',
-            'transaction_type' => $outgoing ? 'refund' : 'sell',
+            'transaction_type' => $this->drawerType($payment, $outgoing),
             'transaction_id' => $payment->transaction_id,
             'transaction_payment_id' => $payment->id,
         ]);
@@ -206,7 +206,7 @@ class CashRegisterService
             $entry->amount = $this->format->numUf($payment->amount);
             $entry->pay_method = $payment->method ?: 'cash';
             $entry->type = $outgoing ? 'debit' : 'credit';
-            $entry->transaction_type = $outgoing ? 'refund' : 'sell';
+            $entry->transaction_type = $this->drawerType($payment, $outgoing);
             $entry->save();
         }
     }
@@ -235,8 +235,8 @@ class CashRegisterService
      *
      * @return array{
      *     opening: float, by_method: array<string, float>, refunds: float,
-     *     cash_in_hand: float, total_collected: float, sales_count: int,
-     *     transfers: float
+     *     payouts: float, cash_in_hand: float, total_collected: float,
+     *     sales_count: int, transfers: float
      * }
      */
     public function summary(CashRegister $register): array
@@ -248,6 +248,7 @@ class CashRegisterService
 
         $opening = 0.0;
         $refunds = 0.0;
+        $payouts = 0.0;
         $transfers = 0.0;
         $byMethod = [];
 
@@ -271,6 +272,16 @@ class CashRegisterService
                 $refunds += $total;
             }
 
+            /*
+             * Net, not gross: a supplier handing cash back files as a `payout`
+             * credit (see drawerType()), and it belongs against the payouts it
+             * reverses rather than under takings. Reported as a positive number
+             * because "paid out" reads as a quantity, not as a direction.
+             */
+            if ($row->transaction_type === 'payout') {
+                $payouts -= $signed;
+            }
+
             $byMethod[$row->pay_method] = round(($byMethod[$row->pay_method] ?? 0) + $signed, 4);
         }
 
@@ -283,6 +294,7 @@ class CashRegisterService
             'opening' => round($opening, 4),
             'by_method' => array_map(fn ($v) => round($v, 4), $byMethod),
             'refunds' => round($refunds, 4),
+            'payouts' => round($payouts, 4),
             // Only cash is physically in the drawer; a card slip is not.
             'cash_in_hand' => round($opening + ($byMethod['cash'] ?? 0), 4),
             'total_collected' => round(array_sum($byMethod), 4),
@@ -298,19 +310,19 @@ class CashRegisterService
     /**
      * Whether this payment is cash (or card, or a cheque) crossing a drawer.
      *
-     * Three exclusions, each for its own reason:
+     * Two exclusions, each for its own reason:
      *
      * - `advance` moves the contact's balance, not the till.
      * - A row with a `parent_id` is one *allocation* of a settlement, not a
      *   movement. The money moved once, on the parent; counting the children
      *   would post the same notes twice and would silently lose any remainder
      *   that went to advance balance instead of to an invoice.
-     * - Only sell-side documents. `transaction_type` is a four-value enum
-     *   (`initial|sell|transfer|refund`) with no term for money paid out to a
-     *   supplier or for an expense, and inventing one is a feature rather than
-     *   part of this wiring — see {@see recordableTypes()}. A parentless payment
-     *   with no document is a settlement, and its own `payment_type` says which
-     *   side it belongs to.
+     *
+     * Everything else that names a payable document belongs in the drawer, in
+     * either direction — a supplier paid in cash and an expense settled at the
+     * till empty it just as surely as a sale fills it. A parentless payment with
+     * no document is a contact settlement, and both sides of that count too: its
+     * own `payment_type` says which one it is.
      */
     protected function isDrawerMovement(TransactionPayment $payment): bool
     {
@@ -320,25 +332,59 @@ class CashRegisterService
 
         $type = $payment->transaction?->type;
 
-        return $type === null
-            ? $payment->payment_type === 'credit'
-            : in_array($type, static::recordableTypes(), true);
+        return $type === null || in_array($type, static::recordableTypes(), true);
+    }
+
+    /**
+     * Which of the five movements this payment is, for `transaction_type`.
+     *
+     * The enum names *what happened*; the `type` column carries the direction. So
+     * the two are not redundant, and one value can appear in both directions: a
+     * supplier refunding cash is still a purchase-side movement, filed as
+     * `payout` with `type = credit` so it lands against the payouts it reverses
+     * rather than inflating the shift's takings.
+     *
+     * The sell side splits by direction instead — `sell` in, `refund` out — which
+     * is an inconsistency inherited from the original four values and left alone,
+     * because renaming `refund` would rewrite rows in live registers to fix
+     * nothing a reader gets wrong.
+     */
+    protected function drawerType(TransactionPayment $payment, bool $outgoing): string
+    {
+        $type = $payment->transaction?->type;
+
+        $purchaseSide = $type === null
+            ? $payment->payment_type === 'debit'
+            : in_array($type, static::payoutTypes(), true);
+
+        if ($purchaseSide) {
+            return 'payout';
+        }
+
+        return $outgoing ? 'refund' : 'sell';
     }
 
     /**
      * Whether the money left the drawer.
      *
-     * A sell return pays the customer back, and `is_return` on an ordinary sale
-     * is change handed over — so either one alone means money out, and both
-     * together (change on a refund) means money in. Mirrors
-     * {@see \App\Listeners\AddAccountTransaction::direction()}, which asks the
-     * same question of a bank account.
+     * Asks {@see TransactionTypes::moneyIn()}, which is shared with the bank
+     * mirror so one payment cannot be a receipt in one ledger and a payment in
+     * the other. `is_return` reverses whatever that says: change handed over on a
+     * sale is money out, change on a refund is money back in.
+     *
+     * A payment with no document is a contact settlement and carries its own
+     * direction — `credit` for a customer paying us, `debit` for us settling a
+     * supplier ({@see \App\Services\PaymentService::payContactDue()}).
      */
     protected function isOutgoing(TransactionPayment $payment): bool
     {
-        $outgoing = $payment->transaction?->type === TransactionTypes::SELL_RETURN;
+        $type = $payment->transaction?->type;
 
-        return $payment->is_return ? ! $outgoing : $outgoing;
+        $incoming = $type === null
+            ? $payment->payment_type === 'credit'
+            : in_array($type, TransactionTypes::moneyIn(), true);
+
+        return $payment->is_return ? $incoming : ! $incoming;
     }
 
     /**
@@ -444,19 +490,48 @@ class CashRegisterService
     /**
      * Types of document that belong in a register at all.
      *
-     * Sell side only, and that is a limitation rather than a principle: cash
-     * handed to a supplier or spent on an expense really does leave the drawer,
-     * but `cash_register_transactions.transaction_type` is a four-value enum
-     * with no term for it. Naming that movement means extending the enum, the
-     * summary, the session screen and the close rail — a feature, not a
-     * side-effect of wiring payments up. Until then such a payment leaves the
-     * shift short, and the close screen's note field is where the cashier says
-     * so. Logged in NOTES.md §8.4.
+     * Both sides of the business, since NOTES.md §12.1 was fixed: cash handed to
+     * a supplier or spent on an expense really does leave the drawer, and until
+     * `transaction_type` gained a `payout` value there was no way to say so. Such
+     * a payment used to write no row, which left `cash_in_hand` reading high by
+     * its amount and the cashier recorded short at close for money they had paid
+     * out correctly.
+     *
+     * Orders and requisitions are absent on purpose — a purchase order is a
+     * promise, and nothing crosses a drawer until it becomes a purchase. So are
+     * `opening_balance`, `opening_stock`, the two transfer legs, `ledger_discount`
+     * and `payroll`: none of them is money counted at a till by a cashier on a
+     * shift.
      *
      * @return array<int, string>
      */
     public static function recordableTypes(): array
     {
-        return [TransactionTypes::SELL, TransactionTypes::SELL_RETURN];
+        return [
+            TransactionTypes::SELL,
+            TransactionTypes::SELL_RETURN,
+            ...static::payoutTypes(),
+        ];
+    }
+
+    /**
+     * Recordable types that sit on the purchase side of the business.
+     *
+     * Money out for the first two, money back in for their reversals — the
+     * direction is {@see isOutgoing()}'s job. What they share is that they are
+     * *not* takings, which is what {@see drawerType()} needs to know so the close
+     * screen can state them separately instead of quietly netting them off the
+     * shift's sales.
+     *
+     * @return array<int, string>
+     */
+    public static function payoutTypes(): array
+    {
+        return [
+            TransactionTypes::PURCHASE,
+            TransactionTypes::EXPENSE,
+            TransactionTypes::PURCHASE_RETURN,
+            TransactionTypes::EXPENSE_REFUND,
+        ];
     }
 }

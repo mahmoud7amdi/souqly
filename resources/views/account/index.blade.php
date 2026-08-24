@@ -21,7 +21,7 @@
          business behind a paginated list would print a figure the column below
          does not add up to, and the reader would trust the wrong one. --}}
     <div class="section">
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="rise-group grid gap-4 sm:grid-cols-2">
             <x-stat :label="__('lang_v1.balance_on_this_page')"
                     :value="format_currency($pageTotal)"
                     icon="bank"

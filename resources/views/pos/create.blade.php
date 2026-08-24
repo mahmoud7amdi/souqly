@@ -87,10 +87,11 @@
 
         {{-- ---------------------------------------------------------------
              Zone 1 — choosing products
-             --------------------------------------------------------------- }}
-        {{-- Same top offset and same height cap as .pos-cart, so the two zones
-             align and each scrolls inside itself. Neither ever moves. --}}
-        <div class="pos-panel lg:sticky lg:top-20 lg:max-h-[calc(100vh-6.5rem)]">
+             --------------------------------------------------------------- --}}
+        {{-- No height utilities here: .pos-shell is pinned to the window and
+             both zones stretch to it, so each scrolls inside itself. Neither
+             ever moves. --}}
+        <div class="pos-panel">
             <div class="border-b border-slate-200 p-3">
                 {{-- One field, as wide as the panel. It is both the search box and
                      the barcode target: a scanner types the SKU and presses Enter,
@@ -105,11 +106,29 @@
             </div>
 
             <div class="flex-1 overflow-y-auto">
-                <div class="product-grid" id="product-grid"></div>
+                <div id="product-grid"
+                     @class(['product-grid', 'product-grid-media' => $hasProductImages])></div>
 
-                <p id="product-loading" class="hidden p-6 text-center text-sm text-slate-500">
-                    {{ __('lang_v1.loading') }}
-                </p>
+                {{-- A skeleton, not the word "loading". It answers two questions a
+                     spinner cannot — how much is coming and where it will be — so
+                     nothing on the busiest screen in the shop jumps when the
+                     products land. Ten covers the first visible rows; the feed
+                     returns 25, but a placeholder only has to reach as far as the
+                     eye does before the fetch resolves.
+
+                     aria-hidden because this is the absence of content, not
+                     content: a screen reader announcing ten empty tiles would be
+                     worse than announcing nothing. --}}
+                <div id="product-loading" aria-hidden="true"
+                     @class(['product-grid hidden', 'product-grid-media' => $hasProductImages])>
+                    @for ($i = 0; $i < 10; $i++)
+                        <div class="skeleton-tile">
+                            <span class="skeleton skeleton-tile-thumb"></span>
+                            <span class="skeleton skeleton-text"></span>
+                            <span class="skeleton skeleton-text"></span>
+                        </div>
+                    @endfor
+                </div>
 
                 <div id="product-empty" class="hidden">
                     <x-empty-state icon="search" :title="__('lang_v1.no_products_found')"/>
@@ -119,7 +138,7 @@
 
         {{-- ---------------------------------------------------------------
              Zone 2 — the cart
-             --------------------------------------------------------------- }}
+             --------------------------------------------------------------- --}}
         <div class="pos-cart">
             {{-- The one tinted surface on the screen. It costs nothing to read and
                  it makes the two zones obvious from across the counter. --}}
@@ -146,13 +165,19 @@
 
             <div class="pos-cart-scroll" id="cart-rows"></div>
 
-            <div id="cart-empty" class="grid flex-1 place-items-center px-4 py-10">
+            {{-- min-h-0: a flex child with no overflow of its own refuses to
+                 shrink below its content, and on a short window this one would
+                 shrink the footer instead — pushing the pay button out of sight
+                 behind the cart's overflow-hidden. Better to clip the artwork. --}}
+            <div id="cart-empty" class="grid min-h-0 flex-1 place-items-center px-4 py-10">
                 <x-empty-state icon="cart" :title="__('lang_v1.cart_empty')"
                                :text="__('lang_v1.search_products')" compact/>
             </div>
 
-            {{-- Discount, tax and note: real, and off screen until wanted. --}}
-            <div id="cart-extras" class="hidden border-t border-slate-200 bg-slate-50/70 p-4">
+            {{-- Discount, tax and note: real, and off screen until wanted.
+                 Scrolls for the same reason: opened on a laptop it is taller
+                 than the room the cart can spare. --}}
+            <div id="cart-extras" class="hidden min-h-0 overflow-y-auto border-t border-slate-200 bg-slate-50/70 p-4">
                 <div class="grid grid-cols-2 gap-3">
                     <div class="field">
                         <label for="discount_type" class="label">{{ __('lang_v1.discount_type') }}</label>
@@ -379,9 +404,21 @@
         </div>
     </template>
 
-    {{-- One tile, cloned per product. --}}
+    {{-- One tile, cloned per product.
+
+         Both halves of the picture box ship in the template and each clone keeps
+         exactly one: the <img> when the product has a photo, the icon when it
+         does not. The loser is removed rather than hidden — a src-less <img> is
+         drawn as a broken-image glyph by some browsers, and 25 of those is a
+         worse screen than no pictures at all. Whether the box is drawn in the
+         first place is the grid's decision, not the tile's: see
+         `.product-grid-media` in app.css. --}}
     <template id="product-tile-template">
         <button type="button" class="product-tile" data-tile>
+            <span class="thumb-tile" data-thumb>
+                <img alt="" loading="lazy" decoding="async">
+                <x-nav-icon name="box" :size="8"/>
+            </span>
             <span class="product-tile-name" data-name></span>
             <span class="flex w-full items-baseline justify-between gap-2">
                 <span class="product-tile-price" data-price></span>
@@ -412,6 +449,52 @@
     const modal = document.getElementById('payment-modal');
     const tendered = document.getElementById('amount-tendered');
     const paidField = document.getElementById('payment-amount');
+
+    /* --- Fitting the terminal to the window ------------------------------
+       The shell is pinned to the viewport height so that the cart, the total
+       and the pay button cannot be pushed below the fold by a long list of
+       products (see .pos-shell). What sits above the shell is not a fixed
+       height though: the selector bar wraps to two or three rows on a narrow
+       window. So measure that gap and hand it to CSS rather than guess it.
+
+       The observer watches the bar, not the shell — the bar's height does not
+       depend on the value being set, so there is no feedback loop. */
+    const shell = document.querySelector('.pos-shell');
+    const selectorBar = shell?.previousElementSibling;
+    let fitQueued = false;
+
+    const fitShell = () => {
+        fitQueued = false;
+        if (!shell) return;
+
+        /* offsetTop, not getBoundingClientRect(). The layout now animates the
+           whole page content in on load (`.rise` in layouts/app.blade.php), so
+           for the first 340 ms a rect-based measurement reads the shell 8px
+           lower than it really is and the shell ends up 8px short of its room.
+           An offsetTop walk is pure layout and ignores transforms entirely.
+
+           16px is the bottom padding of <main>: leave it, so the shell stops
+           short of the window edge instead of sitting flush against it. */
+        let top = 0;
+        for (let el = shell; el; el = el.offsetParent) {
+            top += el.offsetTop;
+        }
+
+        shell.style.setProperty('--pos-offset', `${Math.round(top) + 16}px`);
+    };
+
+    const queueFit = () => {
+        if (fitQueued) return;
+        fitQueued = true;
+        requestAnimationFrame(fitShell);
+    };
+
+    fitShell();
+    window.addEventListener('resize', queueFit);
+
+    if (selectorBar && 'ResizeObserver' in window) {
+        new ResizeObserver(queueFit).observe(selectorBar);
+    }
 
     // tax_id -> percentage. Same map, same purpose, as the sell form's.
     const TAX_RATES = @json($taxAmounts);
@@ -581,12 +664,38 @@
        term returns the first page of sellable products, so the grid is already
        full when the terminal opens and the first sale of the day needs no
        typing. */
+
+    /* Whether the grid draws picture boxes at all. Re-decided per result set,
+       not once per page: a catalogue can be mostly photographed and still have
+       a search that returns only the three products nobody photographed, and
+       three placeholder icons in a row is exactly the screen this avoids. The
+       skeleton follows the same flag so it never changes shape underneath the
+       results it is standing in for. */
+    const setMediaMode = function (on) {
+        grid.classList.toggle('product-grid-media', on);
+        gridLoading.classList.toggle('product-grid-media', on);
+    };
+
     const renderProducts = function (products) {
         grid.replaceChildren();
+        setMediaMode(products.some(function (product) { return product.image_url; }));
 
         products.forEach(function (product) {
             const fragment = tileTemplate.content.cloneNode(true);
             const tile = fragment.querySelector('[data-tile]');
+            const thumb = fragment.querySelector('[data-thumb]');
+            const image = thumb.querySelector('img');
+
+            /* `image_url` is null when there is no file, not a placeholder URL —
+               ProductController::getProducts() gates it on Product::hasImage()
+               precisely so this branch can exist. */
+            if (product.image_url) {
+                image.src = product.image_url;
+                image.alt = product.text ?? '';
+                thumb.querySelector('svg').remove();
+            } else {
+                image.remove();
+            }
 
             tile.dataset.product = JSON.stringify(product);
             fragment.querySelector('[data-name]').textContent = product.text;
@@ -616,6 +725,25 @@
     };
 
     let inFlight = 0;
+
+    /* Exactly one of skeleton, empty state and results is on screen at a time.
+       Which one depends on whether the grid is already holding something: a
+       skeleton is the right answer to an empty region and the wrong answer to a
+       region that already holds valid, tappable results, so a re-search dims the
+       existing grid rather than throwing it away. Hiding the empty state while
+       the skeleton is up also keeps the panel from being left blank if the fetch
+       fails — this runs in the `finally`, so the empty state comes back. */
+    const setLoading = function (on) {
+        const bare = grid.children.length === 0;
+
+        gridLoading.classList.toggle('hidden', ! (on && bare));
+        grid.classList.toggle('is-busy', on && ! bare);
+
+        if (bare) {
+            gridEmpty.classList.toggle('hidden', on);
+        }
+    };
+
     const loadProducts = async function (term) {
         const params = new URLSearchParams({ term: term ?? '', location_id: locationSelect.value });
 
@@ -624,7 +752,7 @@
         }
 
         const request = ++inFlight;
-        gridLoading.classList.remove('hidden');
+        setLoading(true);
 
         try {
             const response = await fetch('{{ route('products.list') }}?' + params, {
@@ -645,7 +773,7 @@
             return [];
         } finally {
             if (request === inFlight) {
-                gridLoading.classList.add('hidden');
+                setLoading(false);
             }
         }
     };

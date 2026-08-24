@@ -170,9 +170,17 @@ class Transaction extends Model
         return $this->hasMany(TransactionPayment::class, 'transaction_id');
     }
 
+    /**
+     * chaperone(): PaymentTerm::getAmountAttribute() reads back through
+     * `transaction` to turn its percentage into money, so every term loaded
+     * here would otherwise lazy load the invoice it was just loaded from — one
+     * query per instalment, and a LazyLoadingViolationException on the purchase
+     * show screen, which renders `$term->amount` for each of them.
+     */
     public function terms(): HasMany
     {
-        return $this->hasMany(PaymentTerm::class, 'purchase_transaction_id');
+        return $this->hasMany(PaymentTerm::class, 'purchase_transaction_id')
+            ->chaperone('transaction');
     }
 
     public function contact(): BelongsTo

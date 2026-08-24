@@ -30,7 +30,7 @@
      figure sits beside it rather than being folded away invisibly: a manager who
      sees a total drop wants to know whether spending fell or money came back. --}}
 <div class="section">
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="rise-group grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-stat :label="__('lang_v1.net_expense')"
                 :value="format_currency($totals['total'])"
                 icon="receipt"

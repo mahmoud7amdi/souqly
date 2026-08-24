@@ -91,6 +91,21 @@ class Product extends Model
         return public_path(config('constants.product_img_path').'/'.$this->image);
     }
 
+    /**
+     * Whether this product has a real picture on disk.
+     *
+     * Distinct from `image_url`, which never returns null — it falls back to a
+     * placeholder SVG so an <img> is never broken. The UI needs to know the
+     * difference: a screen showing the placeholder bitmap in every cell of a
+     * half-populated catalogue looks defective, where the same screen showing a
+     * muted icon looks incomplete, which is what it is. Views and the POS feed
+     * both branch on this.
+     */
+    public function hasImage(): bool
+    {
+        return ! empty($this->image) && file_exists($this->image_path);
+    }
+
     /* --------------------------------------------------------------------
      | Relationships
      -------------------------------------------------------------------- */

@@ -13,6 +13,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ImportProductsController;
 use App\Http\Controllers\LabelsController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OpeningStockController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\PurchaseOrderController;
@@ -24,6 +25,8 @@ use App\Http\Controllers\SellingPriceGroupController;
 use App\Http\Controllers\SellPosController;
 use App\Http\Controllers\SellReturnController;
 use App\Http\Controllers\ShipmentController;
+use App\Http\Controllers\StockAdjustmentController;
+use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\TaxonomyController;
 use App\Http\Controllers\TaxRateController;
 use App\Http\Controllers\TransactionPaymentController;
@@ -247,6 +250,44 @@ Route::middleware(['auth', 'tenant.ui'])->group(function () {
      | one write lives on sells.updateShipping.
      */
     Route::get('/shipments', [ShipmentController::class, 'index'])->name('shipments.index');
+
+    /* ================================================================ *
+     | Stock
+     ================================================================ */
+
+    /* --- Stock transfers --- *
+     |
+     | No edit and no update: a transfer is two documents at two locations with
+     | FIFO lots on both sides, so correcting one is a delete and a re-entry (the
+     | service explains why at length). `updateStatus` is a POST because
+     | confirming arrival is what books the destination's stock.
+     */
+    Route::post('/stock-transfers/{id}/receive', [StockTransferController::class, 'updateStatus'])
+        ->name('stock-transfers.updateStatus');
+    Route::resource('stock-transfers', StockTransferController::class)
+        ->only(['index', 'create', 'store', 'show', 'destroy'])
+        ->parameters(['stock-transfers' => 'id']);
+
+    /* --- Stock adjustments --- */
+    Route::resource('stock-adjustments', StockAdjustmentController::class)
+        ->parameters(['stock-adjustments' => 'id']);
+
+    /* --- Opening stock --- *
+     |
+     | Keyed by product, with the location in the query string: a product's
+     | opening position is one fact per shop, and the person editing it switches
+     | shops while working. No create route — the editor opens whether or not a
+     | document exists yet, because "state the opening quantity" is the same act
+     | either way.
+     */
+    Route::get('/opening-stock', [OpeningStockController::class, 'index'])
+        ->name('opening-stock.index');
+    Route::get('/opening-stock/{productId}/edit', [OpeningStockController::class, 'edit'])
+        ->name('opening-stock.edit');
+    Route::put('/opening-stock/{productId}', [OpeningStockController::class, 'update'])
+        ->name('opening-stock.update');
+    Route::delete('/opening-stock/{productId}', [OpeningStockController::class, 'destroy'])
+        ->name('opening-stock.destroy');
 
     /* ================================================================ *
      | Payments & finance
