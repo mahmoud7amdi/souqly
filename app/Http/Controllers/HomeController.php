@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Transaction;
 use App\Models\VariationLocationDetails;
-use App\Services\FormattingService;
+use App\Services\ReportService;
 use App\Support\TransactionTypes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
  */
 class HomeController extends Controller
 {
-    public function __construct(private FormattingService $format) {}
+    public function __construct(private ReportService $reports) {}
 
     public function index(Request $request)
     {
@@ -153,16 +153,16 @@ class HomeController extends Controller
     /**
      * Period selected on the dashboard, defaulting to this month.
      *
+     * Delegated to {@see ReportService::dateRange()} rather than duplicated. The
+     * two were identical, and the failure mode of two copies is not a crash — it
+     * is "this month" quietly meaning something different on the dashboard than
+     * in the report the dashboard links to.
+     *
      * @return array{start: string, end: string}
      */
     protected function dateRange(Request $request): array
     {
-        return [
-            'start' => $this->format->ufDate($request->input('start_date'))
-                ?? now()->startOfMonth()->toDateString(),
-            'end' => $this->format->ufDate($request->input('end_date'))
-                ?? now()->endOfMonth()->toDateString(),
-        ];
+        return $this->reports->dateRange($request);
     }
 
     /**

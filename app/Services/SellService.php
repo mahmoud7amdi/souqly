@@ -387,7 +387,16 @@ class SellService
             }
 
             if ($variation->product->isCombo()) {
-                $this->consumeComboComponents($transaction, $variation, $quantity, $line->id);
+                /*
+                 * The child ids have to join `$keptIds`, or the sweep below —
+                 * which deletes every line on the transaction that is not in it
+                 * — deletes the component lines this call has just created, and
+                 * releases the stock it has just consumed. See the note there.
+                 */
+                $keptIds = array_merge(
+                    $keptIds,
+                    $this->consumeComboComponents($transaction, $variation, $quantity, $line->id)
+                );
 
                 continue;
             }
@@ -406,7 +415,22 @@ class SellService
             );
         }
 
-        // Drop lines removed by the edit, returning their stock first.
+        /*
+         * Drop lines removed by the edit, returning their stock first.
+         *
+         * This sweep is deliberately "everything not kept", which makes it the
+         * one place a line can be deleted without anybody asking for it: any
+         * line created during the loop above whose id does not reach `$keptIds`
+         * is destroyed here, moments after being written. That is what happened
+         * to combo component lines until the `array_merge` above — the sale kept
+         * its parent line, lost its children, released the stock it had just
+         * consumed, and left nothing in the FIFO map, so the profit report
+         * showed every combo as pure margin at no cost.
+         *
+         * On an edit this is still correct and still what we want: the previous
+         * save's children are not in `$keptIds`, so they are released and
+         * deleted, while the ones just created are kept.
+         */
         $removed = TransactionSellLine::where('transaction_id', $transaction->id)
             ->when($keptIds, fn ($q) => $q->whereNotIn('id', $keptIds))
             ->get();
@@ -425,13 +449,19 @@ class SellService
 
     /**
      * A combo consumes its components, not itself.
+     *
+     * @return array<int, int> ids of the child lines created — the caller must
+     *                         add these to its kept-line list, or the cleanup
+     *                         sweep in {@see syncLines()} deletes them again
      */
     protected function consumeComboComponents(
         Transaction $transaction,
         Variation $combo,
         float $quantity,
         int $parentLineId
-    ): void {
+    ): array {
+        $childIds = [];
+
         foreach ((array) $combo->combo_variations as $component) {
             $componentVariation = Variation::with('product')->find($component['variation_id']);
 
@@ -453,6 +483,8 @@ class SellService
                 'children_type' => 'combo',
             ]);
 
+            $childIds[] = $childLine->id;
+
             $this->stock->consume(
                 $componentVariation->id, $transaction->location_id, $needed, $childLine->id, 'sell'
             );
@@ -464,6 +496,8 @@ class SellService
                 -$needed
             );
         }
+
+        return $childIds;
     }
 
     /**

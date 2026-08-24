@@ -50,7 +50,7 @@ abstract class SimpleCrudController extends Controller
 
     public function index(Request $request)
     {
-        $this->permit($this->permission.'.view');
+        $this->permit($this->ability('view'));
 
         $records = $this->indexQuery()
             ->when($request->filled('search'), function (Builder $query) use ($request) {
@@ -70,15 +70,15 @@ abstract class SimpleCrudController extends Controller
             'columns' => $this->columns,
             'routePrefix' => $this->routePrefix,
             'label' => __($this->label),
-            'canCreate' => $this->allows($this->permission.'.create'),
-            'canUpdate' => $this->allows($this->permission.'.update'),
-            'canDelete' => $this->allows($this->permission.'.delete'),
+            'canCreate' => $this->allows($this->ability('create')),
+            'canUpdate' => $this->allows($this->ability('update')),
+            'canDelete' => $this->allows($this->ability('delete')),
         ] + $this->indexViewData());
     }
 
     public function create()
     {
-        $this->permit($this->permission.'.create');
+        $this->permit($this->ability('create'));
 
         return view($this->viewPath.'.create', [
             'routePrefix' => $this->routePrefix,
@@ -88,7 +88,7 @@ abstract class SimpleCrudController extends Controller
 
     public function store(Request $request)
     {
-        $this->permit($this->permission.'.create');
+        $this->permit($this->ability('create'));
 
         $validated = $request->validate($this->rules($request));
 
@@ -108,9 +108,9 @@ abstract class SimpleCrudController extends Controller
 
     public function edit(int $id)
     {
-        $this->permit($this->permission.'.update');
+        $this->permit($this->ability('update'));
 
-        $record = $this->model::findOrFail($id);
+        $record = $this->findRecord($id);
 
         return view($this->viewPath.'.edit', [
             'record' => $record,
@@ -121,9 +121,9 @@ abstract class SimpleCrudController extends Controller
 
     public function update(Request $request, int $id)
     {
-        $this->permit($this->permission.'.update');
+        $this->permit($this->ability('update'));
 
-        $record = $this->model::findOrFail($id);
+        $record = $this->findRecord($id);
 
         $validated = $request->validate($this->rules($request, $record));
 
@@ -143,10 +143,10 @@ abstract class SimpleCrudController extends Controller
 
     public function destroy(Request $request, int $id)
     {
-        $this->permit($this->permission.'.delete');
+        $this->permit($this->ability('delete'));
 
         try {
-            $record = $this->model::findOrFail($id);
+            $record = $this->findRecord($id);
 
             $blocker = $this->deletionBlockedBy($record);
 
@@ -168,6 +168,53 @@ abstract class SimpleCrudController extends Controller
     /* ================================================================
      | Extension points
      ================================================================ */
+
+    /**
+     * The permission name guarding one action.
+     *
+     * Most catalogue tables carry a four-verb group — `brand.view`,
+     * `brand.create`, `brand.update`, `brand.delete` — and the default
+     * concatenation is exactly right for them.
+     *
+     * The settings tables do not. The source system gates invoice schemes,
+     * invoice layouts, barcodes and printers behind a *single* flat permission
+     * each (`invoice_settings.access`, `barcode_settings.access`,
+     * `access_printers`), and those names are preserved byte-for-byte because
+     * the sidebar and every `can()` check key off them — see
+     * {@see \App\Support\Permissions}. A subclass with a flat permission
+     * overrides this to return it for every action.
+     *
+     * Routing all six checks through one method is what makes that possible
+     * without reimplementing the CRUD verbs: the alternative is a subclass
+     * that checks `invoice_settings.view`, a permission nobody holds. That
+     * failure is invisible under an admin account, because `Gate::before()`
+     * bypasses every check, and a silent lockout for everyone else — the same
+     * trap {@see \App\Http\Controllers\ExpenseCategoryController} documents.
+     *
+     * @param  string  $action  one of view, create, update, delete
+     */
+    protected function ability(string $action): string
+    {
+        return $this->permission.'.'.$action;
+    }
+
+    /**
+     * Load the record an edit/update/delete acts on.
+     *
+     * The default trusts the global tenant scope on the model: a subclass whose
+     * table is NOT scoped that way — {@see \App\Models\Barcode}, which omits
+     * `BelongsToBusiness` so it can surface shared global presets alongside a
+     * tenant's own rows — overrides this to constrain writes to the caller's own
+     * rows. A global preset (`business_id IS NULL`) then falls outside the query
+     * and returns 404, so no tenant can edit or delete a row every tenant sees.
+     *
+     * Reads are wider than writes on purpose: {@see indexQuery()} lists own +
+     * global, while this narrows the mutating verbs to own-only.
+     */
+    protected function findRecord(int $id): Model
+    {
+        return $this->model::findOrFail($id);
+    }
 
     protected function indexQuery(): Builder
     {

@@ -1,0 +1,56 @@
+Item 7 first tranche: reports layer, its tests, and a combo bug it found
+
+Five core reports plus the infrastructure the deferred seven will inherit:
+purchase & sell, stock, profit & loss, tax, and expenses, behind a
+permission-filtered hub.
+
+ReportService owns every figure and the controller owns none. The reason is
+scoped(): "this month, at the locations you may see" appeared four times in
+HomeController::totals() alone, and four copies of that phrase are four chances
+for the dashboard and the report to quietly disagree. HomeController::dateRange()
+now delegates rather than holding a second current-month default.
+
+Two figure decisions, both recorded in NOTES 13.2 because they are decisions:
+COGS uses purchase_price_inc_tax, matching what StockService::consume() already
+writes into the FIFO map -- computing it from the exclusive column would make the
+same sale show two different profits depending on which screen you opened. And
+quantities are net of returns on both sides, so a returned item stops counting as
+both revenue and cost.
+
+export() is one action parameterised by report name and whitelist-validated,
+rather than five near-identical methods: one gate, one Excel::download, and a
+parameter that reaches a method name is never trusted.
+
+ReportsTest (17 tests) asserts the arithmetic rather than the rendering, and
+found a production bug in selling, not in reporting: SellService::syncLines()
+collected only parent line ids into keptIds, so its "delete everything not kept"
+sweep destroyed the combo component lines consumeComboComponents() had just
+written and released the stock it had just consumed -- on every combo sale, not
+only on edits. Nothing looked wrong on screen; the FIFO map was simply empty, so
+every combo reported as pure margin at zero cost on the one report an owner makes
+decisions with. Fixed by threading the child ids back, which stays correct on the
+edit path because the previous save's children are still absent from keptIds.
+
+Those tests also reported a confident 0.0 for thirteen figures until setUp()
+signed a user in: permittedLocations() resolves against auth()->user(), and
+createTenant() authenticates nobody, so every assertion was passing against an
+empty report. Both halves of the COGS join were then mutation-checked per 12.4.
+
+ApiResponseTest (14 tests) closes 12.5. Thirteen endpoints sitting in
+ScreensRenderTest::SKIP had no test at all, and they are the POS product search,
+every contact picker and the purchase-form prefill. It asserts what a render walk
+structurally cannot: a JSON content type rather than a redirect, the field names
+the front end binds to, and the failure modes -- including the four cases that
+pin Product::scopeForLocation(), whose last regression was a hard SQL error that
+nothing could see.
+
+No new CSS: .tile, .rise-group, x-stat and .filter-bar already carry the design
+directive, and .filter-bar is already in the print hide list.
+
+php artisan test -- 102 tests, 494 assertions, all passing.
+Lang parity ar=974 en=974, +68 each, every new key present once in both.
+
+Seven reports remain deferred and are named explicitly in 10.2 so this tranche
+is not mistaken for the finished item.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

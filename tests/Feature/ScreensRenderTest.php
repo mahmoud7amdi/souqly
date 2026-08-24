@@ -55,6 +55,15 @@ class ScreensRenderTest extends TestCase
         'purchase-requisition.outstandingLines' => 'JSON only',
         'sells.orderLines' => 'JSON only',
         'sells.customerOrders' => 'JSON only',
+        /*
+         * Streams a spreadsheet, and its `{report}` is a slug from
+         * ReportController::REPORTS — not an id. resolveParameters() falls back
+         * to the fixture product id for any name it does not recognise, so the
+         * walk asked for `/reports/627/export` and the controller's whitelist
+         * correctly answered 404. Covered properly, one slug at a time, in
+         * ReportsTest::every_export_streams_a_spreadsheet.
+         */
+        'reports.export' => 'streams a file download',
     ];
 
     private \App\Models\User $admin;

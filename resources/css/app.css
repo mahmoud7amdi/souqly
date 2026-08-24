@@ -979,6 +979,18 @@
         min-height: var(--size-control-lg);
     }
 
+    /* A value that is shown but not editable — a username on the staff form, an
+       account number on a settings screen. Deliberately NOT a disabled input:
+       a greyed-out field reads as "you may change this later" and invites clicks
+       that do nothing, and browsers drop disabled inputs from the payload, so
+       the markup implies a field that is silently not submitted. This is text
+       that borrows the control's metrics so it lines up with the inputs beside
+       it in the grid. */
+    .input-static {
+        @apply flex items-center rounded-lg border border-transparent bg-slate-50 px-3 text-sm text-slate-600;
+        min-height: var(--size-control);
+    }
+
     /* --- Checkboxes ------------------------------------------------------
        The native control is tinted, not replaced. Screens used to spell out
        `rounded border-slate-300 text-brand-600 focus:ring-brand-500`, which is

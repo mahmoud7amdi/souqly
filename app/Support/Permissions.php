@@ -218,4 +218,55 @@ final class Permissions
     {
         return 'location.'.$locationId;
     }
+
+    /**
+     * Human label for one permission, for the role editor's checkbox grid.
+     *
+     * The labels live in a `lang_v1.perm` sub-array rather than as ~180
+     * top-level `perm_<name>` keys, for two reasons. It keeps the lang file
+     * navigable, and it side-steps the dot in every permission name: `__()`
+     * splits `lang_v1.perm.user.view` on dots and would look for a nested
+     * `user` → `view`, never finding the flat `'user.view'` entry. Reading the
+     * whole map once with {@see trans()} and indexing it directly is both
+     * correct and one translator call instead of a hundred and eighty.
+     *
+     * The fallback matters more than it looks. A permission with no label would
+     * otherwise render the raw string `lang_v1.perm_user.view` on screen — the
+     * exact failure the render walk's untranslated-key guard exists to catch.
+     * Degrading to "User View" keeps a new permission readable the moment it is
+     * added to {@see grouped()}, before anyone has written its translation.
+     */
+    public static function label(string $name): string
+    {
+        $labels = trans('lang_v1.perm');
+
+        return is_array($labels) && isset($labels[$name])
+            ? $labels[$name]
+            : static::humanise($name);
+    }
+
+    /**
+     * Human label for a permission group heading.
+     *
+     * Same lookup and same fallback as {@see label()}; the keys here are the
+     * group names returned by {@see grouped()}.
+     */
+    public static function groupLabel(string $group): string
+    {
+        $labels = trans('lang_v1.perm_group');
+
+        return is_array($labels) && isset($labels[$group])
+            ? $labels[$group]
+            : static::humanise($group);
+    }
+
+    /**
+     * Last-resort readable form of a permission or group name.
+     */
+    protected static function humanise(string $name): string
+    {
+        return \Illuminate\Support\Str::headline(
+            str_replace(['.', '_'], ' ', $name)
+        );
+    }
 }

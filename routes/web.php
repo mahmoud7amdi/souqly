@@ -2,7 +2,10 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\BusinessController;
+use App\Http\Controllers\BusinessLocationController;
 use App\Http\Controllers\CashRegisterController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\CustomerGroupController;
@@ -11,14 +14,21 @@ use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ImportProductsController;
+use App\Http\Controllers\InvoiceLayoutController;
+use App\Http\Controllers\InvoiceSchemeController;
 use App\Http\Controllers\LabelsController;
+use App\Http\Controllers\ManageUserController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\NotificationTemplateController;
 use App\Http\Controllers\OpeningStockController;
+use App\Http\Controllers\PrinterController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PurchaseRequisitionController;
 use App\Http\Controllers\PurchaseReturnController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SalesOrderController;
 use App\Http\Controllers\SellController;
 use App\Http\Controllers\SellingPriceGroupController;
@@ -124,6 +134,50 @@ Route::middleware(['auth', 'tenant.ui'])->group(function () {
 
     Route::get('/discount/{id}/toggle', [DiscountController::class, 'activate'])->name('discount.toggle');
     Route::resource('discount', DiscountController::class)->except(['show']);
+
+    /*
+     * Settings: business configuration.
+     *
+     * The sidebar's Settings group reveals itself entirely through `Route::has()`
+     * (sidebar.blade.php:167), so every name here is load-bearing: rename one and
+     * the corresponding menu entry silently disappears rather than erroring.
+     *
+     * `users` is plural on purpose and is NOT the same thing as the `user.*`
+     * routes above — those are the signed-in person's own profile
+     * ({@see \App\Http\Controllers\UserController}), these are staff accounts
+     * ({@see \App\Http\Controllers\ManageUserController}). The paths differ too
+     * (`/user/profile` vs `/users`), so neither shadows the other.
+     */
+    Route::resource('users', ManageUserController::class)->except(['show']);
+    Route::resource('roles', RoleController::class)->except(['show']);
+
+    Route::get('/business-location/{id}/toggle', [BusinessLocationController::class, 'toggleActive'])
+        ->name('business-location.toggle');
+    Route::resource('business-location', BusinessLocationController::class)->except(['show']);
+
+    Route::resource('invoice-schemes', InvoiceSchemeController::class)->except(['show']);
+    Route::resource('invoice-layouts', InvoiceLayoutController::class)->except(['show']);
+    Route::resource('barcodes', BarcodeController::class)->except(['show']);
+    Route::resource('printers', PrinterController::class)->except(['show']);
+
+    /*
+     * Notification templates are edit-only: the sixteen types are fixed, so there
+     * is nothing to create and nothing to delete. `{template}` is the
+     * `template_for` key, not an id, and the controller validates it against
+     * NotificationTemplate::templateTypes() before touching anything.
+     */
+    Route::get('/notification-templates', [NotificationTemplateController::class, 'index'])
+        ->name('notification-templates.index');
+    Route::get('/notification-templates/{template}/edit', [NotificationTemplateController::class, 'edit'])
+        ->name('notification-templates.edit');
+    Route::put('/notification-templates/{template}', [NotificationTemplateController::class, 'update'])
+        ->name('notification-templates.update');
+
+    /* One row, so one screen: a GET to read it and a PUT to write it. */
+    Route::get('/business/settings', [BusinessController::class, 'settings'])
+        ->name('business.settings');
+    Route::put('/business/settings', [BusinessController::class, 'updateSettings'])
+        ->name('business.settings.update');
 
     /* --- Products --- */
     Route::controller(ProductController::class)->group(function () {
@@ -349,4 +403,29 @@ Route::middleware(['auth', 'tenant.ui'])->group(function () {
     Route::resource('accounts', AccountController::class)
         ->parameters(['accounts' => 'id'])
         ->except(['destroy']);
+
+    /*
+     * Reports.
+     *
+     * All GET, all idempotent — a report reads the ledger and never writes to it.
+     * Authorisation is in the controller rather than in `can:` middleware here,
+     * matching the rest of this file: `permit()` lets an action accept any one of
+     * several permissions, and the hub needs `allows()` to decide what to *show*
+     * rather than what to allow.
+     *
+     * `export` is last because it is the only route here that takes a parameter,
+     * and a parameterised pattern registered above literal siblings is how route
+     * shadowing starts. It cannot shadow anything today — `/{report}/export` is
+     * two segments and every report is one — but the ordering costs nothing and
+     * removes the question.
+     */
+    Route::prefix('reports')->name('reports.')->controller(ReportController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/purchase-sell', 'purchaseSell')->name('purchaseSell');
+        Route::get('/stock', 'stock')->name('stock');
+        Route::get('/profit-loss', 'profitLoss')->name('profitLoss');
+        Route::get('/tax', 'tax')->name('tax');
+        Route::get('/expenses', 'expenses')->name('expenses');
+        Route::get('/{report}/export', 'export')->name('export');
+    });
 });

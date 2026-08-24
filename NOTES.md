@@ -46,32 +46,102 @@ the source documentation is recorded with its reason. Nothing here is a silent a
 
 ---
 
-## ▶️ عند العودة — النقطة التالية / Next on return
+## ◀️ عند العودة ابدأ هنا / Start here on return
 
-**Last session ended 2026-08-24.** Roadmap items A (§12.1, cash-drawer payout) and C (§12.4,
-section-structure retrofit) are both **complete and verified** — see those sections. Working tree
-committed clean; nothing is half-finished on disk.
+**آخر جلسة: 2026-08-24.** هذه هي العلامة الوحيدة الموثوقة للاستئناف.
 
-**The next task is roadmap item 7 — Reports.** Roughly 40 screens. Two locked decisions bind it
-directly: **#2** — Indian GST reports are excluded (`gstSalesReport`/`gstPurchaseReport`, market
-is Egypt), so do not build them; and **#3** — full Arabic + RTL is a hard requirement on every
-screen **and report**, acceptance criteria in §5. This was deliberately *not* started in the last
-session: it is a large new scope that the standing instruction (finish §12.1, then item C) did not
-cover, so it waits for an explicit go-ahead.
+### 1. آخر ما اكتمل
 
-**Two items remain owed and are best paid alongside Reports, not after:**
+**البند 7 — التقارير، الدفعة الأولى: ✅ مكتمل بالكامل — كودًا واختبارًا وتوثيقًا.** التوثيق
+المعماري الكامل في **§13**، والخطة المعتمدة في
+`C:\Users\mohamed\.claude\plans\adaptive-plotting-dongarra.md`.
 
-| Item | What is owed | Why it pairs with Reports |
+المُنجَز:
+
+| الطبقة | الملف | الحالة |
 |---|---|---|
-| **§12.5** | A small API-response test for JSON endpoints, plus coverage for `Product::scopeForLocation()` | `ScreensRenderTest`'s walk cannot see JSON endpoints at all, and Reports adds many more of them. A latent SQL error already hid there once. |
-| **§12.3** | Decide whether an admin should be restrictable at all | Reports are the first screens where "this role may see figures, that one may not" becomes a real question rather than a theoretical one. |
+| الخدمة | `app/Services/ReportService.php` | ✅ جديد — كل الأرقام هنا، والمتحكِّم رقيق بالتصميم |
+| المتحكِّم | `app/Http/Controllers/ReportController.php` | ✅ جديد — المركز + ٥ تقارير + `export()` واحد مُعامَل بقائمة بيضاء |
+| المسارات | `routes/web.php` | ✅ مجموعة `reports.` — المركز والخمسة و`{report}/export` |
+| مكوّن الفلترة | `resources/views/components/report-filters.blade.php` | ✅ جديد — زوج التواريخ دائمًا، والباقي بـ `:fields` |
+| لوحة التحكم | `app/Http/Controllers/HomeController.php` | ✅ `dateRange()` تُفوَّض الآن لـ `ReportService`، و`FormattingService` أُزيلت من المتحكِّم |
+| الشاشات | `resources/views/report/{index,purchase-sell,stock,profit-loss,tax,expenses}.blade.php` | ✅ الستة موجودة ومكتملة |
+| الترجمة | `lang/ar/lang_v1.php` + `lang/en/lang_v1.php` | ✅ 68 مفتاحًا جديدًا في كل ملف (974/974) |
+| الاختبارات | `tests/Feature/ReportsTest.php` (17) + `ApiResponseTest.php` (14) | ✅ خضراء داخل 102 اختبار / 494 تأكيد |
+| التوثيق | **NOTES §13** | ✅ حدّ الخدمة، قرار COGS، القائمة البيضاء، السبعة المؤجَّلة، الأخطاء الثلاثة |
 
-Then items 8–12: Settings, Printing, Offline PWA, module controllers/views, scheduled commands.
+**وأهم ما في هذه الدفعة ليس تقريرًا.** اختبار تقرير الأرباح كشف **خطأ إنتاج حقيقيًا في
+`SellService::syncLines()`**: كانت مِسْحة التنظيف تحذف خطوط مكوّنات الكومبو التي أُنشئت للتوّ
+وتُحرِّر المخزون الذي استهلكته، في **كل** عملية بيع كومبو — لا في التعديل وحده. النتيجة الظاهرة
+صفرُ تكلفة، فكل كومبو يبدو ربحًا خالصًا في التقرير الوحيد الذي يتّخذ المالك قراره عليه. أُصلح
+ومُوثَّق في §13.6.
 
-**Before writing a single report screen, read §11.4 and §12.4.** They carry the section
-vocabulary and the two traps that cost time last session — `.section-head` has no top margin, and
-a class-name grep does not measure §11.4 compliance because `<x-panel quiet>` emits the classes a
-layer down.
+### 2. البند التالي: 8 — Settings
+
+لا شيء متبقٍّ من البند 7 يمنع البدء. المؤجَّل منه سبعة تقارير مسمّاة صريحةً في §10.2 بند 7، وهي
+تَرِث البنية التحتية كلها ولا تحتاج جديدًا منها.
+
+**البند 8 — Settings.** المتحكِّمات المطلوبة: `BusinessController`، `BusinessLocationController`،
+`InvoiceSchemeController`، `InvoiceLayoutController`، `BarcodeController`، `PrinterController`،
+`NotificationTemplateController`، `RoleController`، `ManageUserController`. ثم 9 → 10 → 11 → 12
+(Printing، Offline PWA، شاشات الوحدات، الأوامر المجدولة). `inventory.index` تبقى خارج النطاق
+(تنتمي لـ `inventorymanagement`، البند 11).
+
+### 3. القرارات — **لا شيء ينتظر إذنك**
+
+القرارات كلها محسومة، ولا يوجد سؤال مُعطِّل:
+
+- **نطاق البند 7** = دفعة أولى ٥ تقارير + البنية التحتية. ✅ محسوم ومُنفَّذ
+- **§12.3** = لا نلمس `Gate::before()`؛ الأدمن يبقى غير مقيَّد، والتقارير تحترم الصلاحيات لغير
+  الأدمن — وهو ما يفعله `permit()` أصلًا. ✅ محسوم **بلا أي تغيير سلوكي**، ويبقى 🟡 للمراجعة عند
+  أول متطلَّب حقيقي متعدد المديرين (المُحفِّز مذكور في §12.3).
+- **§12.5** = ✅ أُغلق بـ `ApiResponseTest`.
+- **القيود المقفلة:** #2 لا تقارير GST هندية (السوق مصر — مُستبعدة فعلًا في
+  `app/Support/Permissions.php:14`)، #3 عربية + RTL كاملة على كل شاشة **وكل تقرير** بمعايير
+  القبول في §5، و#8 استقلالية كاملة في القرارات التقنية (تُسجَّل في §8) — وأسئلة النطاق وحدها
+  تعود إليك.
+- **الشروط الجارية:** commit بعد كل بند مكتمل ومختبر، **بدون push**، وتوثيق كامل في NOTES.md.
+
+### 4. ما يجب قراءته قبل لمس أي شاشة
+
+**§11.4 و§11.7 و§12.4.** يحملان مفردات التقسيم ومبادئ التصميم والمصيدتين اللتين كلّفتا وقتًا:
+`.section-head` **بلا هامش أعلى** (فَراغه يأتي من `.section`/`.section-tight` قبله)، و«grep
+لأسماء الأصناف لا يقيس التزام §11.4» لأن `<x-panel quiet>` يُصدرها طبقةً أدنى.
+
+**وقيد صارم يبقى ساريًا على كل تقرير قادم:** كل تقرير يجب أن يُعرَض صحيحًا **بلا أي فلاتر**، لأن
+مَشْي المسارات يفتحه عاريًا — وافتراضُ «الشهر الحالي» في `dateRange()` هو ما يجعل ذلك ممكنًا؛ فلا
+تقرير يجوز أن يشترط query string.
+
+**ودرسان من هذه الدفعة يتكرران في كل ما بعدها:**
+
+- **أي اختبار على مستوى الخدمة لِما هو مقيَّد بالفروع يجب أن يُوثِّق دخولًا** — وإلا قاس الفراغَ
+  بثقة. `permittedLocations()` تُحَلّ مقابل `auth()->user()`، و`createTenant()` لا تُوثِّق أحدًا
+  (§13.7).
+- **الأصفار المتماثلة توقيعُ استعلامٍ فارغ، لا توقيعُ حسابٍ خاطئ.** ثلاثة عشر فشلًا متطابقًا كان
+  لها سبب واحد، وإصلاحٌ واحد حلَّ أحدَ عشر منها.
+
+### 5. حالة التحقق — الصادقة، بلا أرقام من الذاكرة
+
+**نُفِّذ فعليًا ونجح:**
+
+- `php artisan test` → **102 اختبارًا / 494 تأكيدًا، كلها خضراء.**
+- **تكافؤ الترجمة: `ar = 974` مفتاحًا، `en = 974`** — تكافؤ تام (كان 906/906، +68 لكل ملف).
+- المفاتيح الـ68 الجديدة موجودة في الملفين، **كل مفتاح مرة واحدة بالضبط** — لا تكرار يكتب فوق
+  مفتاح قائم (وهو خطأ لا يلتقطه `php -l` لأن تكرار مفتاح مصفوفة ليس خطأ صياغة).
+- فحصان بالتحوير (mutation) على COGS، وكلاهما عَضَّ — الجدول في §13.8.
+- مستخدم غير أدمن يملك `stock_report.view` فقط: بطاقة واحدة في المركز و403 على الأربعة الباقية —
+  مُؤكَّد باختبار في `ReportsTest`، لا بالعين. (ويحتاج `'allow_login' => 1` وإلا صدَّته
+  `CheckUserLogin` بـ 302 وقاس الاختبارُ بوابةَ الدخول لا بوابات التقارير.)
+
+**متبقٍّ، ولا يمنع البند 8:**
+
+- `npm run build` — مُصنِّف أمان Bash/PowerShell كان متوقفًا مرارًا في هذه الجلسة. التوقع
+  ≈121.26 kB CSS، إذ لم يُضَف CSS إطلاقًا: `.tile` و`.rise-group` و`<x-stat>` و`.filter-bar`
+  تحمل متطلبات التصميم أصلًا (§13.10).
+- فتح كل تقرير عاريًا بالعربية بالعين، وطباعة تقرير واحد — الأول مُغطّى آليًا بمَشْي المسارات،
+  والثاني تكفله كتلة الطباعة التي تُخفي `.filter-bar` أصلًا.
+- ⚠️ **ثغرة تغطية مذكورة بصراحة:** قرار «COGS شامل الضريبة» غير مثبَّت باختبار، لأن مُثبِّت
+  `buy()` يجعل `purchase_price` و`purchase_price_inc_tax` متساويين — §13.8.
 
 ---
 
@@ -569,6 +639,7 @@ Each line is written as the item lands.
 | 4. Sales / POS | ✅ Done | 5 (`Sell`, `SellPos`, `SalesOrder`, `SellReturn`, `Shipment`) | 11 (sell index/create/edit/show + shared `_form`/`_line`, sales-order index/create/edit/show served by those same views, **`pos/create` — the terminal**, sell-return index/create/show, shipments index) |
 | 5. Payments & finance | ✅ Done | 5 (`TransactionPayment`, `Expense`, `ExpenseCategory`, `Account`, `CashRegister`) — 1,879 lines, 42 methods | 23 (`payment` index/create/edit/show + `_form`, `expense` index/create/edit/show + `_form`, `expense_category` index/create/edit + `_form`, `account` index/create/edit/show + `_form`, `cash_register` index/create/show/close) |
 | 6. Stock | ✅ Done | 3 (`StockAdjustment`, `StockTransfer`, `OpeningStock`) — 807 lines, 20 methods | 12 (`stock_adjustment` index/create/edit/show + `_form`/`_line`, `stock_transfer` index/create/show + `_line`, `opening_stock` index/edit) — 1,947 lines |
+| 7. Reports | 🟡 First tranche done (5 of 12) | 1 (`Report`) + `ReportService` + `<x-report-filters>` | 6 (`report` index/purchase-sell/stock/profit-loss/tax/expenses) — hub plus the five |
 
 **Item 5, verified rather than assumed:** 38 routes across the five modules — full CRUD plus
 the account operations (`deposit`, `withdraw`, `transfer`, `setClosed`, transaction
@@ -671,10 +742,23 @@ are pinned by passing tests, so this is wiring, not design. **Items 5 and 6 are 
 moved to §10.1**; the numbering below is kept as-is so references elsewhere in this file stay
 valid.
 
-7. **Reports** — `ReportController` (≈40 reports; excludes Indian GST per decision #2).
-   ⬅️ **NEXT ON RETURN.** Pair it with §12.5 (JSON-endpoint test coverage) and settle §12.3
-   (admin restrictability) while here — see the marker at the top of this file for why both
-   belong with this item rather than after it.
+7. **Reports** — `ReportController`. ✅ **First tranche DONE 2026-08-24 — see §13.** Code, tests
+   and documentation all landed; `ReportsTest` (17 tests) and `ApiResponseTest` (14 tests) are
+   green inside the 102-test suite.
+   **The count is 12 permission-gated report screens, not the "≈40" recorded here previously.**
+   That figure was the source system's `ReportController` method count; most of the surplus was
+   JSON/AJAX sub-endpoints of the same DataTables screens, not separate reports.
+   Excludes Indian GST per decision #2.
+   **Built in this tranche (5):** `purchase_n_sell_report`, `stock_report`, `profit_loss_report`,
+   `tax_report`, `expense_report` — plus the shared infrastructure (`ReportService`,
+   `<x-report-filters>`, the whitelisted `export()`).
+   **Deferred (7), and they inherit all of the above — the item is NOT finished:**
+   `contacts_report`, `register_report`, `trending_product_report`, `sales_representative`,
+   `report.stock_details`, `customer_group_report`, `user_performance_report`. Each needs a
+   service method, an action, a route, a view and its keys — no infrastructure.
+   §12.5 is now **closed** by `ApiResponseTest`; §12.3 stays 🟡 as settled, with no behaviour
+   change. The profit report's test found a real bug in `SellService` rather than in reporting —
+   §13.6, Bug 3.
 8. **Settings** — `BusinessController`, `BusinessLocationController`,
    `InvoiceSchemeController`, `InvoiceLayoutController`, `BarcodeController`,
    `PrinterController`, `NotificationTemplateController`, `RoleController`,
@@ -1344,6 +1428,24 @@ admin. It is recorded here because it means **permission changes cannot restrict
 all** — there is no way to grant an administrator less than everything. Fine for a single
 operator; revisit before multi-admin tenants.
 
+**Decision taken 2026-08-24, ahead of the Reports item: leave it exactly as it is.**
+`Gate::before()` is untouched, and the reports enforce permissions for non-admins only — which is
+already what `Controller::permit()` does. **No behaviour changed; this paragraph is the whole of
+the work.**
+
+Reports were the natural moment to ask, because they are the first screens where "this role may
+see the figures, that one may not" stops being theoretical. The answer is still no, for two
+reasons. The change is not report-shaped: `Gate::before()` is the gate every screen in the system
+leans on, so making an admin restrictable is a system-wide change needing a system-wide review,
+not a line added while building a report. And the system currently has one owner, so the change
+would buy nothing today while putting every existing screen's authorisation back in question.
+
+Deliberately left **🟡 rather than closed**, per the owner's choice: the decision is recorded and
+the reports are built to respect permissions like everything else, but the question is parked for
+a calm re-read once the reports are actually in use — with real multi-manager requirements in
+front of us instead of a guess. The concrete trigger for revisiting: a branch manager who should
+see their own branch's figures but not the whole business's profit.
+
 ### 12.4 ✅ Section-structure retrofit of the pre-v2.1 screens
 
 **Resolved.** Six view files, covering ten screens, now carry the §11.4 grouping:
@@ -1442,12 +1544,239 @@ All six touched files were additionally checked structurally: each compiles, eac
 run-on-comment signature `/-{2,}[ \t]+\}\}/`.
 
 
-### 12.5 🟡 `Product::scopeForLocation()` has no test coverage
+### 12.5 ✅ RESOLVED — the JSON endpoints now have their own test
 
 The scope qualified its column with a table that does not exist (`locations.id` instead of
 `business_locations.id`), which is a hard SQL error, and it survived undetected because the
 only route that exercises it — `products.list` — is excluded from `ScreensRenderTest` for
-being JSON with no view. Fixed at `app/Models/Product.php:68`. The **gap** is that the walk
-cannot see JSON endpoints at all; a small API-response test is owed alongside the Reports
+being JSON with no view. Fixed at `app/Models/Product.php:68`. The **gap** was that the walk
+cannot see JSON endpoints at all; a small API-response test was owed alongside the Reports
 item, which adds many more of them.
+
+**Closed 2026-08-24 by `tests/Feature/ApiResponseTest.php`** — 14 tests, 58 assertions. The
+thirteen endpoints sitting in `ScreensRenderTest::SKIP` had no test of their own, and they are
+not incidental: they are the POS product search, every contact picker, and the purchase-form
+prefill. A render walk cannot see them, so nothing did.
+
+It asserts the three things a render walk structurally cannot:
+
+- **A JSON content type, not a redirect.** A guest hitting these gets a login page with a 200
+  in some configurations, which `assertOk()` alone would pass. The walk over the twelve named
+  endpoints checks status, `application/json`, **and** that the body decodes — an undecodable
+  200 breaks every caller while looking healthy.
+- **The field names the front end binds to.** `products.list` must answer with
+  `variation_id, product_id, text, sku, unit, enable_stock, qty_available`, and
+  `contacts.search` with `id, text, mobile, balance, credit_limit, pay_term_number`. Renaming
+  one of these silently empties a Select2 rather than raising anything.
+- **The failure modes.** A missing record is a 404 and not an empty list; a missing required
+  parameter is a 422 naming the field; a guest is a 401 and not a login page; a signed-in user
+  without the permission is a 403 in JSON.
+
+`Product::scopeForLocation()` itself is now pinned four ways: an unrestricted product is
+available everywhere, an explicitly restricted one is visible at its location and not at
+another, `forLocation(null)` filters nothing, and the same scope is exercised through HTTP via
+`products.list`. The regression that started this section would now fail three of the four.
+
+Two traps worth carrying forward, both found by writing this file:
+
+- **`assertSame(10.0, $decoded['ordered'])` fails against a decoded `10`.** JSON does not
+  preserve PHP float types, so asserting the decoded *type* tests the runtime's precision
+  setting rather than the endpoint. Cast before comparing.
+- **`actingAs()` outlives a single request inside one test.** Clearing it for the guest case
+  needs `auth()->logout()`, `flushSession()` **and** `$this->app['auth']->forgetGuards()`; the
+  first two alone leave the resolved guard instance still holding the user.
+
+---
+
+## 13. Reports — the figures layer (item 7, first tranche)
+
+Reports are the first screens in Souqly that exist only to answer a question, not to record
+anything. Everything before them stores what happened; these interpret it. That changes what
+"correct" means: a purchase screen that is wrong is visibly wrong, while a profit figure that is
+wrong looks exactly like a profit figure that is right. This section records the decisions that
+follow from that, and the three bugs the tranche surfaced.
+
+### 13.1 The service boundary, and why it is drawn here
+
+**`app/Services/ReportService.php` owns every figure. The controller owns none.** Not a style
+preference — `scoped()` is the reason:
+
+```php
+Transaction::ofType($types)
+    ->permittedLocations()
+    ->forLocation($locationId)
+    ->whereBetween('transactions.transaction_date', [$start.' 00:00:00', $end.' 23:59:59']);
+```
+
+That chain appeared **four times inside `HomeController::totals()` alone** before this item. Four
+copies of "this month, at the locations you may see" is four chances for the dashboard and the
+report to disagree about what the same words mean — and when they disagree, both look right.
+There is now one definition, and `HomeController::dateRange()` delegates to it rather than
+holding a second current-month default.
+
+What deliberately did **not** move: `totals()`, `salesTrend()` and `stockAlerts()` stay in
+`HomeController`. They return dashboard-shaped display keys rather than figures, and folding them
+in would have been a larger change than the duplication justified.
+
+The payoff is testability. `ReportsTest` targets the service directly, so the arithmetic is
+asserted without rendering anything — which is the only way to see it at all, since a report that
+computes garbage renders it beautifully.
+
+### 13.2 Two figure decisions that are decisions, not defaults
+
+**COGS uses `purchase_price_inc_tax`.** This slightly overstates cost of goods sold wherever
+purchase tax is recoverable, and the alternative was considered. It loses to a worse problem:
+`StockService::consume()` (`StockService.php:135`) already writes the tax-inclusive cost into the
+FIFO map, so computing COGS from the exclusive column would make the *same sale* show two
+different profits depending on which screen you opened. Agreeing with the cost the system has
+already recorded beats being theoretically tidier and self-contradictory. Recorded here because
+the day someone reconciles against an accountant's figure, this is the line they will need.
+
+**Net quantity, never gross.** `(map.quantity - map.qty_returned)` and
+`(sell_line.quantity - quantity_returned)` throughout, so a returned item stops counting as both
+revenue and cost rather than as neither or one.
+
+**The combo asymmetry, which is the subtlest thing in the file.** Revenue **excludes**
+`children_type = 'combo'`; COGS **includes** them. That looks like an inconsistency and is not:
+the child lines are what hold the FIFO map rows, so cost lives there, while price lives on the
+parent. Invert either half and nothing breaks visibly — you simply get a wrong profit. Note
+honestly that `salesValue()`'s own docblock records that children are priced at zero today, which
+makes that particular filter arithmetically inert and future-proofing rather than load-bearing;
+there is no mutation that proves it, because there is nothing yet for it to change.
+
+### 13.3 One `export()`, whitelisted
+
+A single action parameterised by report name rather than five near-identical methods, so there is
+one `view_export_buttons` gate and one `Excel::download` call. The report name is
+**whitelist-validated** against the five known slugs — the parameter reaches a method name, and a
+parameter that reaches a method name is exactly the shape that must never be trusted. It re-runs
+the report's own query with the request's filters, so the file matches what is on screen rather
+than silently exporting an unfiltered table.
+
+### 13.4 Deferred, and inheriting all of the above
+
+Seven reports remain: `contacts_report`, `register_report`, `trending_product_report`,
+`sales_representative`, `report.stock_details`, `customer_group_report`,
+`user_performance_report`. They need a service method, a controller action, a route, a view and
+their keys — not infrastructure. `ReportService`, `<x-report-filters>` and the whitelisted
+`export()` are built to carry them.
+
+**Indian GST reports are excluded permanently** per decision #2 (the market is Egypt), enforced
+at `app/Support/Permissions.php:14`. **The real screen count is 12, not the "≈40" this file
+recorded previously** — that figure was the source system's `ReportController` method count, and
+most of the surplus was JSON/AJAX sub-endpoints of the same DataTables screens.
+
+### 13.5 `expenseValue()` gained a `$categoryId`
+
+The expense report's stat tiles were computed without the category filter that the table beneath
+them honoured, so filtering to one category left the totals describing all of them. The tiles and
+the table now take the same path. A small fix, recorded because the class of bug is worth naming:
+**a summary and its detail computed by two different code paths will eventually disagree**, and
+the disagreement is invisible until someone adds a filter to one of them.
+
+### 13.6 Three bugs, and what each one teaches
+
+**Bug 1 — `selectRaw()` is `addSelect()` under another name.** It *appends*; `select(DB::raw())`
+replaces. Appending an aggregate beside the non-aggregated columns already selected, with no
+`GROUP BY`, is MySQL error 1140 under the default `only_full_group_by` — a hard 500 on
+`reports.stock`, not a wrong number. Caught by `ScreensRenderTest` walking the route bare.
+
+**Bug 2 — the export route's 404 was a test artefact pointing at a real gap.**
+`ScreensRenderTest::resolveParameters()` ends in `default => $this->fixtureProductId`, so
+`{report}` — an unrecognised parameter name — was filled with a **product id**, which the
+whitelist correctly rejected. The route was right; the walk could not express it. It is now a
+`SKIP` entry with real coverage in `ApiResponseTest`, which is what §12.5 asked for.
+
+**Bug 3 — the profit report's test found a production bug in selling, not in reporting.**
+This is the one worth reading twice.
+
+`SellService::syncLines()` ends with a cleanup sweep whose rule is *"delete every line on this
+transaction that is not in `$keptIds`"*. `$keptIds` collected **parent** line ids only. So
+`consumeComboComponents()` would write the component lines, consume their stock — and then the
+sweep, a few statements later, would delete the lines it had just written and release the stock it
+had just consumed. **On every combo sale, creates included, not only edits.**
+
+The visible symptom: nothing. The screen showed the sale correctly. The FIFO map was empty, so
+`costOfGoodsSold()` found no cost, so **every combo reported as pure margin at zero cost** — on
+the one report an owner makes decisions with.
+
+The fix threads the child ids back into `$keptIds`, and it is safe on the edit path for the same
+reason the sweep exists: the *previous* save's children are absent from `$keptIds`, so they are
+still released and deleted, while the ones just created survive. Both the call site and the sweep
+now carry comments saying so, because the sweep is the one place in the service where a row can be
+deleted without anybody asking for it.
+
+The lesson is about method, not about combos. Having checked the cast, the column, the migration,
+`$guarded`, `affectsStock()` and `enable_stock` on paper and found every one of them correct, the
+thing that actually located the bug was **instrumenting the assertion message to print the real
+state** instead of forming a sixth hypothesis. It printed
+`lines=1 type=combo stock=true combo=[{...}] status=final` — proving the fixture was right and the
+child had simply never survived. A test earned its keep before it ever guarded anything.
+
+### 13.7 The test that measured nothing until it signed in
+
+**`ReportsTest` initially reported a confident `0.0` for thirteen of seventeen figures.** Not
+wrong arithmetic — an empty result set. `permittedLocations()` resolves against
+`auth()->user()`, and `TestCase::createTenant()` binds a tenant but **authenticates nobody**, so
+it returned an empty id list and the scope filtered out every row in the database.
+
+Every assertion was passing against an empty report. That is the precise failure this file exists
+to catch, reproduced inside the file itself.
+
+`setUp()` now grants `access_all_locations` and calls `actingAs($this->user)`, with a comment
+saying why. **One fix resolved eleven failures** — reading thirteen identical `0.0`s as one cause
+rather than debugging thirteen calculations is what made that a short session instead of a long
+one. Uniform zeros are the signature of an empty query, never of wrong maths.
+
+Generalised: **a service-level test of anything location-scoped must authenticate, or it silently
+measures nothing.** This will apply to every one of the seven deferred reports.
+
+### 13.8 Mutation-checked, per §12.4
+
+A green suite is not evidence a test bites. Both checks were run and reverted:
+
+| Mutation | Expected if the test bites | Observed |
+|---|---|---|
+| `map.quantity` → `sl.quantity` in `costOfGoodsSold()` | COGS changes | 195 instead of 90 — caught |
+| add the `children_type != 'combo'` filter to COGS | combos become costless | 0 instead of 36 — caught |
+
+One wrong mutation is worth recording too: the first attempt mutated `salesValue()`'s filter to
+`->where('map.quantity', '>', -1)`, but `salesValue()` does not join `map` — that is a SQL error,
+not a meaningful mutation. Reverted, and reading the method then showed its docblock already
+explains why no mutation exists there (§13.2).
+
+**One coverage gap, stated plainly:** the `buy()` fixture sets `purchase_price` and
+`purchase_price_inc_tax` to the same value, so a mutation swapping those two columns would go
+uncaught — meaning §13.2's tax-inclusive-COGS decision is documented but **not pinned by a test**.
+Fixing it needs a fixture with a real purchase tax, and it is the first thing to do when the next
+report touches cost.
+
+### 13.9 Verified
+
+```bash
+php artisan test    # 102 tests, 494 assertions — all passing
+```
+
+- `ReportsTest` — 17 tests, 100 assertions. Asserts the arithmetic: gross profit equals revenue
+  less FIFO cost, a return reduces both sides, output tax nets against input tax, more input than
+  output is reclaimable rather than owed, and a combo consumes its components.
+- `ApiResponseTest` — 14 tests, 58 assertions (§12.5).
+- Every report opens **bare, with no query string** — a hard constraint, since the route walk
+  opens it that way. `dateRange()`'s current-month default is what makes that hold; no report may
+  require a filter to render.
+- A non-admin holding only `stock_report.view` sees one tile on the hub and is refused the other
+  four — asserted, not eyeballed. Note that such a user needs `'allow_login' => 1` or
+  `CheckUserLogin` bounces them with a 302 and the test measures the login gate instead of the
+  report gates it is about.
+- Lang parity `ar = 974`, `en = 974` — exact, +68 each, every new key present once in both.
+
+### 13.10 What this tranche deliberately did not add
+
+**No new CSS, and no new design-system work.** `@utility tile` (`app.css:562`) is already
+gradient-backed, shadowed, hover-lifting and `text-start`, so the hub needed none; `.rise-group`,
+`<x-stat>` and `.filter-bar` already carry the depth, micro-interaction and hierarchy the design
+directive asks for, and `.filter-bar` is already inside the print block's hide list, so a printed
+report drops its filter strip for free. The directive is satisfied by the central system
+propagating, which is exactly what it asked for — a report needing a bespoke style would have been
+a sign the system was missing a component, not a sign the report was special.
 

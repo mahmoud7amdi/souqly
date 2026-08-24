@@ -5,19 +5,7 @@
 @section('content')
 
 @php
-    /* Whether the list is empty because nothing exists yet or because a filter
-       excluded everything — the two need different empty states, and telling
-       them apart is the difference between "add your first brand" and "your
-       search matched nothing". */
     $isFiltered = request()->filled('search');
-
-    /* Most tables own every row they list. Barcodes do not: the index shows the
-       shared global sheet presets (business_id IS NULL) beside the tenant's own,
-       and those are read-only. A controller opts in by returning a `rowLocked`
-       closure from indexViewData(); without one every row stays editable. The
-       controller's findRecord() is what actually enforces this — hiding the icon
-       only stops us offering a button that would 404. */
-    $rowLocked = $rowLocked ?? null;
 @endphp
 
 <x-page-head :subtitle="trans_choice('lang_v1.record_count', $records->total(), ['count' => $records->total()])">
@@ -29,8 +17,6 @@
     @endif
 </x-page-head>
 
-{{-- Filters sit in a sunken strip, not a white card: they are secondary to the
-     data and must not compete with the table for attention. --}}
 <form method="GET" class="filter-bar">
     <div class="flex flex-wrap items-end gap-3">
         <div class="field min-w-56 flex-1">
@@ -60,9 +46,12 @@
     <table class="table">
         <thead>
             <tr>
-                @foreach ($columns as $column => $heading)
-                    <th>{{ __($heading) }}</th>
-                @endforeach
+                <th>{{ __('lang_v1.name') }}</th>
+                <th>{{ __('lang_v1.location_id') }}</th>
+                <th>{{ __('lang_v1.address') }}</th>
+                <th>{{ __('lang_v1.mobile') }}</th>
+                <th>{{ __('lang_v1.price_group') }}</th>
+                <th>{{ __('lang_v1.status') }}</th>
                 @if ($canUpdate || $canDelete)
                     <th class="th-numeric">{{ __('lang_v1.actions') }}</th>
                 @endif
@@ -71,44 +60,53 @@
         <tbody>
             @forelse ($records as $record)
                 <tr>
-                    @foreach ($columns as $column => $heading)
-                        @php
-                            $value = $record->{$column};
-                            /* The first column identifies the row, so it carries the
-                               weight — every other column is supporting detail. */
-                            $isFirst = $loop->first;
-                        @endphp
-                        <td @class([
-                            'cell-numeric' => is_numeric($value) && ! is_bool($value),
-                            'cell-primary' => $isFirst && ! is_bool($value),
-                        ])>
-                            @if (is_bool($value))
-                                <span class="{{ $value ? 'badge-success' : 'badge-muted' }}">
-                                    {{ $value ? __('lang_v1.yes') : __('lang_v1.no') }}
-                                </span>
-                            @elseif ($value === null || $value === '')
-                                <span class="text-slate-400">—</span>
-                            @else
-                                {{ $value }}
-                            @endif
-                        </td>
-                    @endforeach
+                    <td class="cell-primary">{{ $record->name }}</td>
+                    <td>
+                        @if ($record->location_id)
+                            <span class="force-ltr">{{ $record->location_id }}</span>
+                        @else
+                            <span class="text-slate-400">—</span>
+                        @endif
+                    </td>
+                    <td>
+                        @if ($record->location_address)
+                            {{ $record->location_address }}
+                        @else
+                            <span class="text-slate-400">—</span>
+                        @endif
+                    </td>
+                    <td>
+                        @if ($record->mobile)
+                            <span class="force-ltr">{{ $record->mobile }}</span>
+                        @else
+                            <span class="text-slate-400">—</span>
+                        @endif
+                    </td>
+                    <td>{{ $record->price_group?->name ?? __('lang_v1.default') }}</td>
+                    <td>
+                        <span class="{{ $record->is_active ? 'badge-success' : 'badge-muted' }}">
+                            {{ $record->is_active ? __('lang_v1.active') : __('lang_v1.inactive') }}
+                        </span>
+                    </td>
 
                     @if ($canUpdate || $canDelete)
                         <td>
-                            {{-- Icon actions rather than text buttons: nine settings
-                                 tables show the same two verbs on every row, and
-                                 spelling them out doubles the row height for no
-                                 gain. Each still carries an accessible name. --}}
                             <div class="cell-actions">
-                                @if ($rowLocked && $rowLocked($record))
-                                    <span class="badge-muted">{{ __('lang_v1.built_in') }}</span>
-                                @else
                                 @if ($canUpdate)
                                     <a href="{{ route($routePrefix.'.edit', $record->id) }}"
                                        class="btn-icon" title="{{ __('lang_v1.edit') }}"
                                        aria-label="{{ __('lang_v1.edit') }}">
                                         <x-nav-icon name="edit" :size="4"/>
+                                    </a>
+
+                                    {{-- Deactivating is the everyday alternative to deleting: a
+                                         branch with transactions cannot be removed at all, and
+                                         this is what stops new work being booked against it. --}}
+                                    <a href="{{ route($routePrefix.'.toggle', $record->id) }}"
+                                       class="btn-icon"
+                                       title="{{ $record->is_active ? __('lang_v1.deactivate') : __('lang_v1.activate') }}"
+                                       aria-label="{{ $record->is_active ? __('lang_v1.deactivate') : __('lang_v1.activate') }}">
+                                        <x-nav-icon :name="$record->is_active ? 'x' : 'check'" :size="4"/>
                                     </a>
                                 @endif
 
@@ -125,14 +123,13 @@
                                         </button>
                                     </form>
                                 @endif
-                                @endif
                             </div>
                         </td>
                     @endif
                 </tr>
             @empty
-                <x-table-empty :columns="count($columns) + ($canUpdate || $canDelete ? 1 : 0)"
-                               :icon="$isFiltered ? 'search' : 'box'"
+                <x-table-empty :columns="6 + ($canUpdate || $canDelete ? 1 : 0)"
+                               :icon="$isFiltered ? 'search' : 'store'"
                                :title="$isFiltered ? __('lang_v1.no_records_found') : __('lang_v1.nothing_here_yet')"
                                :text="$isFiltered ? __('lang_v1.nothing_matches_filters') : null">
                     @if ($isFiltered)

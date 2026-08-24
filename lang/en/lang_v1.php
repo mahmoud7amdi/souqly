@@ -1000,4 +1000,88 @@ Large',
     // Cash drawer payouts (§12.1)
     'payout' => 'Payout',
     'paid_out_of_this_drawer' => 'Supplier payments and expenses settled in cash from this drawer',
+
+    /* ----------------------------------------------------------------- *
+     | Reports — item 7, first tranche (§13)
+     * ----------------------------------------------------------------- */
+
+    // Hub and report names
+    'reports_hub_subtitle' => 'Your numbers over a period you choose: buying and selling, stock, profit, tax and expenses.',
+    'no_reports_available' => 'No reports available to you',
+    'no_reports_available_desc' => 'Your permissions do not include any report yet. Ask an administrator to add the ones you need.',
+    'purchase_n_sell_report' => 'Purchase & sell report',
+    'purchase_n_sell_report_desc' => 'What was bought and what was sold in the period, with returns and dues on both sides.',
+    'stock_report' => 'Stock report',
+    'stock_report_desc' => 'Quantity on hand for every item, valued at cost and at selling price.',
+    'profit_loss_report' => 'Profit & loss report',
+    'profit_loss_report_desc' => 'From net sales down to net profit, line by line.',
+    'tax_report' => 'Tax report',
+    'tax_report_desc' => 'Tax collected on sales against tax paid on purchases, and the net payable.',
+    'expense_report' => 'Expense report',
+    'expense_report_desc' => 'Expenses grouped by category, with refunds netted off.',
+    'export_to_excel' => 'Export to Excel',
+
+    // Purchase and sell
+    'total_purchase' => 'Total purchases',
+    'total_sell' => 'Total sales',
+    'net_purchase' => 'Net purchases',
+    'net_sell' => 'Net sales',
+    'after_returns' => 'After returns',
+    'sell_minus_purchase' => 'Sales minus purchases',
+    'both_directions' => 'Both directions',
+    'purchase_n_sell_not_profit' => 'This difference compares money in against money out; it is not a profit. Stock bought this month is usually sold next month, so the two sides are not describing the same goods. For profit see',
+
+    // Stock
+    'stock_value' => 'Stock value',
+    'at_cost' => 'At cost',
+    'potential_sale_value' => 'Potential sale value',
+    'at_selling_price' => 'At selling price',
+    'potential_profit' => 'Potential profit',
+    'if_all_sold_at_current_price' => 'If every unit sold at its current price',
+    'current_stock' => 'Current stock',
+    'total_units' => 'Total units',
+    'across_all_pages' => 'Across all pages',
+    'no_stock_found' => 'No stock found',
+    'no_stock_found_desc' => 'No stock-tracked item matches these filters.',
+    'stock_report_position_note' => 'Stock is a position rather than a period, so this report has no from/to date. Values use the current unit cost and selling price of each item.',
+
+    // Profit and loss
+    'gross_profit' => 'Gross profit',
+    'sales_minus_cost' => 'Sales minus cost',
+    'net_profit' => 'Net profit',
+    'after_expenses' => 'After expenses',
+    'gross_profit_margin' => 'Gross profit margin',
+    'on_net_sales' => 'On net sales',
+    'cost_of_goods_sold' => 'Cost of goods sold',
+    'cost_of_returned_goods' => 'Cost of returned goods',
+    'profit_loss_tax_inclusive_note' => 'Cost and revenue are both inclusive of tax, because the cost recorded against every sale is the tax-inclusive purchase price. Both sides sit on the same basis, so the margin is sound.',
+
+    // Tax
+    'tax_payable' => 'Tax payable',
+    'reclaimable' => 'Reclaimable',
+    'owed_to_authority' => 'Owed to the authority',
+    'output_tax' => 'Output tax',
+    'tax_collected_on_sales' => 'Collected on sales',
+    'input_tax' => 'Input tax',
+    'tax_paid_on_purchases' => 'Paid on purchases',
+    'rates_used_in_period' => 'Rates used in the period',
+    'output_tax_on_returns' => 'Output tax on sell returns',
+    'input_tax_on_returns' => 'Input tax on purchase returns',
+    'breakdown' => 'Breakdown',
+    'tax_by_rate' => 'Tax by rate',
+    'tax_by_rate_desc' => 'Every rate actually applied in the period, and the kind of document it was applied to.',
+    'rate' => 'Rate',
+    'taxable_amount' => 'Taxable amount',
+    'tax_amount' => 'Tax amount',
+    'no_tax_in_period' => 'No tax in this period',
+    'no_tax_in_period_desc' => 'No tax rate was applied to a document in the selected period. Nothing is misconfigured — the period is simply empty.',
+
+    // Expenses
+    'total_expense' => 'Total expense',
+    'before_refunds' => 'Before refunds',
+    'largest_category' => 'Largest category',
+    'uncategorised' => 'Uncategorised',
+    'share' => 'Share of total',
+    'no_expenses_in_period' => 'No expenses in this period',
+    'no_expenses_in_period_desc' => 'No expense was recorded in the selected period with these filters.',
 ];
