@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\SimpleCrudController;
 use App\Models\BusinessLocation;
 use App\Models\InvoiceLayout;
+use App\Services\UploadService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
@@ -26,12 +27,27 @@ use Illuminate\Http\Request;
  *
  * Gated by the flat `invoice_settings.access`, like invoice schemes.
  *
- * Image upload for `logo` / `letter_head` is deferred to Item 9 (printing),
- * where the receipt renderer that consumes them lives; the fields accept a path
- * for now and are documented as such in NOTES §14.
+ * `logo` and `letter_head` are uploads, handled in {@see prepare()} through
+ * {@see UploadService}. They were text paths until item 9, because nothing in
+ * the app printed them and there was no upload layer to put a file anywhere.
  */
 class InvoiceLayoutController extends SimpleCrudController
 {
+    /**
+     * Upload fields, column => `constants` path key.
+     *
+     * Both land in `business_logo_path`: they are the same kind of artefact —
+     * one business's printed identity — and splitting them across two
+     * directories would mean two config keys and two places to look when a logo
+     * stops appearing.
+     *
+     * @var array<string, string>
+     */
+    protected const UPLOADS = [
+        'logo' => 'business_logo_path',
+        'letter_head' => 'business_logo_path',
+    ];
+
     protected string $model = InvoiceLayout::class;
 
     protected string $viewPath = 'invoice-layout';
@@ -47,6 +63,8 @@ class InvoiceLayoutController extends SimpleCrudController
         'design' => 'lang_v1.design',
         'is_default' => 'lang_v1.default',
     ];
+
+    public function __construct(private UploadService $uploads) {}
 
     protected function ability(string $action): string
     {
@@ -68,6 +86,12 @@ class InvoiceLayoutController extends SimpleCrudController
                 'checkbox' => 'nullable|boolean',
                 'select' => 'nullable|in:'.implode(',', array_keys($field['options'] ?? [])),
                 'number' => 'nullable|integer',
+                // `image` and not `mimes:png,jpg`: it checks the file's contents,
+                // so a PHP script renamed to `logo.png` is rejected here rather
+                // than landing in a web-served directory. 2 MB is generous for a
+                // letterhead and small enough that a 40 MB phone photo is refused
+                // with a validation message instead of a memory error.
+                'file' => 'nullable|image|max:2048',
                 default => 'nullable|string|max:255',
             };
         }
@@ -87,6 +111,26 @@ class InvoiceLayoutController extends SimpleCrudController
         foreach ($this->flatFields() as $field) {
             if ($field['type'] === 'checkbox') {
                 $validated[$field['name']] = $request->boolean($field['name']);
+            }
+        }
+
+        foreach (self::UPLOADS as $column => $pathKey) {
+            // The key has to come *out* first. A file input that nobody touched
+            // validates as null, and writing that null back would erase the
+            // tenant's logo every time they saved a label three panels away.
+            unset($validated[$column]);
+
+            $current = $record->{$column} ?? null;
+
+            if ($request->hasFile($column)) {
+                $validated[$column] = $this->uploads->store(
+                    $request->file($column),
+                    $pathKey,
+                    $current
+                );
+            } elseif ($request->boolean('remove_'.$column)) {
+                $this->uploads->delete($pathKey, $current);
+                $validated[$column] = null;
             }
         }
 
@@ -151,10 +195,11 @@ class InvoiceLayoutController extends SimpleCrudController
                 'fields' => [
                     ['name' => 'header_text', 'label' => __('lang_v1.header_text'), 'type' => 'textarea'],
                     ['name' => 'show_logo', 'label' => __('lang_v1.show_logo'), 'type' => 'checkbox'],
-                    ['name' => 'logo', 'label' => __('lang_v1.logo_path'), 'type' => 'text',
-                     'hint' => __('lang_v1.logo_path_hint')],
+                    ['name' => 'logo', 'label' => __('lang_v1.logo'), 'type' => 'file',
+                     'hint' => __('lang_v1.logo_hint'), 'pathKey' => 'business_logo_path'],
                     ['name' => 'show_letter_head', 'label' => __('lang_v1.show_letter_head'), 'type' => 'checkbox'],
-                    ['name' => 'letter_head', 'label' => __('lang_v1.letter_head_path'), 'type' => 'text'],
+                    ['name' => 'letter_head', 'label' => __('lang_v1.letter_head'), 'type' => 'file',
+                     'hint' => __('lang_v1.letter_head_hint'), 'pathKey' => 'business_logo_path'],
                 ],
             ],
             [

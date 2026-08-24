@@ -12,13 +12,26 @@
         <x-nav-icon :name="$ok ? 'check-circle' : 'alert'"/>
         <span class="min-w-0 font-medium">{{ $status['msg'] ?? '' }}</span>
 
-        {{-- Optional trailing link, for the flows that redirect away from the
-             thing they just created — the POS returns to an empty terminal, so
-             this is the only route back to the receipt it printed. --}}
-        @if (! empty($status['link']))
-            <a href="{{ $status['link'] }}" class="link ms-auto shrink-0">
-                {{ $status['link_label'] ?? __('lang_v1.view') }}
-            </a>
+        {{-- Optional trailing links, for the flows that redirect away from the
+             thing they just created. The POS returns to an empty terminal, so
+             these are the only route back to the sale it just rang up — and the
+             receipt is one of them, which is why this is a list rather than the
+             single `link` it started as: after a POS sale there are two things a
+             clerk wants, the paper and the record.
+
+             Each entry is ['url' => …, 'label' => …] plus an optional
+             'blank' => true. `blank` is not cosmetic: the receipt opens in its
+             own tab because it auto-prints, and stealing the terminal tab to do
+             that would put the next customer behind a print dialog. --}}
+        @if (! empty($status['links']))
+            <span class="ms-auto flex shrink-0 items-center gap-3">
+                @foreach ($status['links'] as $item)
+                    <a href="{{ $item['url'] }}" class="link"
+                       @if ($item['blank'] ?? false) target="_blank" rel="noopener" @endif>
+                        {{ $item['label'] ?? __('lang_v1.view') }}
+                    </a>
+                @endforeach
+            </span>
         @endif
     </div>
 @endif

@@ -17,7 +17,10 @@
 
 <x-page-head :subtitle="$business->name"/>
 
-<form method="POST" action="{{ route('business.settings.update') }}" class="max-w-4xl">
+{{-- `enctype`: the logo is a file, and a urlencoded form posts a file input as
+     its filename and nothing else. --}}
+<form method="POST" action="{{ route('business.settings.update') }}"
+      enctype="multipart/form-data" class="max-w-4xl">
     @csrf
     @method('PUT')
 
@@ -30,6 +33,32 @@
                            @class(['input', 'input-invalid' => $errors->has('name')])
                            value="{{ old('name', $business->name) }}">
                     @error('name')<p class="field-error">{{ $message }}</p>@enderror
+                </div>
+
+                {{-- The logo, above the picker when there is one. Handled the
+                     same way as the invoice-layout uploads: a separate "remove"
+                     checkbox, because an empty file input means "I did not choose
+                     a file", which is the normal case on every other save. --}}
+                <div class="field sm:col-span-2">
+                    <label for="logo" class="label">{{ __('lang_v1.logo') }}</label>
+
+                    @if ($logoUrl)
+                        <div class="file-current">
+                            <span class="thumb-md">
+                                <img src="{{ $logoUrl }}" alt="{{ __('lang_v1.logo') }}">
+                            </span>
+                            <label class="checkbox-row">
+                                <input type="checkbox" name="remove_logo" value="1" class="checkbox">
+                                <span class="checkbox-label">{{ __('lang_v1.remove') }}</span>
+                            </label>
+                        </div>
+                    @endif
+
+                    <input type="file" id="logo" name="logo" accept="image/*"
+                           @class(['input-file', 'input-invalid' => $errors->has('logo')])
+                           aria-describedby="logo-hint">
+                    <p id="logo-hint" class="hint">{{ __('lang_v1.logo_hint') }}</p>
+                    @error('logo')<p class="field-error">{{ $message }}</p>@enderror
                 </div>
 
                 <div class="field">

@@ -22,6 +22,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationTemplateController;
 use App\Http\Controllers\OpeningStockController;
 use App\Http\Controllers\PrinterController;
+use App\Http\Controllers\PrintController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\PurchaseOrderController;
@@ -304,6 +305,29 @@ Route::middleware(['auth', 'tenant.ui'])->group(function () {
      | one write lives on sells.updateShipping.
      */
     Route::get('/shipments', [ShipmentController::class, 'index'])->name('shipments.index');
+
+    /* --- Printing --- *
+     |
+     | Sale documents on paper: A4 in the browser, A4 as a PDF, 72 mm on the roll,
+     | and the queue hand-off to the counter's ESC/POS agent.
+     |
+     | One prefix rather than a `print` action on each of the three sale
+     | controllers. The document type is a column, not a URL — `PrintController`
+     | reads it and picks the gate — so three sets of four routes would be twelve
+     | routes doing one thing, and the sell, sales-order and sell-return screens
+     | would each need their own template link.
+     |
+     | `enqueue` is the only POST here, because it is the only one that makes
+     | hardware move. The other three are reads of a document and have to stay
+     | GET: a clerk bookmarks an invoice, and a browser prefetches links.
+     */
+    Route::controller(PrintController::class)->prefix('print')->name('print.')
+        ->group(function () {
+            Route::get('/{id}/invoice', 'invoice')->name('invoice');
+            Route::get('/{id}/pdf', 'pdf')->name('pdf');
+            Route::get('/{id}/receipt', 'receipt')->name('receipt');
+            Route::post('/{id}/enqueue', 'enqueue')->name('enqueue');
+        });
 
     /* ================================================================ *
      | Stock

@@ -78,6 +78,43 @@
                 </span>
             </label>
 
+        @elseif ($type === 'file')
+            {{-- An image upload plus whatever is already stored.
+
+                 The stored column holds a bare filename, so the thumbnail's URL
+                 has to be resolved through UploadService — which also returns
+                 null when the row points at a file that is no longer on disk,
+                 and a settings screen showing a broken-image glyph is how a
+                 tenant concludes their logo is corrupt.
+
+                 The "remove" checkbox is a separate input rather than a magic
+                 empty value, because an empty file input means "I did not choose
+                 a file", which is the normal case on every save. Without it,
+                 clearing a logo would be impossible through the form. --}}
+            @php
+                $pathKey = $field['pathKey'] ?? 'business_logo_path';
+                $currentUrl = app(\App\Services\UploadService::class)
+                    ->url($pathKey, $record->{$name} ?? null);
+            @endphp
+
+            @if ($currentUrl)
+                <div class="file-current">
+                    <span class="thumb-md">
+                        <img src="{{ $currentUrl }}" alt="{{ $field['label'] }}">
+                    </span>
+                    <label class="checkbox-row">
+                        <input type="checkbox" name="remove_{{ $name }}" value="1" class="checkbox">
+                        <span class="checkbox-label">{{ __('lang_v1.remove') }}</span>
+                    </label>
+                </div>
+            @endif
+
+            <input type="file" id="{{ $name }}" name="{{ $name }}"
+                   accept="{{ $field['accept'] ?? 'image/*' }}"
+                   @class(['input-file', 'input-invalid' => $invalid])
+                   @if ($invalid) aria-invalid="true" @endif
+                   @if ($describedBy) aria-describedby="{{ $describedBy }}" @endif>
+
         @elseif ($type === 'number')
             {{-- inputmode=decimal keeps the numeric keypad on mobile; the JS
                  layer converts Arabic-Indic digits to ASCII on input. --}}

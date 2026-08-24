@@ -991,6 +991,29 @@
         min-height: var(--size-control);
     }
 
+    /* --- File inputs -----------------------------------------------------
+       The native control, not a replacement for it. Every JavaScript file
+       picker has to rebuild the keyboard handling, the drag target and the
+       screen-reader announcement that `<input type=file>` already has, and it
+       still cannot open the OS dialog any better. What *can* be styled is the
+       button half — `file:` is Tailwind's `::file-selector-button` variant — so
+       that is made to match `.btn-secondary` and the field around it to match
+       `.input`, and the browser keeps the part it does well. */
+    .input-file {
+        @apply w-full cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-600;
+        @apply file:me-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5;
+        @apply file:text-sm file:font-semibold file:text-slate-700 file:transition-colors;
+        @apply hover:file:bg-slate-200;
+        min-height: var(--size-control);
+    }
+
+    /* What is already stored, above the picker: the thumbnail and the way to
+       clear it. Rendered only when there is a file, so a field that has never
+       been filled is one control rather than three. */
+    .file-current {
+        @apply mb-2 flex items-center gap-3;
+    }
+
     /* --- Checkboxes ------------------------------------------------------
        The native control is tinted, not replaced. Screens used to spell out
        `rounded border-slate-300 text-brand-600 focus:ring-brand-500`, which is

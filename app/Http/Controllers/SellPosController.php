@@ -128,12 +128,26 @@ class SellPosController extends Controller
          * Back to an empty terminal rather than to the invoice: the next customer
          * is already at the counter. The receipt is reachable from the banner, so
          * the sale is not lost — it just is not what the screen becomes.
+         *
+         * The receipt link carries `auto=1` and opens in its own tab, so the one
+         * gesture a clerk makes after ringing up a sale — hand over the paper —
+         * is a single click that lands on a print dialog, and the terminal stays
+         * where it is behind it.
          */
         return redirect()->route('pos.create')->with('status', [
             'success' => 1,
             'msg' => __('lang_v1.sale_completed'),
-            'link' => route('sells.show', $sale->id),
-            'link_label' => $sale->invoice_no,
+            'links' => [
+                [
+                    'url' => route('print.receipt', ['id' => $sale->id, 'auto' => 1]),
+                    'label' => __('lang_v1.print_receipt'),
+                    'blank' => true,
+                ],
+                [
+                    'url' => route('sells.show', $sale->id),
+                    'label' => $sale->invoice_no,
+                ],
+            ],
         ]);
     }
 }

@@ -8,7 +8,10 @@
              :back="route($routePrefix.'.index')"
              :backLabel="$label"/>
 
-<form method="POST" action="{{ route($routePrefix.'.update', $record->id) }}" class="max-w-3xl">
+{{-- `enctype`: see the note on create. `@method('PUT')` still works — the
+     spoofed verb travels as an ordinary field in the multipart body. --}}
+<form method="POST" action="{{ route($routePrefix.'.update', $record->id) }}"
+      enctype="multipart/form-data" class="max-w-3xl">
     @csrf
     @method('PUT')
 

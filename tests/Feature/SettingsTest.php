@@ -17,6 +17,7 @@ use App\Services\BusinessService;
 use App\Support\Permissions;
 use App\Support\Tenancy;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\Models\Permission;
@@ -124,18 +125,21 @@ class SettingsTest extends TestCase
         /*
          * `business` carries around a hundred columns and this screen edits about
          * twenty-five of them. The other buckets — ownership, the active flag, the
-         * logo, the gateway credentials — are not merely absent from the Blade;
-         * they have to be unreachable, because `fill()` on a model guarded only by
-         * `id` would take any of them from a crafted POST. What makes it safe is
-         * that `fill()` is handed the *validated* array and nothing else, which is
-         * the property under test here.
+         * gateway credentials — are not merely absent from the Blade; they have to
+         * be unreachable, because `fill()` on a model guarded only by `id` would
+         * take any of them from a crafted POST. What makes it safe is that
+         * `fill()` is handed the *validated* array and nothing else, which is the
+         * property under test here.
+         *
+         * `logo` used to be in this list. Item 9 gave it an upload layer, so it is
+         * now a column the screen owns — but only as a file, never as a string,
+         * which is asserted separately below.
          */
         $before = Business::find($this->businessId);
 
         $this->put(route('business.settings.update'), $this->businessPayload([
             'owner_id' => 999999,
             'is_active' => 0,
-            'logo' => 'evil.png',
             'email_settings' => ['password' => 'leaked'],
         ]))->assertRedirect()->assertSessionHas('status.success', 1);
 
@@ -145,6 +149,98 @@ class SettingsTest extends TestCase
         $this->assertSame((bool) $before->is_active, (bool) $after->is_active);
         $this->assertSame($before->logo, $after->logo);
         $this->assertSame($before->email_settings, $after->email_settings);
+    }
+
+    #[Test]
+    public function the_logo_column_only_ever_takes_a_real_uploaded_image(): void
+    {
+        /*
+         * The column stores a *filename*, and everything downstream —
+         * {@see \App\Services\UploadService::url()},
+         * {@see \App\Services\UploadService::path()} and, through it, the DomPDF
+         * invoice — resolves that name against a directory on disk. So a text
+         * `logo` in the payload is the interesting attack: were the rule
+         * `nullable|string`, a POST of `../../.env` would be written to the column
+         * and then handed to a path resolver. `image` refuses it here, and
+         * `UploadService::path()` refuses any name whose `basename()` differs from
+         * itself as the second layer.
+         */
+        $before = Business::find($this->businessId)->logo;
+
+        $this->from(route('business.settings'))
+            ->put(route('business.settings.update'), $this->businessPayload([
+                'logo' => '../../.env',
+            ]))
+            ->assertRedirect(route('business.settings'))
+            ->assertSessionHasErrors('logo');
+
+        $this->assertSame($before, Business::find($this->businessId)->logo);
+
+        // And a save that never touches the file input leaves the stored logo
+        // alone rather than nulling it — the bug `unset($validated['logo'])`
+        // exists to prevent, which would otherwise erase a tenant's letterhead
+        // every time somebody changed a time zone.
+        Business::whereKey($this->businessId)->update(['logo' => 'existing-logo.png']);
+
+        $this->put(route('business.settings.update'), $this->businessPayload())
+            ->assertSessionHas('status.success', 1);
+
+        $this->assertSame('existing-logo.png', Business::find($this->businessId)->logo);
+    }
+
+    #[Test]
+    public function a_real_upload_lands_on_disk_and_the_remove_box_takes_it_away(): void
+    {
+        /*
+         * The round trip, because every logo assertion above is about what the
+         * column *refuses*. This one is about what happens when a tenant does the
+         * ordinary thing.
+         *
+         * The file is named in Arabic on purpose. `Str::slug()` renders Arabic to
+         * an empty string, so the naming path in
+         * {@see \App\Services\UploadService::fileName()} falls through to its
+         * `'file'` base — and in an Arabic-first product (Decision #3) a logo
+         * called `شعار.png` is the normal case, not the exotic one. A stored name
+         * that ended in a bare `_.png`, or a crash on the empty slug, would be
+         * found by a tenant rather than by us.
+         *
+         * Three properties, in the order a tenant meets them: the upload is stored
+         * under a bare filename and readable on disk; a second upload replaces the
+         * first rather than accumulating (the `$replacing` argument); and the
+         * remove box clears both the column and the file.
+         */
+        $directory = public_path(config('constants.business_logo_path'));
+
+        $this->put(route('business.settings.update'), $this->businessPayload([
+            'logo' => UploadedFile::fake()->image('شعار المتجر.png', 400, 200),
+        ]))->assertSessionHas('status.success', 1);
+
+        $first = Business::find($this->businessId)->logo;
+
+        $this->assertNotNull($first);
+        // A bare filename, never a path — the convention `UploadService::path()`
+        // leans on, and what keeps the upload root a config value rather than
+        // something baked into every stored row.
+        $this->assertSame($first, basename($first));
+        $this->assertStringEndsWith('.png', $first);
+        $this->assertFileExists($directory.DIRECTORY_SEPARATOR.$first);
+
+        $this->put(route('business.settings.update'), $this->businessPayload([
+            'logo' => UploadedFile::fake()->image('new-logo.png', 400, 200),
+        ]))->assertSessionHas('status.success', 1);
+
+        $second = Business::find($this->businessId)->logo;
+
+        $this->assertNotSame($first, $second);
+        $this->assertFileExists($directory.DIRECTORY_SEPARATOR.$second);
+        $this->assertFileDoesNotExist($directory.DIRECTORY_SEPARATOR.$first);
+
+        $this->put(route('business.settings.update'), $this->businessPayload([
+            'remove_logo' => '1',
+        ]))->assertSessionHas('status.success', 1);
+
+        $this->assertNull(Business::find($this->businessId)->logo);
+        $this->assertFileDoesNotExist($directory.DIRECTORY_SEPARATOR.$second);
     }
 
     #[Test]

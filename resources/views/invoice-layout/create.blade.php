@@ -6,7 +6,10 @@
 
 <x-page-head :back="route($routePrefix.'.index')" :backLabel="$label"/>
 
-<form method="POST" action="{{ route($routePrefix.'.store') }}" class="max-w-3xl">
+{{-- `enctype`: the layout carries a logo and a letterhead, and a plain
+     urlencoded form posts a file input as its filename and nothing else. --}}
+<form method="POST" action="{{ route($routePrefix.'.store') }}" enctype="multipart/form-data"
+      class="max-w-3xl">
     @csrf
 
     @include('invoice-layout._form', ['record' => null])

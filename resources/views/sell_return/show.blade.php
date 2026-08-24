@@ -34,10 +34,13 @@
         </span>
     </x-slot:subtitle>
 
-    <button type="button" onclick="window.print()" class="btn-secondary">
+    {{-- The credit-note renderer — see the note on `sell/show`. Same view as the
+         invoice; the layout's credit-note heading and `credit_note_no` labels are
+         what make it read as a return rather than a sale. --}}
+    <a href="{{ route('print.invoice', $return->id) }}" class="btn-secondary">
         <x-nav-icon name="printer"/>
         {{ __('lang_v1.print') }}
-    </button>
+    </a>
 </x-page-head>
 
 <div class="grid gap-6 lg:grid-cols-4">

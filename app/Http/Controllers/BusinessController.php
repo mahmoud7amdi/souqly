@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Business;
 use App\Models\Currency;
 use App\Models\TaxRate;
+use App\Services\UploadService;
 use App\Support\Tenancy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,8 +24,11 @@ use Illuminate\Validation\Rule;
  *   an SMTP password in a form that posts back through a browser session is a
  *   different security question from the rest of this screen, and it is answered
  *   properly in `.env` today.
- * - `logo` needs the upload layer that does not exist yet (deferred to item 9
- *   with the invoice-layout logo — see NOTES §14).
+ *
+ * `logo` was the third bucket until item 9 — it needed an upload layer that did
+ * not exist. It is here now, stored through {@see UploadService} into
+ * `constants.business_logo_path`, which is where the invoice renderer looks for
+ * it when a layout has no logo of its own.
  *
  * Two things make this controller more than an `update()`:
  *
@@ -36,6 +40,18 @@ use Illuminate\Validation\Rule;
  */
 class BusinessController extends Controller
 {
+    /**
+     * Where the business logo lives, and the only upload on this screen.
+     *
+     * Shared with the invoice-layout logo on purpose — see
+     * {@see InvoiceLayoutController::UPLOADS}. A layout's own logo overrides
+     * this one; this is the fallback every layout that has none falls back to
+     * ({@see \App\Services\PrintService::present()}).
+     */
+    protected const LOGO_PATH_KEY = 'business_logo_path';
+
+    public function __construct(private UploadService $uploads) {}
+
     public function settings()
     {
         $this->permit('business_settings.access');
@@ -46,6 +62,14 @@ class BusinessController extends Controller
             'taxRates' => ['' => __('lang_v1.none')] + TaxRate::pluck('name', 'id')->all(),
             'timezones' => timezone_identifiers_list(),
             'modules' => $this->availableModules(),
+            // Resolved here rather than in the Blade because UploadService also
+            // answers "is the file actually on disk", and a settings screen
+            // showing a broken-image glyph is how a tenant concludes their logo
+            // is corrupt when the row is merely stale.
+            'logoUrl' => $this->uploads->url(
+                self::LOGO_PATH_KEY,
+                $this->currentBusiness()->logo
+            ),
             // Passed rather than repeated in the Blade: the same list drives the
             // checkboxes and the boolean coercion in updateSettings(), and a
             // toggle present in one but not the other would silently never save.
@@ -89,11 +113,31 @@ class BusinessController extends Controller
 
             'enabled_modules' => 'nullable|array',
             'enabled_modules.*' => 'string|in:'.implode(',', array_keys($this->availableModules())),
+
+            // `image`, not `mimes:` — it inspects the file's contents, so a PHP
+            // script renamed `logo.png` never reaches a web-served directory.
+            'logo' => 'nullable|image|max:2048',
         ]);
 
         try {
             DB::transaction(function () use ($business, $validated, $request) {
+                // Out of the validated array before `fill()`: an untouched file
+                // input validates as null, and writing that null back would erase
+                // the logo every time somebody saved a time zone.
+                unset($validated['logo']);
+
                 $business->fill($validated);
+
+                if ($request->hasFile('logo')) {
+                    $business->logo = $this->uploads->store(
+                        $request->file('logo'),
+                        self::LOGO_PATH_KEY,
+                        $business->logo
+                    );
+                } elseif ($request->boolean('remove_logo')) {
+                    $this->uploads->delete(self::LOGO_PATH_KEY, $business->logo);
+                    $business->logo = null;
+                }
 
                 // Absent from the payload when unticked, so read from the request
                 // rather than the validated array.

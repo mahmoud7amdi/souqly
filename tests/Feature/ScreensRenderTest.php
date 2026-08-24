@@ -765,6 +765,18 @@ class ScreensRenderTest extends TestCase
             'stock-adjustments.show' => $this->fixtureAdjustmentId,
             'stock-adjustments.edit' => $this->fixtureAdjustmentId,
             'stock-transfers.show' => $this->fixtureTransferId,
+            /*
+             * The three GET print routes. Walked rather than skipped, exactly as
+             * `purchase-order.pdf` is: they are the whole point of item 9, they
+             * render Blade, and the untranslated-key guard is worth more on them
+             * than on most screens — a print view is the one page in the app a
+             * customer reads, and `invoice_layouts` supplies ninety label
+             * overrides for it. `print.enqueue` is a POST and drops out of the
+             * walk on its own; it is covered in PrintingTest.
+             */
+            'print.invoice' => $this->fixtureSellId,
+            'print.pdf' => $this->fixtureSellId,
+            'print.receipt' => $this->fixtureSellId,
             // The inactive branch, so the toggle flips a location nothing was
             // booked against rather than deactivating the shop mid-walk.
             'business-location.toggle' => $this->fixtureLocationId,

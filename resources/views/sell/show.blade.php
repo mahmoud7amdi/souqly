@@ -54,10 +54,16 @@
         </span>
     </x-slot:subtitle>
 
-    <button type="button" onclick="window.print()" class="btn-secondary">
+    {{-- Goes to the real invoice renderer, not `window.print()`. This screen is
+         an application screen: printing it hands the customer the app's table
+         with the chrome hidden, and none of the letterhead, tax numbers or the
+         ninety layout settings a tenant filled in. The print view is a document,
+         and its own toolbar carries the PDF, the till receipt and the thermal
+         printer — so one link here rather than four. --}}
+    <a href="{{ route('print.invoice', $document->id) }}" class="btn-secondary">
         <x-nav-icon name="printer"/>
         {{ __('lang_v1.print') }}
-    </button>
+    </a>
 
     @if ($canUpdate && $document->canBeEdited())
         <a href="{{ route($prefix.'.edit', $document->id) }}" class="btn-secondary">

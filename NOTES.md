@@ -52,30 +52,46 @@ the source documentation is recorded with its reason. Nothing here is a silent a
 
 ### 1. آخر ما اكتمل
 
-**البند 8 — الإعدادات: ✅ مكتمل بالكامل — كودًا واختبارًا وتوثيقًا.** التوثيق المعماري الكامل في
-**§14** (ثلاثة عشر قسمًا فرعيًا).
+**البند 9 — الطباعة: ✅ مكتمل بالكامل — كودًا واختبارًا وتوثيقًا.** التوثيق المعماري الكامل في
+**§15** (خمسة عشر قسمًا فرعيًا).
 
-المتحكِّمات التسع وشاشاتها كانت قد نزلت في `eefb941` مع البند 7 — **الـcommit مختلط، ويُفيد معرفة
-ذلك عند قراءة التاريخ** — و**ما أكمل البند فعلًا** هو ما أضافته هذه الدفعة:
+وهذا أول بند يُخرِج شيئًا **يقرأه العميل**، لا شاشةً يقرأها صاحب المتجر. وحقيقتان تُفسِّران شكله كله:
+
+**الأولى: `invoice_layouts` كانت تسعين عمودًا لا يقرأها شيء.** الجدول في المخطَّط من أول ترحيل،
+و`InvoiceLayoutController` يسمح للمستأجر بتعبئته من البند 8، **ولم يصل عمودٌ واحد منها إلى صفحة
+مطبوعة قبل هذا البند.** فطبقةُ الطباعة ليست «أضِف stylesheet للطباعة» — بل هي المستهلِك الذي جعل ذلك
+الجدول ذا معنى أخيرًا، ومعظمُ اختباراتها تأكيداتٌ على **الطاعة**.
+
+**والثانية: زرُّ الطباعة السابق كان `window.print()`** في `sell/show` و`sell_return/show` كليهما —
+أي طباعةُ **شاشة التطبيق** بإخفاء الإطار: جدولُ التطبيق نفسه، بلا ترويسة ولا رقم تسجيل ضريبي ولا أيٍّ
+من التسعين إعدادًا. يبدو ميزةَ طباعة وليس كذلك. وكلاهما صار رابطًا إلى المُصيِّر الحقيقي.
 
 | الطبقة | الملف | الحالة |
 |---|---|---|
-| اختبار السلوك | `tests/Feature/SettingsTest.php` | ✅ جديد — 24 اختبارًا / 167 تأكيدًا |
-| حارس الترجمة | `tests/Feature/LangParityTest.php` | ✅ جديد — 3 اختبارات، والثلاثة مُثبَتة بالتحوير |
-| إصلاح إنتاجي | `app/Http/Middleware/SetSessionData.php` | ✅ `needsHydrating()` — إعادة البناء بعد الحفظ |
-| إصلاح 500 | `app/Http/Controllers/RoleController.php` + `resources/views/role/index.blade.php` | ✅ `withCount(['users', 'permissions'])` بدل تحميلٍ كسول |
-| حقل مفقود | `app/Http/Controllers/PrinterController.php` | ✅ `printer_path` كان مُتحقَّقًا منه ولا يُعرَض |
-| مَشْي المسارات | `tests/Feature/ScreensRenderTest.php` | ✅ مُثبِّتات الإعدادات + 8 خرائط معاملات |
-| الترجمة | `lang/ar/lang_v1.php` + `lang/en/lang_v1.php` | ✅ 1,404 مفتاحًا نهائيًا لكل لغة، تكافؤ تام |
-| التوثيق | **NOTES §14** | ✅ الصلاحيات المسطَّحة، حدّا التعدُّد، الباركود المشترك، أخطاء الإغلاق، حارس الترجمة |
+| المُصيِّرات الأربعة | `app/Http/Controllers/PrintController.php` + `app/Services/PrintService.php` | ✅ A4 كلاسيكي/أنيق، PDF، إيصال 72 مم، وطابور العتاد |
+| القوالب | `resources/views/print/` | ✅ بـRTL كاملة، وDomPDF له `<style>` خاص به بألوان صريحة |
+| طبقة الرفع | `app/Services/UploadService.php` | ✅ نزلت هنا — كانت مؤجَّلة من §14.13 |
+| منتِج الطابور | `PrintService::enqueue()` | ✅ `print_jobs` كان عقدًا بلا منتِج منذ أول ترحيل |
+| اختبار السلوك | `tests/Feature/PrintingTest.php` | ✅ جديد — 19 اختبارًا / 96 تأكيدًا، مُثبَتة بالتحوير |
+| اختبار الرفع | `tests/Feature/SettingsTest.php` | ✅ 26 اختبارًا / 186 تأكيدًا (كان 24/167) |
+| مَشْي المسارات | `tests/Feature/ScreensRenderTest.php` | ✅ المسارات الثلاثة **تُمشى** لا تُستثنى (§15.10) |
+| شريط الحالة | `resources/views/components/status-banner.blade.php` | ✅ `link` المفردة صارت قائمة `links` (§15.7) |
+| التوثيق | **NOTES §15** | ✅ قيود DomPDF، قرارات الرفع، تأجيل QR، وملف الشعار اليتيم |
 
-**وأهم ما في هذه الدفعة ليس شاشة.** اختبارُ ذاكرة الجلسة كشف أن `SetSessionData` **لم يُعِد بناء**
-`session('business')` بعد أن يُسقطها `BusinessController::updateSettings()` عن قصد — فحفظُ الإعدادات
-كان يُفرِغ الذاكرة **لبقية الجلسة**: لا رمز عملة في أي رقم على أي شاشة، ولا مجموعات وحدات في الشريط
-الجانبي، وقائمةُ صلاحيات فارغة في مُحرِّر الأدوار. لا شيء رمى استثناءً، ولا سطر في السجل، **ولا
-مَشْيُ مسارات يمكن أن يراه** — لأن المَشْي يُصدر GET ولا يحفظ شيئًا أبدًا. §14.5.
+**وأهم ما في هذا البند ليس قالبًا.** الاختبار الذي حاول تخزين `design` بقيمة خارج المجموعة مات على
+`SQLSTATE[01000]` — لأن العمود `enum` والمسارُ الذي ادّعى اختباره **غير قابل للوصول من قاعدة
+البيانات**. فحُذف وكُتب مكانه اختبارانِ يؤكِّدان ما هو صحيح فعلًا، والحالةُ المستحيلة سُجِّلت في تعليق
+بدل أن تُصطنَع تأكيدًا. §15.11 — ونفسُ درس §13.7 و§14.11: تأكيدٌ أخضر على مُدخَل مستحيل **أسوأ** من
+لا تأكيد، لأنه يُقرأ تغطيةً.
 
-**والبند 7 قبله — التقارير، الدفعة الأولى: ✅ مكتمل** — التوثيق في **§13**، والخطة المعتمدة في
+**والبند 8 قبله — الإعدادات: ✅ مكتمل** — التوثيق في **§14**، وأهمُّ ما فيه لم يكن شاشة: اختبارُ ذاكرة
+الجلسة كشف أن `SetSessionData` **لم يُعِد بناء** `session('business')` بعد أن يُسقطها
+`BusinessController::updateSettings()` عن قصد — فحفظُ الإعدادات كان يُفرِغ الذاكرة **لبقية الجلسة**:
+لا رمز عملة في أي رقم على أي شاشة، ولا مجموعات وحدات في الشريط الجانبي، وقائمةُ صلاحيات فارغة في
+مُحرِّر الأدوار. لا شيء رمى استثناءً، **ولا مَشْيُ مسارات يمكن أن يراه** — لأن المَشْي يُصدر GET ولا
+يحفظ شيئًا أبدًا. §14.5.
+
+**والبند 7 قبلهما — التقارير، الدفعة الأولى: ✅ مكتمل** — التوثيق في **§13**، والخطة المعتمدة في
 `C:\Users\mohamed\.claude\plans\adaptive-plotting-dongarra.md`، والسبعة المؤجَّلة مسمّاة صريحةً في
 §10.2 بند 7 وهي تَرِث البنية التحتية كلها. وأهمُّ ما فيه لم يكن تقريرًا أيضًا: اختبار تقرير الأرباح
 كشف **خطأ إنتاج حقيقيًا في `SellService::syncLines()`** — مِسْحة التنظيف كانت تحذف خطوط مكوّنات
@@ -83,27 +99,29 @@ the source documentation is recorded with its reason. Nothing here is a silent a
 وحده، فيظهر الكومبو بصفر تكلفة أي ربحًا خالصًا في التقرير الوحيد الذي يتّخذ المالك قراره عليه.
 أُصلح ومُوثَّق في §13.6.
 
-### 2. البند التالي: 9 — Printing
+### 2. البند التالي: 10 — Offline PWA
 
-لا شيء متبقٍّ من البند 8 يمنع البدء. والمؤجَّل منه مذكور صريحًا في §10.2 بند 8 و§14.13، وليس ثغرات:
-**رفعُ شعار النشاط** (يلتحق بالبند 9 نفسه لأنه أول موضع يُطبَع فيه)، وشاشات إعدادات الوحدات (البند
-11)، وبيانات بوّابات البريد/الرسائل (**لا تظهر في شاشة إعدادات أبدًا** — §12.2)، و37 تسمية صلاحية
-تتبع وحدات لم تُبنَ بعد ويُغطّيها `Permissions::humanise()` مؤقتًا.
+لا شيء متبقٍّ من البند 9 يمنع البدء. والمؤجَّل منه مذكور صريحًا في §15.15، وليس ثغرات:
+**رموز QR** (قرارُ ولايةٍ قضائية لا قرارُ تصيير — §15.8)، و**إرسال الفاتورة بالبريد** (يحتاج إعدادات
+البريد التي يُبعدها §12.2 عن شاشات الإعدادات إطلاقًا)، و**برنامج وكيل الطباعة** على جهاز الكاشير
+(خارج هذا المستودع؛ `enqueue()` يكتب المهمة و`print-queue.{locationId}` يبثّها)، و**ملفات الشعار
+اليتيمة** عند حذف قالب (قرارٌ مدروس بالرفض لا سهو — §15.9).
 
-**البند 9 — Printing:** `PrintPreviewController` + قوالب الطباعة بـRTL. والبنية التحتية موجودة
-أصلًا ولم تُبنَ عليها شاشة بعد، وهذا ما تَرِثه:
+**والبند 9 أنهى تأجيلَ البند 8 الوحيد:** رفعُ شعار النشاط نزل هنا كما وُعد، لأن هذا أول موضع يُطبَع
+فيه. §15.4.
 
-- **`InvoiceLayout`** بحقوله كلها — نزلت في البند 8، وهي التي تقرأها كل فاتورة مطبوعة.
-- **`Barcode`** بمقاسات الملصقات والهوامش وعدد الملصقات في الصف والورقة (§14.3).
-- **`Printer`** بنوع الطابعة ومسارها — و`printer_path` صار يُعرَض فعلًا الآن، وقبل هذا البند كان
-  مُتحقَّقًا منه ولا يُعرَض، فلا يمكن إعطاء طابعة windows/linux مسارَها إطلاقًا.
-- **`api/print-queue/*`** مع `Api\PrintQueueController`، وقناة البث `print-queue.{locationId}`
-  المحروسة بـ`access_printers` (`routes/channels.php:45`).
-- **`purchase-order.pdf`** (`routes/web.php:240`) — السابقة الوحيدة لتوليد PDF في المشروع كله، فهي
-  النمط الذي يُقاس عليه بقيةُ المستندات.
+**البند 10 — Offline PWA:** والبنية التحتية المُتاحة له تُقرأ قبل أي سطر:
 
-ثم 10 → 11 → 12 (Offline PWA، شاشات الوحدات، الأوامر المجدولة). `inventory.index` تبقى خارج النطاق
-(تنتمي لـ `inventorymanagement`، البند 11).
+- **`public/manifest.json` و`public/sw.js`** — يجب التحقق أولًا مما إذا كانا موجودين فعلًا في هذا
+  المستودع أم أنهما من افتراضات المستودع الأصلي، فالبند 3 يسمّي وحداتٍ غائبة تمامًا.
+- **`api/print-queue/*`** — السابقة الوحيدة لواجهة API يستهلكها عميلٌ خارج المتصفِّح، مع مصادقة
+  HMAC عبر `X-Print-Token` وقناة بثّ محروسة (§15.5).
+- **`ApiResponseTest`** (§12.5) — النمط الذي يُقاس عليه أي endpoint جديد يُعيد JSON.
+- **`SellPosController`** — شاشة نقطة البيع هي المُرشَّح الوحيد الجدّي للعمل دون اتصال، وهي التي
+  يجب أن يُبنى الطابور المحلي حولها لا حول التطبيق كله.
+
+ثم 11 → 12 (شاشات الوحدات، الأوامر المجدولة). `inventory.index` تبقى خارج النطاق (تنتمي لـ
+`inventorymanagement`، البند 11).
 
 ### 3. القرارات — **لا شيء ينتظر إذنك**
 
@@ -112,6 +130,10 @@ the source documentation is recorded with its reason. Nothing here is a silent a
 - **نطاق البند 7** = دفعة أولى ٥ تقارير + البنية التحتية. ✅ محسوم ومُنفَّذ
 - **نطاق البند 8** = المتحكِّمات التسع المسمّاة في §10.2 بند 8، و`UserController` يبقى شاشةَ الملف
   الشخصي للمستخدم نفسه فلا يُلمَس، و`inventory.index` تبقى للبند 11. ✅ محسوم ومُنفَّذ
+- **نطاق البند 9** = أربعة مُصيِّرات (A4 بتصميمَي المستأجر، PDF، إيصال 72 مم، وطابور العتاد) + طبقة
+  الرفع المؤجَّلة من §14.13. و**رموز QR مؤجَّلة صراحةً** لأن الصيغة قرارُ ولايةٍ قضائية لا قرارُ
+  تصيير: ETA المصرية وZATCA السعودية تُحدِّدان حِمْلَين مختلفين، وإصدارُ رمزٍ يُقرأ بحِمْلٍ لا تقبله
+  أي جهة **أسوأ** من عدم إصداره لأنه يبدو مُلتزمًا (§15.8). ✅ محسوم ومُنفَّذ
 - **§12.3** = لا نلمس `Gate::before()`؛ الأدمن يبقى غير مقيَّد، والتقارير تحترم الصلاحيات لغير
   الأدمن — وهو ما يفعله `permit()` أصلًا. ✅ محسوم **بلا أي تغيير سلوكي**، ويبقى 🟡 للمراجعة عند
   أول متطلَّب حقيقي متعدد المديرين (المُحفِّز مذكور في §12.3).
@@ -141,11 +163,21 @@ the source documentation is recorded with its reason. Nothing here is a silent a
   الأدمن، و`permit()` يقصُر عليه، فاسمُ صلاحية خاطئ لا يملكه أحد كان سيبدو سليمًا تمامًا حتى أول
   مستخدم حقيقي في أول وردية. أي تأكيد على صلاحية يجب أن يعمل بمستخدمٍ **مقيَّد عن قصد** (§14.1) —
   ويحتاج `'allow_login' => 1` و`'status' => 'active'` وإلا حوَّلت `CheckUserLogin` كلَّ 403 إلى 302.
+- **والمستخدم المقيَّد يحتاج فرعًا أيضًا، وإلا نجح الاختبار للسبب الخاطئ.** `PrintController::document()`
+  يُنطِّق الجلب عبر `permittedLocations()` **قبل** أي حارس، فمستخدمٌ بلا فرع يحصل على 404 على
+  **فاتورته هو** — وتأكيداتُ «مبيعاته وحده» تبقى خضراء وهي لا تقيس شيئًا. تُمنح
+  `location.{id}` صريحةً لا `access_all_locations` (§15.6).
+- **و`__()` داخل اختبار لا يُحَلّ بالعربية إلا بعد تنفيذ طلب.** `.env.testing` تضع
+  `APP_LOCALE=en`، ومستخدمو الاختبار يُنشَأون بـ`language => 'ar'`، ووسيطُ `Language` لا يُطبِّق ذلك
+  إلا خلال الطلب. فكل `__()` في تأكيد يُقيَّم **بعد** `get()`/`post()` لا قبله (§15.13).
 - **أي اختبار على مستوى الخدمة لِما هو مقيَّد بالفروع يجب أن يُوثِّق دخولًا** — وإلا قاس الفراغَ
   بثقة. `permittedLocations()` تُحَلّ مقابل `auth()->user()`، و`createTenant()` لا تُوثِّق أحدًا
   (§13.7).
 - **الأصفار المتماثلة توقيعُ استعلامٍ فارغ، لا توقيعُ حسابٍ خاطئ.** ثلاثة عشر فشلًا متطابقًا كان
   لها سبب واحد، وإصلاحٌ واحد حلَّ أحدَ عشر منها.
+- **وتأكيدٌ أخضر على مُدخَل مستحيل أسوأ من لا تأكيد**، لأنه يُقرأ تغطيةً. حين يرفض المخطَّط المُدخَل
+  الذي يدّعي الاختبار اختباره — `design` هو `enum` — يُحذف الاختبار وتُسجَّل الحالة في تعليق، ولا
+  تُصطنَع تأكيدًا (§15.11).
 - **وحين يخالف فحصٌ ملفًا قرأتَه، اشكُك في الفحص.** تكرَّر هذا مرتين الآن: مرة عرضُ grep أظهر تعليقًا
   كأنه كود بلا `//`، وقراءةُ السطر نفسه أثبتت أن الملف سليم.
 
@@ -153,32 +185,37 @@ the source documentation is recorded with its reason. Nothing here is a silent a
 
 **نُفِّذ فعليًا ونجح:**
 
-- `php artisan test` → **129 اختبارًا / 672 تأكيدًا، كلها خضراء.**
+- `php artisan test` → **150 اختبارًا / 787 تأكيدًا، كلها خضراء.**
 - **تكافؤ الترجمة صار اختبارًا لا رقمًا.** `tests/Feature/LangParityTest.php` يؤكِّد ثلاث خصائص على
   مجلَّدي اللغة معًا: تطابق المفاتيح تطابقًا شجريًّا في الاتجاهين، ولا مفتاح مُعرَّف مرتين في ملف
-  واحد، ولا قيمة تُساوي مفتاحها. والعدد المُحصى **1,404 مفتاحًا نهائيًا لكل لغة** (1,245 في الجذر +
-  15 في `perm_group` + 144 في `perm`) مُسجَّل للاسترشاد فقط — الاختبار هو التأكيد الآن (§14.10).
-- **`SettingsTest` — 24 اختبارًا / 167 تأكيدًا.** التقسيم: إعدادات النشاط (4)، الصلاحيات
-  المسطَّحة (2)، قوالب الإشعارات (2)، الباركود (2)، أنظمة الفواتير (2)، الفروع (2)، الأدوار (5)،
-  المستخدمون (5).
-- **فحصٌ بالتحوير على أعلى تأكيدٍ قيمةً:** إزالة تجاوُز `BarcodeController::ability()` أسقطت مصفوفة
-  الصلاحيات المسطَّحة بسطر تشخيصٍ واحد يسمّي الشاشة بالضبط — ثم أُعيد الأصل. واختبارُ ذاكرة الجلسة
-  كُتب **أحمر** وشُوهد يفشل قبل الإصلاح، وهو الدليل الوحيد على أنه يقيس شيئًا (§14.11).
-- **ثلاثة أخطاء حقيقية أُصلحت في هذا البند:** 500 في `roles.index` (lazy-load عند كل مستأجر، لأن
-  `BusinessService` يزرع دورين)، و`printers.path` مُتحقَّقٌ منه ولا يُعرَض أبدًا، و**الخطأ الذي لا
-  يكشفه إلا حفظٌ فعلي**: `SetSessionData` لم يُعِد بناء الذاكرة التي يُسقطها
-  `BusinessController::updateSettings()` عن قصد (§14.5).
-- مَشْي المسارات يفتح شاشات الإعدادات التسع بالعربية تحت حُرّاس المفتاح غير المُترجَم، وتوازن
-  `<div>`، والعنوان الفارغ.
+  واحد، ولا قيمة تُساوي مفتاحها. أخضر بعد `print_receipt`، والتكافؤ تام (§14.10).
+- **`PrintingTest` — 19 اختبارًا / 96 تأكيدًا.** التقسيم: طاعةُ القالب (4)، تحصينُ لون الإبراز (1)،
+  التوجيه والشكل (4)، أسماء الملفات ونوع المحتوى (2)، هندسةُ الإيصال والطباعة التلقائية (2)،
+  الصلاحيات (3)، ومسارُ العتاد (3).
+- **`SettingsTest` — 26 اختبارًا / 186 تأكيدًا** (كان 24/167): رفضا عمود الشعار، ورحلةُ الرفع كاملة
+  بملفٍ **مُسمَّى بالعربية** لأن `Str::slug()` يُحوِّل العربية إلى نصٍّ فارغ، وهذه هي الحالة العادية
+  في منتج عربيٍّ أولًا لا الحالة الشاذّة (§15.4).
+- **فحصٌ بالتحوير على أعلى تأكيدٍ قيمةً في كل بند:** في البند 9 حُوِّرت `PrintService::label()` لتتجاهل
+  التجاوُز → **17 نجحت و2 فشلت**، وهما بالضبط اختبارا تجاوُز التسميات (§15.12). وفي البند 8 أسقطت
+  إزالةُ `BarcodeController::ability()` مصفوفةَ الصلاحيات المسطَّحة بسطر تشخيصٍ واحد. والأصلُ أُعيد في
+  الحالتين.
+- **مَشْي المسارات يفتح مسارات الطباعة الثلاثة** (`print.invoice`، `print.pdf`، `print.receipt`)
+  بالعربية تحت حُرّاس المفتاح غير المُترجَم وتوازن `<div>` والعنوان الفارغ — **تُمشى ولا تُستثنى**،
+  لأن صفحة الطباعة هي الصفحة الوحيدة التي يقرأها عميل، و`invoice_layouts` تُغذّيها بتسعين تجاوُز
+  تسمية (§15.10).
+- **اختبار الرفع ينظِّف نفسه عبر مسار الحذف في التطبيق نفسه** —
+  `public/uploads/business_logos/` فارغ بعد التنفيذ، مؤكَّدًا بـ`assertFileDoesNotExist` لا بـ
+  `tearDown` قد ينحرف.
 - الاختبارات تعمل كأدمن حقيقي عبر `BusinessService::register()` **لا** عبر `createTenant()` — فهذه
   الأخيرة لا تزرع أدوارًا، فلا يُختبَر معها قصرُ `permit()` على `isAdmin()` إطلاقًا.
 
-**متبقٍّ، ولا يمنع البند 9:**
+**متبقٍّ، ولا يمنع البند 10:**
 
 - `npm run build` — **لم يُنفَّذ.** مُصنِّف أمان Bash/PowerShell رفض هذا الأمر تحديدًا في كل محاولة
-  في هذه الجلسة وفي التي قبلها (بينما `php artisan test` يمرّ). والبندان 7 و8 أضافا **صنفًا واحدًا**
-  إلى `resources/css/app.css` هو `.input-static` (§14.7)، فالزيادة المتوقَّعة على 121.26 kB
-  ضئيلة — **لكن هذا تقدير، لا قياس، والبناء يبقى غير مُتحقَّق منه.**
+  في ثلاث جلسات متتالية (بينما `php artisan test` يمرّ). وأصنافُ البند 9 (`.input-file` و
+  `.file-current`) فُحصت بقراءة `app.css` بدلًا من ذلك: كلاهما موجود في `:1002` و`:1013`، وكلُّ
+  utility يستدعيانه بـ`@apply` — بما فيه اعتمادُ `.thumb-md` على `@utility thumb` في `:611` —
+  يُحَلّ. **لكن هذا فحصٌ ساكن لا بناء، والبناء يبقى غير مُتحقَّق منه.**
 - ⚠️ **ثغرة تغطية مذكورة بصراحة، منقولة من البند 7:** قرار «COGS شامل الضريبة» غير مثبَّت باختبار،
   لأن مُثبِّت `buy()` يجعل `purchase_price` و`purchase_price_inc_tax` متساويين — §13.8.
 - **§12.3 يبقى 🟡 بقرارك** — الأدمن غير مقيَّد، و`Gate::before()` لم يُلمَس؛ توثيق فقط بلا تغيير
@@ -534,14 +571,23 @@ the two adjustment kinds, the two transfer states.
 
 ```bash
 php artisan migrate:fresh --seed   # 19 migrations, 131 tables, 55 currencies, 181 permissions
-php artisan test                   # 71 tests, 336 assertions — all 71 passing
+php artisan test                   # 150 tests, 787 assertions — all 150 passing (2026-08-24)
 php scripts/verify-models.php      # 109 models, 323 relations, 460 casts — clean
-php scripts/add-lang-keys.php      # 906 ar / 906 en — parity OK, zero orphans either way
-npm run build                      # 121.26 KB CSS (gzip 14.92 KB), builds clean
+php artisan test --filter=LangParityTest   # parity is a test now, not a number (§14.10)
+npm run build                      # 121.26 KB CSS (gzip 14.92 KB) — LAST MEASURED before item 8.
+                                   # Refused by the safety classifier in every session since;
+                                   # items 8-9 added .input-static, .input-file, .file-current,
+                                   # checked by reading app.css instead. §15.14.
 php artisan route:list             # all routes resolve
 
 php artisan db:seed --class=DemoDataSeeder   # demo catalogue, idempotent — see below
 ```
+
+The test count has moved with each item: **71** (item 6) → **129** (item 8) → **150** (item 9). The
+per-suite table below is the authoritative breakdown; `php scripts/add-lang-keys.php`'s
+"906 ar / 906 en" line was dropped from this block because parity became an assertion rather than a
+number a human reads (§14.10) — the count is now 1,404 leaf keys per locale and is recorded in
+§14.12 for orientation only.
 
 **`DemoDataSeeder` — a catalogue big enough to actually use the screens.** Deliberately not
 registered in `DatabaseSeeder`: the suite runs `migrate:fresh --seed` against `souqly_test`,
@@ -576,8 +622,13 @@ defines. The code was correct; the test database was stale.
 | `StockTransactionGuardTest` (6) | Every stock/payment mutation refuses to run outside a DB transaction |
 | `ApplicationSmokeTest` (10) | Login page, guest redirect, sign-in → dashboard **rendering RTL Arabic**, default tenant resources, brand creation stamped with tenant, **cross-tenant isolation**, permission refusal, `allow_login=0` block, `/api/ping`, print-agent token rejection |
 | `UsernameLoginTest` (5) | Username-based sign-in against the seeded admin, whose password comes from `SEED_ADMIN_PASSWORD` (§12.2) |
-| `ScreensRenderTest` (2) | Every named GET route rendered as an admin — **109 of them**, up from 100 as item 6 landed — asserting no 4xx/5xx, no raw `lang_v1.*` key in any response body, and **balanced `<div>` markup** (§9.2). 20 routes are in its `SKIP` list, each with a stated reason (JSON endpoints, file downloads, guest-only). **No item-5 or item-6 route is skipped.** The second test asserts the POS cart is one connected column, through the DOM rather than by substring — see §9.2 |
+| `ScreensRenderTest` (2) | Every named GET route rendered as an admin — asserting no 4xx/5xx, no raw `lang_v1.*` key in any response body, **balanced `<div>` markup** (§9.2) and no empty heading (§12.4). Each `SKIP` entry carries a stated reason (JSON endpoints, file downloads, guest-only). **No item-5 through item-9 route is skipped** — the three print routes are walked deliberately (§15.10). The second test asserts the POS cart is one connected column, through the DOM rather than by substring — see §9.2 |
 | `CashDrawerTest` (11) | What a shift's drawer knows and in which direction: cash to a supplier and an expense at the till as `payout`, a purchase return netting payouts down instead of counting as takings, a contact-due settlement writing one parent row and no allocation rows, a corrected payment updated in place, a card payout stated without moving `cash_in_hand`, plus the four original movements — the `initial/sell/refund` sequence, change handed back, advance balances staying out, no-register-open writing nothing and not being acquired by the next shift, and deletion removing its row (§12.1) |
+| `ReportsTest` | The **arithmetic**, which no rendering test can see: gross profit equal to revenue minus FIFO cost, a return reducing both sides, output tax netted against input. It is what found the `SellService::syncLines()` combo-costing bug (§13.6) |
+| `ApiResponseTest` | The export endpoints and the JSON endpoints that sat in `ScreensRenderTest::SKIP` with no coverage at all, plus `Product::scopeForLocation()` — where a SQL error once hid (§12.5) |
+| `SettingsTest` (26) | What only a **save** can expose. Business settings' owned-vs-forbidden columns, the logo column's two refusals and the full upload round trip (§15.4), flat permission arrays, notification templates, the cross-tenant barcode table, invoice schemes, locations, roles, users. It is what found the `SetSessionData` re-hydration bug (§14.5) |
+| `LangParityTest` (3) | The two lang files as a pair: tree-equal keys in both directions, no key defined twice in one file, no value equal to its own key. All three mutation-proven (§14.10) |
+| `PrintingTest` (19) | **Obedience to `invoice_layouts`** — ninety columns nothing read before item 9. A label override replacing rather than appending, an empty label falling back to Arabic, `show_*` toggles adding and removing whole blocks, `design` picking a structurally different template, a hand-typed `highlight_color` unable to break the sheet, a location's own layout preferred, a return printing as a credit note. Plus 404-not-403 on another branch's invoice, `sell.view` vs `access_printers`, the PDF's content type and slash-free filename, `size: 72mm auto` on the receipt, opt-in auto-print, and a self-contained `PrintJob` for the agent (§15) |
 
 ### 9.1 Why the 100-screen walk let a 500 through, and what changed
 
@@ -835,14 +886,33 @@ valid.
    Three defects fixed on the way in: the `roles.index` lazy-load 500, `printers.path` validated
    but never rendered, and the `SetSessionData` re-hydration bug that made *saving* your settings
    break the rest of your session (§14.5).
-   **Deliberately deferred out of this item, and not gaps:** the business **logo upload** goes with
-   item 9 (needs a storage disk, image validation and a print path); the **module settings screens**
+   **Deliberately deferred out of this item, and not gaps:** the business **logo upload** went with
+   item 9 (✅ done — it needed the print path, §15.4); the **module settings screens**
    go with item 11; **email/SMS gateway credentials** never appear on a settings screen (§12.2); and
    the 37 module-gated permission labels (`essentials`, `accounting`, `asset`, `superadmin`) arrive
    with the screens they describe, covered in the interim by `Permissions::humanise()` (§14.9).
    `UserController` stays what it was — the signed-in person's own profile — and `inventory.index`
    remains item 11.
-9. **Printing** — `PrintPreviewController` + RTL layout templates.
+9. **Printing** — `PrintController` + `PrintService` + RTL layout templates. ✅ **DONE 2026-08-24 —
+   see §15.** Four renderers, not one print stylesheet: A4 HTML in the tenant's `classic` or
+   `elegant` design, a DomPDF download, a 72 mm thermal receipt, and a `PrintJob` for hardware.
+   `PrintingTest` (19 tests / 96 assertions) green inside the 150-test suite, the three GET print
+   routes **walked** by `ScreensRenderTest` rather than skipped (§15.10), and `PrintService::label()`
+   mutation-checked (§15.12).
+   **The item's real substance is that `invoice_layouts` was ninety columns nothing read** — in the
+   schema since the first migration, fillable since item 8, and never once reaching a rendered page.
+   So the printing layer is the consumer that made that table mean something, and most of its tests
+   assert obedience to it. Two more gaps closed on the way in: `print_jobs` was a consumer contract
+   with **no producer** since the first migration (§15.5), and the previous print button was
+   `window.print()` on the application screen — which prints the app's own table with no letterhead,
+   no tax number and none of the ninety settings.
+   `UploadService` landed here too, as item 8's one deferral (§15.4).
+   **Deliberately deferred out of this item, and not gaps:** **QR codes** — a jurisdiction decision,
+   not a rendering one, since Egypt's ETA and Saudi ZATCA specify different payloads and a code that
+   scans but carries a payload no authority accepts is worse than none because it looks compliant
+   (§15.8); **emailing an invoice** (needs the mail configuration §12.2 keeps off settings screens);
+   the **print agent** that consumes `print-queue.{locationId}` on a till PC (not part of this
+   repository); and **orphaned layout logos**, decided against rather than skipped (§15.9).
 10. **Offline PWA** — `Api\OfflineDataController`, `Api\OfflineSyncController`, service
     worker, IndexedDB layer.
 11. **Modules' controllers/views** — Accounting, Essentials/HRM, Superadmin,
@@ -2292,11 +2362,301 @@ php artisan test    # 129 tests, 672 assertions — all passing
 
 ### 14.13 Deliberately not done in item 8
 
-- **Logo upload** — needs a storage disk, image validation and a print path; goes with item 9.
+- **Logo upload** — ✅ **done in item 9**, which is the print path it was waiting for. `UploadService`,
+  `image` validation, a separate `remove_logo` checkbox, and the round trip tested with an Arabic
+  filename. §15.4.
 - **Module settings screens** — item 11, with the module controllers themselves.
 - **Email / SMS gateway credentials** — never on a settings screen (§12.2).
 - **37 module-gated permission labels** — `essentials`, `accounting`, `asset`, `superadmin`; they
   arrive with the screens they describe, and `humanise()` covers the interim (§14.9).
 - **§12.3 stays 🟡 by your decision** — the admin remains unrestricted and `Gate::before()` is
   untouched; documentation only, no behaviour change.
+
+## 15. Printing — the documents a customer actually reads (item 9)
+
+Everything before this item was an *application screen*: a table for the person
+running the shop. Item 9 adds the first thing that leaves the building. An invoice is
+read by somebody who has never seen Souqly, will never log in, and whose only
+impression of the tenant's business is this sheet of paper. That changes what
+"correct" means — a screen with a rough margin is untidy, an invoice with the wrong
+total is a dispute.
+
+Two facts set the shape of the whole item.
+
+**The first: `invoice_layouts` was ninety columns nothing read.** The table has been
+in the schema since the first migration, `InvoiceLayoutController` has let tenants
+fill it in since item 8, and until now not one of those columns reached a rendered
+page. A tenant could set `total_label`, tick `show_barcode`, choose `elegant`, type a
+`highlight_color` — and print an invoice that ignored all four. So the printing layer
+is not "add a print stylesheet"; it is the consumer that finally makes that table
+mean something, and its tests are mostly assertions about **obedience**.
+
+**The second: the previous print button was `window.print()`.** `sell/show` and
+`sell_return/show` each carried one. That prints the *application screen* with the
+chrome hidden: the app's own table, the app's own headings, no letterhead, no tax
+registration number, none of the ninety settings. It looks like a print feature and
+is not one. Both are now links to the renderer.
+
+### 15.1 Four renderers, not one stylesheet with `@media print`
+
+| Route | Output | Why it is separate |
+|---|---|---|
+| `print.invoice` | A4 HTML, `classic` or `elegant` | Read on screen, printed by the browser; the tenant's chosen design |
+| `print.pdf` | DomPDF download | Attached to an email, kept as a record |
+| `print.receipt` | 72 mm HTML | Thermal roll — a different *paper size*, not a narrower A4 |
+| `print.enqueue` | `PrintJob` row | Hardware; the browser is not in the loop at all |
+
+The receipt is the one that justifies the split most plainly. A till receipt is not a
+small invoice: it is 72 mm wide, has no table borders, no logo block, no signature
+line, and its "columns" are whitespace inside a monospace line. `@media print` with a
+narrow `@page` would still be the A4 document with things hidden — which is why the
+test asserts `size: 72mm auto` **and** the absence of `table.grid`, rather than just
+the presence of the width.
+
+### 15.2 DomPDF is a different renderer, and pretending otherwise is the trap
+
+`Pdf::loadView()` does not run Vite, does not see `app.css`, and does not speak
+flexbox, grid or `oklch()`. Every constraint below cost a real render to discover:
+
+- **Literal hex, inline.** The compiled stylesheet never reaches it. The PDF template
+  carries its own `<style>` with `#8b1d3f`-style literals — which is why
+  `PrintService::accent()` exists and why its regex is not decoration (below).
+- **`'DejaVu Sans'`, not Cairo.** DomPDF's bundled font is the one that has Arabic
+  glyphs without an `@font-face` fetch it cannot perform. Cairo is right for the
+  browser and unavailable here.
+- **`<table>` for layout.** No flexbox, no grid. The A4 sheet is tables.
+- **A cell's background paints; a floated div's does not, and neither does a
+  `<table>`'s.** So every coloured band in the PDF is a `<td>`.
+- **No HTTP client.** An `<img src="{{ asset(...) }}">` renders as a broken-image
+  glyph. Images need an absolute filesystem path — the `$forPdf` flag threaded
+  through `PrintService::image()`, which returns `UploadService::path()` for the PDF
+  and `UploadService::url()` for the browser.
+- **SVG only as a data URI.** The barcode is `picqer`'s `SvgRenderer` output,
+  base64-encoded into `<img src="data:image/svg+xml;base64,…">`.
+- **`download()` returns a plain `Response`.** Not a `StreamedResponse`, so the test
+  asserts on `getContent()`; `streamedContent()` throws.
+
+### 15.3 `accent()` — a regex standing in for a column type
+
+`business_settings` declares `design` as `enum('classic','elegant')`, so an
+out-of-range design is unreachable: MySQL refuses it. `highlight_color` is
+`string(10) nullable` — free text. A tenant typing `dark blue` into that box is not
+an attack, it is a Tuesday.
+
+Free text going into `background:{$color}` inside a `<style>` block is the one place
+in the printing layer where a stored value reaches CSS unescaped, so `accent()`
+validates it as a hex colour and falls back to the brand green otherwise. The test
+covers `'dark blue'`, `'2563eb'` (no hash), `'#12'` (too short) and `''` on the
+falling-back side, and `'#8b1d3f'` / `'#b13'` on the honoured side.
+
+This asymmetry is worth stating because it looks like an inconsistency: `design` gets
+a whitelist in `present()` **and** a DB enum, while `highlight_color` gets only the
+regex. `present()`'s whitelist is not redundant — `layoutFor()`'s fourth step returns
+an *unsaved* model, which never passed through MySQL.
+
+### 15.4 The upload layer, deferred from item 8 and landed here
+
+§14.13 deferred the business logo "because it needs a storage disk, image validation
+and a print path". Item 9 is the print path, so it arrived with it. Three decisions,
+all recorded in `UploadService`'s own docblock and summarised here:
+
+1. **`public/uploads`, not the `storage/app/public` symlink.** Laravel's default is
+   the better answer for a normal app and the worse one here:
+   `Product::getImageUrlAttribute()` and `Media::getDisplayUrlAttribute()` already
+   build `asset('uploads/…')` URLs, so a second root would mean two conventions for
+   one kind of file — and the first consumer of an upload is a DomPDF invoice, which
+   needs a filesystem path with no symlink to recreate on every deploy.
+2. **The stored value is a bare filename.** Matching `products.image` and
+   `media.file_name`. Moving the upload root stays an edit to `config/constants.php`
+   rather than a migration over every row that ever stored a logo.
+3. **The extension comes from the file's contents.** `UploadedFile::extension()`
+   reads the detected MIME type where `getClientOriginalExtension()` echoes whatever
+   the browser sent, so a PHP script called `logo.png` cannot be stored under a name
+   ending in `.png`.
+
+**Two defence layers on the same column, on purpose.** `logo` stores a filename that
+is later resolved against a directory, so a *text* `logo` in the payload is the
+interesting attack: under a `nullable|string` rule, a POST of `../../.env` would be
+written to the column and then handed to a path resolver. The `image` rule refuses it
+at the request, and `UploadService::path()` refuses any name whose `basename()`
+differs from itself. Both are asserted.
+
+**`unset($validated['logo'])` is not tidying.** An empty file input means "I did not
+choose a file", which is the normal case on every save that changes something else.
+Without the unset, a tenant editing their time zone would erase their letterhead.
+Hence the separate `remove_logo` checkbox: removing is an explicit act, not the
+absence of one.
+
+The round trip is tested with an **Arabic filename** (`شعار المتجر.png`), because
+`Str::slug()` renders Arabic to an empty string and `fileName()`'s `'file'` fallback
+is what keeps that from producing a name like `_.png`. In an Arabic-first product
+(Decision #3) that is the ordinary case, not the exotic one — it would otherwise have
+been found by a tenant rather than by us.
+
+### 15.5 `enqueue()` closes a producer gap that had been open since the schema
+
+`print_jobs` and `printers` were both in the first migration. `Printer` was
+manageable through item 8's settings, `PrintJob` had a model, and **nothing ever
+wrote a row.** The table was a consumer contract with no producer.
+
+`enqueue()` is that producer, and the payload is deliberately **self-contained**: the
+job carries the printer's `ip_address`, `char_per_line` and the already-composed
+`lines` and `totals`, rather than an id for the agent to resolve. A print agent runs
+on a till PC, may be offline when the job is written, and must not need a database
+round trip — or a matching schema version — to print a receipt from an hour ago.
+
+Two failure shapes reach the user by name, through `RuntimeException` (which
+`Controller::failed()` surfaces verbatim, unlike other throwables): a branch with no
+printer configured, and a branch set to `browser` rather than `printer`. "Something
+went wrong" would be useless here — the fix is a settings change, and the message
+says which one.
+
+Reading an invoice and driving a printer are **different privileges**: `sell.view`
+renders, `access_printers` enqueues. A clerk who may look up a sale does not thereby
+get to make the hardware in another room emit paper.
+
+### 15.6 404, not 403, on somebody else's invoice
+
+`PrintController::document()` scopes the fetch through `permittedLocations()` before
+it gates on anything, so a document outside the user's branches is *not found* rather
+than *forbidden*. A 403 confirms the invoice exists, which is exactly the fact being
+withheld.
+
+This had a consequence in the tests worth recording, because it is the shape of a
+test that passes for the wrong reason. The `restricted()` helper originally granted no
+location at all — so the clerk 404'd on **their own** sale too, and the "own sales
+only" assertions were green while measuring nothing. Fixed by granting an explicit
+`location.{id}` (what a counter clerk actually holds) rather than
+`access_all_locations`.
+
+### 15.7 `status.links` — the banner learned to carry more than one
+
+The status banner had a single `link` / `link_label` pair with exactly one producer
+(`SellPosController`) and one consumer, so it was replaced by a `links` list rather
+than extended with a shim. Entries are `['url' => …, 'label' => …, 'blank' => bool]`.
+
+`blank` is not cosmetic. After ringing up a sale the clerk's next gesture is handing
+over paper, so the POS banner offers the receipt **first**, with `auto=1` and
+`target="_blank"`. Auto-print in the same tab would put the next customer behind a
+print dialog on the terminal.
+
+`auto=1` is also why the auto-print test strips the toolbar before asserting: the
+toolbar carries its own always-present `window.print()` button, which would mask the
+absence of the load listener.
+
+### 15.8 QR: deferred, with the reason stated
+
+`picqer/php-barcode-generator` is installed and renders Code128 for `show_barcode`.
+**No QR library is installed**, so `qrFields()` prints its configured fields as
+labelled text rather than a code.
+
+This is deferred rather than half-built because the format is a *jurisdiction*
+decision, not a rendering one. Egypt's ETA e-invoicing and Saudi ZATCA specify
+different payloads — ZATCA wants a TLV-encoded base64 blob with prescribed tag order;
+ETA wants a UUID from a submitted document. Neither is "encode the invoice number as
+a QR". Emitting a QR that scans but carries a payload no authority accepts is worse
+than emitting none: it looks compliant. It lands when the target jurisdiction is
+chosen.
+
+### 15.9 The orphan-file case that was left alone, and why
+
+Deleting an invoice layout does not delete its uploaded logo, and there is no
+`afterDelete` hook on `SimpleCrudController` to hang one on.
+
+Adding the hook for this was considered and rejected. Two layouts can legitimately
+reference the same filename after a DB restore, so a delete-on-delete would remove a
+file another row is still printing — trading a harmless orphaned file for a broken
+image on a customer's invoice. And the case that actually accumulates files is
+*re-uploading*, which `UploadService::store()`'s `$replacing` argument already
+handles: a tenant who changes their logo twenty times leaves one file, not twenty. A
+layout is deleted approximately never.
+
+### 15.10 The print routes are walked, not skipped
+
+The plan called for `SKIP` entries. They are walked instead, following the
+`purchase-order.pdf` precedent — and the guards are worth more here than on most
+screens. A print view is the one page in the app a customer reads, and
+`invoice_layouts` supplies ninety label overrides for it, so the untranslated-key
+guard is doing real work. `print.enqueue` is a POST and drops out of the GET-only walk
+on its own; it is covered in `PrintingTest`.
+
+### 15.11 A test that lied, and the schema fact behind it
+
+`the_design_column_chooses_the_template_and_an_unknown_value_degrades_to_classic`
+tried to store `'something-that-does-not-exist'` and died on
+`SQLSTATE[01000]: Data truncated for column 'design'`. The column is an enum; the
+degradation path it claimed to test **is unreachable from the database**.
+
+It was deleted rather than adjusted, and replaced by two tests that assert things that
+are true: `the_design_column_picks_a_structurally_different_template` (each template's
+own markup) and `a_highlight_colour_the_tenant_typed_by_hand_cannot_break_the_sheet`
+(the degradation path that *is* reachable, because `highlight_color` is free text).
+The unreachable case is recorded in a comment instead of being faked into an
+assertion. Same lesson as §13.7 and §14.11: a green assertion about an impossible
+input is worse than no assertion, because it reads as coverage.
+
+`layoutFor()`'s fourth step — an unsaved layout — is ruled out for the same reason and
+documented rather than contorted into a test: `invoice_layout_id` is a NOT NULL FK and
+`register()` always seeds a layout.
+
+### 15.12 Mutation-checked, per §12.4
+
+A green run proves the code runs, not that the test would notice if it stopped
+working. `PrintService::label()` was mutated to ignore its override and return the app
+translation unconditionally:
+
+```php
+protected function label(...): string { return __('lang_v1.'.$key); // MUTANT }
+```
+
+**17 passed, 2 failed** — the two label-override tests, which are exactly the ones
+that should bite. Reverted.
+
+### 15.13 The locale-ordering rule for assertions
+
+`.env.testing` sets `APP_LOCALE=en`, but test users are created with
+`language => 'ar'`, and the `Language` middleware only applies that during a request.
+So **`__()` in a test resolves in Arabic only after a request has run.** Every `__()`
+inside an assertion here is evaluated *after* the `get()`/`post()`, not before. A
+`__()` captured into a variable first silently compares English against an Arabic page
+and fails with a confusing diff.
+
+### 15.14 Verified
+
+```bash
+php artisan test    # 150 tests, 787 assertions — all passing
+```
+
+- **`PrintingTest` — 19 tests, 96 assertions.** Groups: layout obedience (4 — label
+  override replaces rather than appends, empty label falls back to Arabic, `show_*`
+  toggles add and remove whole blocks, `design` picks a different template), accent
+  hardening (1), routing and shape (4), filenames and content type (2), receipt
+  geometry and auto-print (2), permissions (3), the hardware path (3).
+- **`SettingsTest` — 26 tests, 186 assertions** (was 24/167): the logo column's two
+  refusals, and the upload round trip.
+- `ScreensRenderTest` now walks `print.invoice`, `print.pdf` and `print.receipt` under
+  the untranslated-key, div-balance and empty-heading guards.
+- `LangParityTest` green after `print_receipt`; parity is exact.
+- **The upload test cleans up after itself through the app's own delete path** —
+  `public/uploads/business_logos/` is empty after the run, asserted by
+  `assertFileDoesNotExist` rather than by a `tearDown` that could drift.
+- **`npm run build` still unverified.** The environment's safety classifier refused
+  that command again on every attempt this session, as in §14.12. Item 9's CSS
+  (`.input-file`, `.file-current`) was checked by reading `app.css` instead: both are
+  present at `:1002` and `:1013`, and every utility they `@apply` — including
+  `.thumb-md`'s dependency on `@utility thumb` (`:611`) — resolves. **That is a static
+  check, not a build.** Recorded rather than omitted, because "the classes exist" and
+  "the bundle compiles" are two different claims.
+
+### 15.15 Deliberately not done in item 9
+
+- **QR codes** — §15.8; jurisdiction decision, not a rendering one.
+- **Emailing an invoice** — the PDF downloads; sending it needs the mail configuration
+  §12.2 keeps off settings screens entirely.
+- **A print agent** — `enqueue()` writes the job and `print-queue.{locationId}`
+  broadcasts it. The program that consumes the queue on a till PC is not part of this
+  repository.
+- **Orphaned layout logos** — §15.9, decided against rather than skipped.
+- **Per-user paper size** — the A4/72 mm split is the tenant's `receipt_printer_type`
+  and the layout's `design`; a third axis has no requester.
 
