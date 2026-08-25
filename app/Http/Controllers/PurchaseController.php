@@ -10,6 +10,7 @@ use App\Models\Transaction;
 use App\Services\FormattingService;
 use App\Services\PaymentService;
 use App\Services\PurchaseService;
+use App\Support\TenantRules;
 use App\Support\TransactionTypes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -323,7 +324,7 @@ class PurchaseController extends Controller
     protected function validateDocument(Request $request, ?Transaction $document = null): array
     {
         return $request->validate([
-            'location_id' => 'required|integer|exists:business_locations,id',
+            'location_id' => ['required', 'integer', TenantRules::location()],
             'contact_id' => 'required|integer|exists:contacts,id',
             'ref_no' => 'nullable|string|max:255',
             'transaction_date' => 'required|date',

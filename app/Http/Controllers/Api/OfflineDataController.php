@@ -8,6 +8,7 @@ use App\Models\Variation;
 use App\Models\VariationGroupPrice;
 use App\Models\VariationLocationDetails;
 use Illuminate\Http\JsonResponse;
+use App\Support\TenantRules;
 use Illuminate\Http\Request;
 
 /**
@@ -64,7 +65,7 @@ class OfflineDataController extends Controller
         $this->permit('sell.create', 'direct_sell.access');
 
         $validated = $request->validate([
-            'location_id' => 'nullable|integer|exists:business_locations,id',
+            'location_id' => ['nullable', 'integer', TenantRules::location()],
             'price_group_id' => 'nullable|integer|exists:selling_price_groups,id',
         ]);
 

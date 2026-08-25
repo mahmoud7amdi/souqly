@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Support\Permissions;
 use App\Support\Tenancy;
+use App\Support\TenantRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -284,7 +285,7 @@ class ManageUserController extends Controller
             'location_ids' => 'nullable|array',
             'location_ids.*' => [
                 'integer',
-                Rule::exists('business_locations', 'id')->where('business_id', Tenancy::id()),
+                TenantRules::location(),
             ],
         ];
 

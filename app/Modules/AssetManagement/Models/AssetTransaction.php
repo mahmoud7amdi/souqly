@@ -79,12 +79,19 @@ class AssetTransaction extends Model
 
     /**
      * Quantity of this allocation still outstanding.
+     *
+     * Sums the loaded relation when the caller eager-loaded it, and only falls back
+     * to a query when it did not. A page of twenty-five allocations reads this once
+     * per row, so the difference between the two branches is twenty-five queries and
+     * one — and the list screen that shows an outstanding column is precisely the
+     * caller that already has the returns in memory.
      */
     public function getQuantityOutstandingAttribute(): float
     {
-        return round(
-            (float) $this->quantity - (float) $this->revokeTransaction()->sum('quantity'),
-            4
-        );
+        $returned = $this->relationLoaded('revokeTransaction')
+            ? $this->revokeTransaction->sum('quantity')
+            : $this->revokeTransaction()->sum('quantity');
+
+        return round((float) $this->quantity - (float) $returned, 4);
     }
 }

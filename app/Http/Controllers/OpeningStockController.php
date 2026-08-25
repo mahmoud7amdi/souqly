@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Transaction;
 use App\Services\FormattingService;
 use App\Services\OpeningStockService;
+use App\Support\TenantRules;
 use App\Support\TransactionTypes;
 use Illuminate\Http\Request;
 
@@ -128,7 +129,7 @@ class OpeningStockController extends Controller
         $product = Product::with('variations')->where('enable_stock', 1)->findOrFail($productId);
 
         $validated = $request->validate([
-            'location_id' => 'required|integer|exists:business_locations,id',
+            'location_id' => ['required', 'integer', TenantRules::location()],
             'transaction_date' => 'nullable|date',
             'quantities' => 'required|array',
             'quantities.*' => 'nullable|numeric|min:0',

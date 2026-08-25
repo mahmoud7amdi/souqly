@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\ExpenseService;
 use App\Services\FormattingService;
 use App\Services\PaymentService;
+use App\Support\TenantRules;
 use App\Support\TransactionTypes;
 use Illuminate\Http\Request;
 
@@ -267,7 +268,7 @@ class ExpenseController extends Controller
     protected function validateExpense(Request $request): array
     {
         $validated = $request->validate([
-            'location_id' => 'required|integer|exists:business_locations,id',
+            'location_id' => ['required', 'integer', TenantRules::location()],
             'expense_category_id' => 'nullable|integer|exists:expense_categories,id',
             'expense_sub_category_id' => 'nullable|integer|exists:expense_categories,id',
             'expense_for' => 'nullable|integer|exists:users,id',

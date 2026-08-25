@@ -42,6 +42,34 @@ final class TransactionTypes
 
     public const STOCK_ADJUSTMENT = 'stock_adjustment';
 
+    /**
+     * Stock a physical count found that the books did not have.
+     *
+     * WHY THIS IS NOT A `stock_adjustment`
+     *
+     * {@see \App\Services\StockAdjustmentService} is decrease-only by design, and
+     * for a good reason: stock arriving has a *cost*, and it needs a lot to hang
+     * that cost on. An "increase adjustment" would create quantity with no lot,
+     * which is worse than not recording it — `qty_available` would rise while
+     * `availableLots()` found nothing to sell, so the next sale would report a
+     * shortfall against stock the system said it had.
+     *
+     * WHY IT IS NOT A `purchase`, WHICH IS WHAT THAT SERVICE'S COMMENT ADVISED
+     *
+     * `PurchaseController` validates `contact_id` as `required`. So "just enter
+     * the purchase nobody recorded" cannot be done without naming a supplier,
+     * and naming one fabricates a payable: real money owed to a real contact who
+     * sold us nothing. A count that finds three extra units usually means a
+     * miscount, a sale rung up against the wrong variation, or a return put back
+     * on the shelf — none of which is a supplier invoice. Corrupting the payables
+     * ledger to keep the stock ledger tidy is the wrong trade.
+     *
+     * So found stock gets its own document type, and it is in {@see stockIn()} —
+     * that membership is the whole point, because it is what makes the lot
+     * consumable by FIFO instead of a number that only looks like stock.
+     */
+    public const STOCK_COUNT = 'stock_count';
+
     public const LEDGER_DISCOUNT = 'ledger_discount';
 
     public const PAYROLL = 'payroll';
@@ -68,6 +96,7 @@ final class TransactionTypes
             self::EXPENSE,
             self::EXPENSE_REFUND,
             self::STOCK_ADJUSTMENT,
+            self::STOCK_COUNT,
             self::LEDGER_DISCOUNT,
             self::PAYROLL,
         ];
@@ -76,11 +105,20 @@ final class TransactionTypes
     /**
      * Types that push stock INTO a location (create purchase_lines).
      *
+     * Membership here is what `StockService::availableLots()` reads, so it is the
+     * definition of "a lot FIFO can sell". A document type that writes
+     * `purchase_lines` and is *not* in this list produces stock that inflates
+     * `qty_available` and can never be consumed — visible in every stock figure
+     * and sellable in none of them.
+     *
+     * `stock_count` is the newest member; {@see STOCK_COUNT} for why found stock
+     * needed its own type rather than reusing `purchase` or `opening_stock`.
+     *
      * @return array<int, string>
      */
     public static function stockIn(): array
     {
-        return [self::PURCHASE, self::OPENING_STOCK, self::PURCHASE_TRANSFER];
+        return [self::PURCHASE, self::OPENING_STOCK, self::PURCHASE_TRANSFER, self::STOCK_COUNT];
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Models\BusinessLocation;
 use App\Models\Transaction;
 use App\Services\FormattingService;
 use App\Services\StockTransferService;
+use App\Support\TenantRules;
 use App\Support\TransactionTypes;
 use Illuminate\Http\Request;
 
@@ -206,8 +207,8 @@ class StockTransferController extends Controller
     protected function validateTransfer(Request $request): array
     {
         return $request->validate([
-            'location_id' => 'required|integer|exists:business_locations,id',
-            'transfer_location_id' => 'required|integer|different:location_id|exists:business_locations,id',
+            'location_id' => ['required', 'integer', TenantRules::location()],
+            'transfer_location_id' => ['required', 'integer', 'different:location_id', TenantRules::location()],
             'ref_no' => 'nullable|string|max:255',
             'transaction_date' => 'required|date',
             'status' => 'required|string|in:'.implode(',', array_keys($this->statusOptions())),

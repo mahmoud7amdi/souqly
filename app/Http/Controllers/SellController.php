@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\FormattingService;
 use App\Services\PaymentService;
 use App\Services\SellService;
+use App\Support\TenantRules;
 use App\Support\TransactionTypes;
 use Illuminate\Http\Request;
 
@@ -452,7 +453,7 @@ class SellController extends Controller
     protected function validateDocument(Request $request, ?Transaction $document = null): array
     {
         return $request->validate([
-            'location_id' => 'required|integer|exists:business_locations,id',
+            'location_id' => ['required', 'integer', TenantRules::location()],
             'contact_id' => 'required|integer|exists:contacts,id',
             'invoice_no' => 'nullable|string|max:255',
             'ref_no' => 'nullable|string|max:255',

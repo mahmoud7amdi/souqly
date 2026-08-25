@@ -22,13 +22,26 @@ use Illuminate\Support\Facades\DB;
  * screen's name suggests:
  *
  * DECREASE ONLY. There is no way to adjust stock *upwards* here. An increase in
- * stock has a cost and therefore needs a lot to hang that cost on, and the
- * documents that create lots already exist — a purchase, or opening stock. An
- * "increase adjustment" would either invent units with no cost basis (and every
- * margin that touched them afterwards would be wrong) or silently borrow the
- * cost of a lot it did not come from. If a physical count comes out higher than
- * the books, the missing document is a purchase nobody recorded, and that is
- * what should be entered.
+ * stock has a cost and therefore needs a lot to hang that cost on, and creating
+ * quantity without one would be worse than refusing: `qty_available` would rise
+ * while `StockService::availableLots()` found nothing, so the next sale would
+ * report a shortfall against stock the system had just claimed to hold.
+ *
+ * This comment used to end "if a physical count comes out higher than the books,
+ * the missing document is a purchase nobody recorded, and that is what should be
+ * entered." That advice was wrong, and following it would have done real damage:
+ * `PurchaseController` validates `contact_id` as `required`, so entering the
+ * purchase means naming a supplier, and naming one creates a payable — money the
+ * business now appears to owe a contact who sold it nothing. A count finding
+ * three extra units is usually a miscount, a sale rung up against the wrong
+ * variation, or a return put back on the shelf. None of those is a supplier
+ * invoice.
+ *
+ * Found stock therefore has its own path: {@see \App\Services\InventoryCountService},
+ * which posts a `stock_count` document — a real stock-in type registered in
+ * `TransactionTypes::stockIn()`, valued at the variation's `dpp_inc_tax`. It stays
+ * out of *this* document because an adjustment is a write-off, and one document
+ * that both writes off and creates stock is one whose total means nothing.
  *
  * NEVER PAST ZERO. `StockService::consume()` reports a shortfall rather than
  * refusing, because a POS sale must be allowed to oversell a mis-counted shelf

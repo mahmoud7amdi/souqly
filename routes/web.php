@@ -4,6 +4,8 @@ use App\Http\Controllers\Api\OfflineDataController;
 use App\Http\Controllers\Api\OfflineSyncController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AssetController;
+use App\Http\Controllers\AssetMaintenanceController;
 use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\BusinessController;
@@ -16,6 +18,7 @@ use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ImportProductsController;
+use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\InvoiceLayoutController;
 use App\Http\Controllers\InvoiceSchemeController;
 use App\Http\Controllers\LabelsController;
@@ -411,6 +414,33 @@ Route::middleware(['auth', 'tenant.ui'])->group(function () {
     Route::resource('stock-adjustments', StockAdjustmentController::class)
         ->parameters(['stock-adjustments' => 'id']);
 
+    /* --- Stock counts (InventoryManagement module) --- *
+     |
+     | Not a plain resource, because a count is a container that is filled over
+     | hours and then posted once. `show` is the working screen rather than a
+     | read-only view — it is where lines are entered — so lines hang off it as
+     | nested routes, and `close` is a POST of its own because it is the single
+     | irreversible act in the whole flow.
+     |
+     | The URL says `stock-counts` while the route names say `inventory.*`: the
+     | names have to match `sidebar.blade.php`'s `inventory.index`, which came
+     | from the source system, but nothing forces a user-facing URL to inherit a
+     | table name nobody outside the code has ever read.
+     */
+    Route::controller(InventoryController::class)->prefix('stock-counts')->name('inventory.')
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/create', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::get('/{id}', 'show')->name('show');
+            Route::get('/{id}/edit', 'edit')->name('edit');
+            Route::put('/{id}', 'update')->name('update');
+            Route::delete('/{id}', 'destroy')->name('destroy');
+            Route::post('/{id}/lines', 'storeLine')->name('lines.store');
+            Route::delete('/{id}/lines/{lineId}', 'destroyLine')->name('lines.destroy');
+            Route::post('/{id}/close', 'close')->name('close');
+        });
+
     /* --- Opening stock --- *
      |
      | Keyed by product, with the location in the query string: a product's
@@ -488,6 +518,48 @@ Route::middleware(['auth', 'tenant.ui'])->group(function () {
     Route::resource('accounts', AccountController::class)
         ->parameters(['accounts' => 'id'])
         ->except(['destroy']);
+
+    /* --- The fixed-asset register --- *
+     |
+     | `assets.show` is the working screen, not a read-only one: allocating,
+     | returning and warrantying all POST back to the asset they are about, because
+     | all three are things you do *to a known asset* and a screen per verb would
+     | mean navigating away from the one record you are looking at.
+     |
+     | Revocation is nested under its allocation (`/{id}/revoke/{transaction}`)
+     | rather than taking the allocation's id alone. The asset in the path is
+     | redundant for finding the row, and deliberately so — it is what lets the
+     | controller check that the allocation belongs to the asset the user was
+     | looking at before it closes it.
+     |
+     | Maintenance gets its own prefix rather than nesting under `/assets/{id}`,
+     | because the person who opens it is reading *their queue across every asset*.
+     | Nesting would make the natural URL for that list impossible to express.
+     */
+    Route::controller(AssetController::class)->prefix('assets')->name('assets.')
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/create', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::get('/{id}', 'show')->name('show');
+            Route::get('/{id}/edit', 'edit')->name('edit');
+            Route::put('/{id}', 'update')->name('update');
+            Route::delete('/{id}', 'destroy')->name('destroy');
+            Route::post('/{id}/allocate', 'allocate')->name('allocate');
+            Route::post('/{id}/revoke/{transactionId}', 'revoke')->name('revoke');
+            Route::post('/{id}/warranties', 'storeWarranty')->name('warranties.store');
+            Route::delete('/{id}/warranties/{warrantyId}', 'destroyWarranty')->name('warranties.destroy');
+        });
+
+    Route::controller(AssetMaintenanceController::class)->prefix('asset-maintenance')
+        ->name('asset-maintenance.')->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/create', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::get('/{id}/edit', 'edit')->name('edit');
+            Route::put('/{id}', 'update')->name('update');
+            Route::delete('/{id}', 'destroy')->name('destroy');
+        });
 
     /*
      * Reports.

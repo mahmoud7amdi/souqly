@@ -13,6 +13,25 @@ namespace App\Support;
  *   - `repair.*`, `client.clients.*` — modules absent from the source repo.
  *   - Indian GST report permissions — out of scope for the Arab market.
  *
+ * ADDED, not inherited (NOTES §17). Five names here are ours, because the source
+ * system's set could not express what its own screens do:
+ *
+ *   - `inventorymanagement.create`, `.update`, `.delete`, `.close` — the source
+ *     ships `inventorymanagement.view` and nothing else, so a role that could
+ *     open a stock count could also post it. Closing a count moves stock and
+ *     writes FIFO lots; entering counted numbers does not. A shop that wants a
+ *     supervisor to sign off had no way to say so, and one `view` permission
+ *     covering both is not a permission system, it is a light switch.
+ *   - `accounting.view` — every accounting permission in the source is a write
+ *     (`.create`, `.reverse`, `.edit`), so "may look at the trial balance" was
+ *     only expressible as "may post journal entries". The sidebar works around
+ *     this by gating the accounting link on `accounting.journal_entries.create`,
+ *     which is why an accountant's read-only reviewer could not be modelled.
+ *
+ * Both additions are inside prefixes {@see moduleMap()} already knows, so they
+ * are module-gated in the role editor for free and invisible to a tenant without
+ * the module.
+ *
  * Location permissions (`location.<id>`) are generated per location at
  * runtime and are deliberately not listed here.
  */
@@ -97,6 +116,8 @@ final class Permissions
                 'stock_adjustment.view', 'stock_adjustment.create',
                 'stock_adjustment.update', 'stock_adjustment.delete',
                 'inventorymanagement.view',
+                'inventorymanagement.create', 'inventorymanagement.update',
+                'inventorymanagement.delete', 'inventorymanagement.close',
             ],
 
             'expense' => [
@@ -144,6 +165,7 @@ final class Permissions
             ],
 
             'accounting' => [
+                'accounting.view',
                 'accounting.chart_of_accounts.create',
                 'accounting.journal_entries.create',
                 'accounting.journal_entries.reverse',

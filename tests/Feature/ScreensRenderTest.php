@@ -90,8 +90,30 @@ class ScreensRenderTest extends TestCase
                 'thousand_separator' => ',', 'decimal_separator' => '.']
         );
 
+        /*
+         * Every module on, which is the only way this test can do its job.
+         *
+         * A module-gated screen answers 403 to a tenant that has not enabled its
+         * module — `Controller::requireModule()` aborts before the view is ever
+         * touched — and the walk reads any status outside [200, 302] as a
+         * failure. `register()` turns on two modules by default, so without this
+         * the walk over an eight-module ERP was a walk over a quarter of one,
+         * and every module screen was invisible to it rather than passing: the
+         * first module-gated route to arrive would have turned the suite red
+         * while looking like a bug in the screen.
+         *
+         * Listed literally rather than read from `availableModules()`, which is
+         * `protected` on BusinessController. `superadmin` is deliberately absent
+         * here because it is deliberately absent there too — see
+         * SettingsTest::the_settings_form_rejects_values_that_belong_to_somebody_else.
+         */
         ['owner' => $owner, 'business' => $business] = app(BusinessService::class)->register(
-            ['name' => 'Screens Co.', 'currency_id' => $currency->id],
+            ['name' => 'Screens Co.', 'currency_id' => $currency->id,
+                'enabled_modules' => [
+                    'purchase_order', 'purchase_requisition', 'sales_order',
+                    'inventorymanagement', 'account', 'accounting', 'essentials',
+                    'assetmanagement',
+                ]],
             ['first_name' => 'Admin', 'username' => 'screens_'.uniqid(),
                 'password' => 'secret-pass', 'language' => 'ar']
         );
@@ -671,6 +693,88 @@ class ScreensRenderTest extends TestCase
 
         $this->fixtureAdjustmentId = $adjustment->id;
         $this->fixtureTransferId = $transfer->id;
+
+        /*
+         * An open stock count carrying one line.
+         *
+         * Without it `inventory.show` and `inventory.edit` fall through to the
+         * walk's default fixture-product id, `findCount()` calls `findOrFail()`
+         * on it, and the pair answer 404 — a red walk describing a missing
+         * fixture rather than a broken screen.
+         *
+         * Open rather than closed, deliberately: `edit()` redirects a closed
+         * count to `show`, and 302 is inside the statuses the walk accepts, so a
+         * closed fixture would let the edit screen pass without ever being
+         * rendered.
+         *
+         * The line is counted below book on purpose, so `show` has a real
+         * shortage for its summary panel and its difference column instead of the
+         * designed empty state — which is otherwise the only branch a bare render
+         * would ever reach.
+         */
+        $count = app(\App\Services\InventoryCountService::class)->create([
+            'branch_id' => $from->id,
+            'name' => 'Fixture count',
+            'end_date' => now()->addWeek()->toDateString(),
+        ]);
+
+        app(\App\Services\InventoryCountService::class)->countLine(
+            $count, $this->fixtureVariationId, 1
+        );
+
+        $this->fixtureCountId = $count->id;
+
+        /*
+         * An asset with something out on it, and one maintenance job.
+         *
+         * The allocation is the reason this is not a two-line fixture. `asset.show`
+         * has two mutually exclusive halves — the hand-over form when something is
+         * available, the allocation table when something is out — and a bare asset
+         * would render only the first. Allocating part of the quantity puts the
+         * screen in the state where both are visible at once, which is the branch
+         * with the outstanding column, the return form, and the overdue badge in it.
+         *
+         * `allocated_upto` is in the past on purpose: the overdue badge is the one
+         * row state a fixture can reach for free, and an untranslated key inside it
+         * would otherwise never be walked.
+         *
+         * Signed in first, unlike every other fixture here, because `AssetService`
+         * reads `created_by` from `auth()` rather than taking it as data — and
+         * `assets.created_by` is `NOT NULL` behind a foreign key, so a guest seed
+         * fails on the insert rather than storing a null.
+         */
+        $this->actingAs($this->admin);
+
+        $asset = app(\App\Services\AssetService::class)->create([
+            'name' => 'Fixture asset',
+            'quantity' => 4,
+            'unit_price' => 1000,
+            'purchase_date' => now()->subYear()->toDateString(),
+            'purchase_type' => 'new',
+            'depreciation' => 10,
+            'location_id' => $from->id,
+            'is_allocatable' => true,
+        ]);
+
+        app(\App\Services\AssetService::class)->allocate($asset, [
+            'receiver' => $this->admin->id,
+            'quantity' => 1,
+            'allocated_upto' => now()->subDay()->toDateString(),
+        ]);
+
+        $maintenance = \App\Modules\AssetManagement\Models\AssetMaintenance::create([
+            'business_id' => $asset->business_id,
+            'asset_id' => $asset->id,
+            'maitenance_id' => 'FIXTURE-MNT-1',
+            'status' => 'scheduled',
+            'priority' => 'high',
+            'details' => 'Fixture fault',
+            'assigned_to' => $this->admin->id,
+            'created_by' => $this->admin->id,
+        ]);
+
+        $this->fixtureAssetId = $asset->id;
+        $this->fixtureMaintenanceId = $maintenance->id;
     }
 
     private int $fixtureProductId;
@@ -704,6 +808,12 @@ class ScreensRenderTest extends TestCase
     private int $fixtureAdjustmentId;
 
     private int $fixtureTransferId;
+
+    private int $fixtureCountId;
+
+    private int $fixtureAssetId;
+
+    private int $fixtureMaintenanceId;
 
     private int $fixtureBarcodeId;
 
@@ -773,6 +883,15 @@ class ScreensRenderTest extends TestCase
             'stock-adjustments.show' => $this->fixtureAdjustmentId,
             'stock-adjustments.edit' => $this->fixtureAdjustmentId,
             'stock-transfers.show' => $this->fixtureTransferId,
+            // The open count seeded above, not a product id: `findCount()`
+            // `findOrFail()`s, so the default fallback would 404 both screens.
+            'inventory.show' => $this->fixtureCountId,
+            'inventory.edit' => $this->fixtureCountId,
+            // Same reason as the counts above: both controllers resolve the record
+            // through a scoped `findOrFail()`, so a product id would 404 all three.
+            'assets.show' => $this->fixtureAssetId,
+            'assets.edit' => $this->fixtureAssetId,
+            'asset-maintenance.edit' => $this->fixtureMaintenanceId,
             /*
              * The three GET print routes. Walked rather than skipped, exactly as
              * `purchase-order.pdf` is: they are the whole point of item 9, they

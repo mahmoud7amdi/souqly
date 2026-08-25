@@ -6,6 +6,7 @@ use App\Models\BusinessLocation;
 use App\Models\Transaction;
 use App\Services\FormattingService;
 use App\Services\StockAdjustmentService;
+use App\Support\TenantRules;
 use App\Support\TransactionTypes;
 use Illuminate\Http\Request;
 
@@ -205,7 +206,7 @@ class StockAdjustmentController extends Controller
     protected function validateAdjustment(Request $request): array
     {
         return $request->validate([
-            'location_id' => 'required|integer|exists:business_locations,id',
+            'location_id' => ['required', 'integer', TenantRules::location()],
             'ref_no' => 'nullable|string|max:255',
             'transaction_date' => 'required|date',
             'adjustment_type' => 'required|in:'.implode(',', array_keys($this->typeOptions())),

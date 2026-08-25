@@ -31,6 +31,7 @@ class ReferenceService
         'purchase_return' => 'PRN',
         'stock_transfer' => 'ST',
         'stock_adjustment' => 'SA',
+        'stock_count' => 'SC',
         'sell_return' => 'CN',
         'sales_order' => 'SO',
         'expense' => 'EP',
@@ -45,6 +46,10 @@ class ReferenceService
         'service_staff' => 'SS',
         'payroll' => 'PYR',
         'asset' => 'AST',
+        // Allocations and their revocations share one counter, so an allocation and
+        // the return that closes it sit next to each other in any list sorted by
+        // reference — which is how the pair is read.
+        'asset_transaction' => 'ALC',
         'maintenance' => 'MNT',
         'journal_entry' => 'JE',
         'transfer' => 'TRF',

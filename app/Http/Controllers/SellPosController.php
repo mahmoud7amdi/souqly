@@ -10,6 +10,7 @@ use App\Models\SellingPriceGroup;
 use App\Models\TaxRate;
 use App\Services\FormattingService;
 use App\Services\SellService;
+use App\Support\TenantRules;
 use App\Support\TransactionTypes;
 use Illuminate\Http\Request;
 
@@ -73,7 +74,7 @@ class SellPosController extends Controller
         $this->permit('sell.create', 'direct_sell.access');
 
         $validated = $request->validate([
-            'location_id' => 'required|integer|exists:business_locations,id',
+            'location_id' => ['required', 'integer', TenantRules::location()],
             'contact_id' => 'required|integer|exists:contacts,id',
             'transaction_date' => 'nullable|date',
             'tax_id' => 'nullable|integer|exists:tax_rates,id',

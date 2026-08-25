@@ -8,6 +8,7 @@ use App\Models\CashRegisterTransaction;
 use App\Models\User;
 use App\Services\CashRegisterService;
 use App\Services\FormattingService;
+use App\Support\TenantRules;
 use Illuminate\Http\Request;
 
 /**
@@ -131,7 +132,7 @@ class CashRegisterController extends Controller
         $this->permit('view_cash_register');
 
         $validated = $request->validate([
-            'location_id' => 'required|integer|exists:business_locations,id',
+            'location_id' => ['required', 'integer', TenantRules::location()],
             'opening_amount' => 'nullable|numeric|min:0',
         ]);
 

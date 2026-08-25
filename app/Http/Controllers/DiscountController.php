@@ -10,6 +10,7 @@ use App\Models\Discount;
 use App\Models\SellingPriceGroup;
 use App\Services\FormattingService;
 use Illuminate\Database\Eloquent\Model;
+use App\Support\TenantRules;
 use Illuminate\Http\Request;
 
 /**
@@ -56,7 +57,7 @@ class DiscountController extends SimpleCrudController
             'priority' => 'nullable|integer|min:0',
             'brand_id' => 'nullable|integer|exists:brands,id',
             'category_id' => 'nullable|integer|exists:categories,id',
-            'location_id' => 'nullable|integer|exists:business_locations,id',
+            'location_id' => ['nullable', 'integer', TenantRules::location()],
             'spg' => 'nullable|integer|exists:selling_price_groups,id',
             'starts_at' => 'nullable|date',
             'ends_at' => 'nullable|date|after_or_equal:starts_at',

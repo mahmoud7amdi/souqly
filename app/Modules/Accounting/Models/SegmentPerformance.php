@@ -87,9 +87,13 @@ class SegmentPerformance extends Model
     public static function segmentTypes(): array
     {
         return [
-            'location' => __('business.business_location'),
-            'category' => __('category.category'),
-            'brand' => __('brand.brand'),
+            // These three used to address `business.`, `category.` and `brand.`
+            // namespaces that have never existed in this application, so they
+            // rendered as their own keys while the two below them worked. All
+            // five words are already in `lang_v1`.
+            'location' => __('lang_v1.business_location'),
+            'category' => __('lang_v1.category'),
+            'brand' => __('lang_v1.brand'),
             'customer_group' => __('lang_v1.customer_group'),
             'product' => __('lang_v1.product'),
         ];

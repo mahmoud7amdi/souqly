@@ -97,7 +97,7 @@
                 ['route' => 'stock-transfers.index', 'label' => __('lang_v1.stock_transfers'), 'icon' => 'transfer', 'can' => ['stock_transfer.view']],
                 ['route' => 'stock-adjustments.index', 'label' => __('lang_v1.stock_adjustments'), 'icon' => 'adjust', 'can' => ['stock_adjustment.view']],
                 ['route' => 'opening-stock.index', 'label' => __('lang_v1.opening_stock'), 'icon' => 'box', 'can' => ['product.opening_stock']],
-                ['route' => 'inventory.index', 'label' => __('lang_v1.stock_count'), 'icon' => 'clipboard',
+                ['route' => 'inventory.index', 'label' => __('lang_v1.stock_counts'), 'icon' => 'clipboard',
                  'can' => ['inventorymanagement.view'], 'module' => 'inventorymanagement'],
             ],
         ],

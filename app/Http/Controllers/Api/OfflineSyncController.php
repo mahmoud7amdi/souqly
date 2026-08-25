@@ -7,6 +7,7 @@ use App\Models\BusinessLocation;
 use App\Models\Transaction;
 use App\Services\FormattingService;
 use App\Services\SellService;
+use App\Support\TenantRules;
 use App\Support\TransactionTypes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -241,7 +242,7 @@ class OfflineSyncController extends Controller
     private function rules(): array
     {
         return [
-            'location_id' => 'required|integer|exists:business_locations,id',
+            'location_id' => ['required', 'integer', TenantRules::location()],
             'contact_id' => 'required|integer|exists:contacts,id',
             'tax_id' => 'nullable|integer|exists:tax_rates,id',
             'discount_type' => 'nullable|in:fixed,percentage',

@@ -103,6 +103,8 @@ return [
     'no' => 'No',
     'none' => 'None',
     'all' => 'All',
+    'unassigned' => 'Unassigned',
+    'please_select' => 'Please select…',
     'default' => 'Default',
     'from' => 'From',
     'to' => 'To',

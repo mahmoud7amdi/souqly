@@ -105,6 +105,8 @@ return [
     'no' => 'لا',
     'none' => 'بدون',
     'all' => 'الكل',
+    'unassigned' => 'غير مُسنَدة',
+    'please_select' => 'اختر…',
     'default' => 'افتراضي',
     'from' => 'من',
     'to' => 'إلى',

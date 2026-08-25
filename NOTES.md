@@ -246,18 +246,34 @@ git commit                    # إيداعٌ واحدٌ نظيف. **بدون pus
 والقوالبِ الثلاثةِ سليمةٌ (`_form` يُعطي `$record ?? null` و`$branchLocked ?? false` قيمًا افتراضيّةً
 بنفسِه، و`forDropdown()` يُرجِع `array` فـ`array_key_first()` آمنة).
 
-##### ٣ب) 🔴 الإيداعُ الذي يلي إيداعَ المنتجات — §12.6، قبل شُعبِ البند 11
+##### ٣ب) ✅ مُنجَزٌ ومُختبَرٌ — §12.6، وهو مضمونُ هذا الإيداعِ نفسِه
 
 عيبُ أمنٍ من صنفِ §18.8 نفسِه، وُجِد بقراءةِ `InventoryController::store()`: القاعدةُ
-`exists:business_locations,id` **غيرُ مُقيَّدةٍ بالمستأجر في أربعةَ عشرَ موضعًا**، لأن `Rule::exists`
-تُترجَم إلى بانيةِ الاستعلام لا إلى Eloquent، فـ`BusinessScope` لا يعملُ أصلًا. الجدولُ الكاملُ
-بالمواضعِ وتقديرُ الأثرِ (**متوسّطٌ لا حَرِج**: الصفُّ المُنشأُ يحملُ `business_id` الخاصَّ بي فهو
-تلويثٌ ومِسبارُ تعدادِ مُعرِّفات، لا سرقةٌ عابرةُ مستأجرين) والقالبُ الصحيحُ الذي يُنسَخ
-(`ManageUserController.php:287`) — كلُّه في **§12.6**.
+`exists:business_locations,id` **كانت غيرَ مُقيَّدةٍ بالمستأجر في أربعةَ عشرَ موضعًا**، لأن
+`Rule::exists` تُترجَم إلى بانيةِ الاستعلام لا إلى Eloquent — فلا `BusinessScope` تعملُ ولا
+`SoftDeletes`.
 
-و**هو إيداعٌ مستقلٌّ عن إيداعِ المنتجات عمدًا**: أربعةَ عشرَ مُتحكِّمًا هي كلُّ مسارِ كتابةٍ في
-التطبيق، ودمجُها يجعلُ الإيداعَين معًا غيرَ قابلَين للمراجعة. ومعه اختبارٌ واحدٌ مُقادٌ بالبيانات
-تكونُ لائحتُه هي القائمةَ نفسَها، فيفشلُ الموضعُ الخامسَ عشرَ بغيابِه عنها.
+**الحلُّ:** دالّةٌ واحدة `TenantRules::location()` في `app/Support/` تُرجِع الشرطَين معًا، وخمسةَ
+عشرَ موضعًا يُنادونها، ولا موضعَ يهجِئُ اسمَ الجدولِ بعدَها:
+`grep -rn "exists:business_locations" app/` يُرجِع نتيجةً واحدةً هي تعليقُ التوثيقِ نفسُه. ثلاثةَ
+عشرَ مُتحكِّمًا في هذا الإيداع، و`InventoryController` (موضعان) ملفٌّ غيرُ مُتتبَّعٍ يُسافِرُ مع شُعبةِ
+الجردِ في البند 11 — مكتوبٌ لا مُمَلَّس، والحارسُ الساكنُ يقرأُ شجرةَ العملِ فيُغطّيه اليومَ ويستمرُّ
+في تغطيتِه بعدَ نزولِ البند 11.
+
+**الاختبارُ** `tests/Feature/TenantScopeTest.php`: ستُّ حالاتٍ/٧٧ توكيدًا — القاعدةُ وحدَها في
+حالاتِها الخمس (ومنها **فرعُنا المُغلَقُ يَجوزُ عمدًا**، فهنا يُثبَّتُ قرارُ `is_active` كي لا
+«يُصلِحَه» أحدٌ لاحقًا)، ثم المواضعُ **أزواجًا** — مُعرِّفُ الغريمِ ثم مُعرِّفُنا، والتشغيلُ الضابطُ هو
+ما يجعلُ للنفيِ معنًى — ثم مسحٌ ثالثٌ بفرعٍ لنا محذوفٍ ناعمًا، ثم حارسان ساكنان: أحدُهما يمنعُ
+الهِجاءَ القديمَ في كلِّ `app/`، والآخرُ يقرأُ مواضعَ النداءِ **من الشجرة** فتكونُ لائحةُ الاختبارِ هي
+القائمةَ نفسَها لا قائمةً يتذكّرُ أحدٌ تحديثَها. وموضعان مُستثنَيان بالاسمِ عبرَ `COVERED_ELSEWHERE`
+لكلٍّ سببُه: `Api/OfflineSyncController` يُجيبُ **٢٠٠ بحُكمٍ لكلِّ بيعة** لا ٤٢٢ (إفشالُ الرُّزمةِ
+يُلقي أحكامَ ما تزامَنَ منها فعلًا)، و`InventoryController` خلفَ مِفتاحِ الوحدةِ
+`inventorymanagement` الذي لا يملكُه هذا المستأجر.
+
+**والخُضرةُ لم تُصدَّق** (درسُ §12.4): إعادةُ `CashRegisterController.php:135` إلى الهجاءِ القديمِ
+أحمرَت ثلاثَ حالاتٍ مُسمِّيةً الموضعَ بالاسم، وإضافةُ موضعٍ سادسَ عشرَ مُلفَّقٍ
+(`DiscountController.php:warehouse_id`) أحمرَت التعدادَ بهِ وحدَه. رُدَّ التحويلان، والمسيرةُ كاملةً
+**٢٠٦ حالة/١١٦٧ توكيدًا خضراء** (كانت ٢٠٠/١٠٩٠). والتفصيلُ في **§12.6.1–12.6.3**.
 
 ##### ٤) البند 11 — متوقّفٌ عند نقطةٍ إضافيةٍ نظيفة (لا شيءَ قائمٌ كُسِر)
 
@@ -286,15 +302,21 @@ git commit                    # إيداعٌ واحدٌ نظيف. **بدون pus
    بإضافتهما إلى `SKIP` — إذ كان ذلك سيشتري الخُضرةَ بثمنِ التغطية. والسطرُ مَعدودٌ **تحت** الدفتر
    عمدًا ليصلَ `show` إلى نقصٍ حقيقيّ لا إلى حالةِ الفراغِ المُصمَّمة، والجردُ **مفتوحٌ** عمدًا لأن
    `edit()` يُحوِّل المُغلَقَ إلى `show` و٣٠٢ داخلَ ما تقبلُه المسيرة.
-2. الشُّعبُ الباقية، لم تبدأ: **AssetManagement** (`assets.*` + تخصيص/سحب + صيانة)، **Accounting**
+2. **AssetManagement — مكتوبةٌ بالكامل، لم تُشغَّلْ بعد.** `AssetController` (١١ مسارًا) و
+   `AssetMaintenanceController` (٦) و`AssetService`، وتسعُ شاشات (`asset/` خمسٌ،
+   `asset_maintenance/` أربعٌ)، و`lang/{ar,en}/assetmanagement.php` (≈١٥٠ مفتاحًا بتكافؤٍ تامّ)،
+   و`tests/Feature/AssetsTest.php` (٢٤ حالة). والتوثيقُ في **§17**. **والباقي عليها أمرٌ واحد:
+   `php artisan test` — والغلافُ الأمنيُّ منعه طولَ الجلسة، فلا يجوزُ إيداعُها قبلَ أن يُشغَّلَ
+   ويَخضَرّ.**
+3. الشُّعبُ الباقية، لم تبدأ: **Accounting**
    (`accounting.dashboard`، شجرةُ الحسابات، قيودُ اليومية مع العكس، التحويلات، مراكزُ التكلفة،
    ميزانُ المراجعة)، **Essentials/HRM** (`hrm.dashboard`، الأقسام، المسمّيات، أنواعُ الإجازات،
    الإجازاتُ والموافقة، الحضور — والرواتبُ والمهامُّ والرسائلُ وقاعدةُ المعرفة والمستنداتُ والعطلاتُ
    والورديّاتُ وأهدافُ البيع مؤجَّلةٌ بالاسم).
    **ومؤجَّلٌ كليًّا بأسبابه:** Superadmin (عابرُ مستأجرين، و`BusinessScope` يفشل مُغلَقًا)، Cms
    (جداولُ `cms_*` بلا `business_id`)، ProductCatalogue.
-3. اختباراتٌ + **§17** (نوعُ الحركة `stock_count` ولماذا هو ليس شراءً ولا مخزونًا افتتاحيًّا؛
-   الصلاحياتُ الخمسُ المضافة + الثمانُ والثلاثون المُسمّاة حديثًا) ثم إيداع. **بدون push.**
+4. وعلى مجموعةِ البند 11 كذلك أن تُقدِّمَ موضعَي `branch_id` في `InventoryController`، لأن
+   `TenantScopeTest::COVERED_ELSEWHERE` يَعِدُ بذلك بالنصّ. ثم إيداع. **بدون push.**
 
 ##### ٥) البند 12 — أوامرُ الجدولة
 
@@ -2171,7 +2193,7 @@ Two traps worth carrying forward, both found by writing this file:
 
 ---
 
-### 12.6 🔴 OPEN — `exists:business_locations,id` is unscoped in fourteen places
+### 12.6 ✅ FIXED — `exists:business_locations,id` was unscoped in fourteen places
 
 Found 2026-08-25 while reading `InventoryController::store()`, immediately after §18.8 fixed
 the same class of bug in `ProductController`. It is not one controller's slip; it is the
@@ -2254,14 +2276,92 @@ mismatched pair moves stock between a real branch and one that is not ours.
 
 **Deliberately not in the products commit.** Fourteen controllers is its own pass with its own
 verification — every write path in the application is on that list — and folding it into a
-commit about product variations would make both unreviewable. It is the next commit, before the
-remaining item 11 tranches.
+commit about product variations would have made both unreviewable.
 
-**How it will be tested, when it is fixed:** not fourteen near-identical tests. One
-data-driven test that registers a second business, takes its location id, and posts it at every
-route on the list above, asserting `assertSessionHasErrors` (or a 422 for the two API
-endpoints) — so the list in this section *is* the test's fixture, and a fifteenth site added
-later fails it by being missing rather than by being wrong.
+### 12.6.1 What shipped
+
+One function, `TenantRules::location()` in `app/Support/`, returning **both** clauses Eloquent
+would have applied. Fifteen call sites now read it, and no site spells the table name any more:
+`grep -rn "exists:business_locations" app/` returns exactly one hit, the doc comment in
+`TenantRules.php` explaining why the string must not appear anywhere else.
+
+```
+CashRegisterController.php:135        OpeningStockController.php:132
+DiscountController.php:60             PurchaseController.php:327
+ExpenseController.php:271             SellController.php:456
+ManageUserController.php:288          SellPosController.php:77
+Api/OfflineDataController.php:68      StockAdjustmentController.php:209
+Api/OfflineSyncController.php:245     StockTransferController.php:210, :211
+InventoryController.php:78, :145      ← travels with the item-11 tranche, not this commit
+```
+
+**Thirteen controllers land here.** `InventoryController` is already converted on disk but is an
+untracked file belonging to the stock-count tranche, so it ships with item 11. That is the one
+place where this commit is not the whole of the fix, and it is written down rather than smoothed
+over — the static guard below reads the working tree, so it covers that file today and keeps
+covering it after item 11 lands.
+
+### 12.6.2 `tests/Feature/TenantScopeTest.php` — three kinds of test, because the defect had three faces
+
+The plan in this section said *one* data-driven test whose fixture is the site list. That was
+right and not sufficient, and writing it made the reason plain.
+
+**1. The rule, on its own.** `TenantRules::location()` is handed to a `Validator` against all
+five states a branch row can be in: ours-and-open (passes); **ours-and-closed (passes,
+deliberately — this is where the `is_active` decision above is pinned, so nobody "fixes" it
+later)**; ours-and-soft-deleted (fails); the rival's (fails); an id that was never a branch
+(fails). Two of those five are decisions rather than mechanics, and a site sweep cannot express
+either one.
+
+**2. The sites, in pairs.** Twelve fixture entries, each submitted **twice** — once with the
+rival's branch id, once with our own. The second run is not redundancy; it is what makes the
+first run mean anything. A field that is misspelled, absent from the payload, or shadowed by
+another rule *also* errors under the negative assertion, so a suite of negatives alone would go
+green on a typo'd fixture and prove nothing. Every other field in each payload is left invalid on
+purpose: these tests are about one field, and satisfying fifteen forms properly would mean
+fifteen fixtures to maintain and fifteen real documents written per run.
+
+A third pass repeats the whole sweep with a branch **of ours that has been soft-deleted** — the
+half `ManageUserController` was missing even while being documented above as the site to copy.
+
+**3. The shape of the code.** Two guards, because the sixteenth site will be written by somebody
+who has not read any of this, and to whom `exists:business_locations,id` will look perfectly
+normal. It *is* normal, in every repository that does not have this section in it.
+
+- `nothing_validates_a_branch_with_an_unscoped_exists_rule()` sweeps all of `app/` for the old
+  spelling in either form — the string rule and `Rule::exists('business_locations'` — excluding
+  `TenantRules.php` itself.
+- `every_site_that_validates_a_branch_is_covered_by_this_test()` reads the
+  `TenantRules::location()` call sites **out of the source tree**, keyed `<file>:<declared
+  field>`, the field being the nearest `'key' =>` before the call — which is how
+  `location_ids.*`, whose rule array puts the call on its own line, is picked up with its real
+  name. It then asserts the fixture covers every one of them. So the fixture is not a list
+  somebody remembered to update; it is *the* list.
+
+**Two sites are covered by name instead of by the sweep**, through a `COVERED_ELSEWHERE` constant
+the census consults. Each has a reason and neither is an exemption: `Api/OfflineSyncController`
+answers **200 with a per-sale verdict** rather than a 422 — failing the batch would throw away
+the verdicts of the sales that already synced — so it has its own test asserting
+`results.0.status === 'rejected'` plus `assertDatabaseMissing` on the temp id; and
+`InventoryController` sits behind the `inventorymanagement` module switch, which this tenant does
+not have on, so it is submitted in the stock-count module's own suite.
+
+### 12.6.3 The green run was not trusted
+
+The §12.4 lesson, applied twice: each guard was made to fail on purpose before being believed.
+
+- **Reverting `CashRegisterController.php:135` to `'exists:business_locations,id'`** turned three
+  tests red — the foreign-branch sweep, the deleted-branch sweep and the static sweep — and the
+  messages named the site: *"CashRegisterController.php:location_id accepted the rival tenant's
+  branch id in `location_id`"*. That naming is why the loop's assertions are wrapped rather than
+  called bare; `Session missing error: location_id`, twelve times over, does not say which of the
+  twelve.
+- **Adding a fabricated sixteenth site** — `'warehouse_id' => [… TenantRules::location()]` in
+  `DiscountController` — turned the census red with `DiscountController.php:warehouse_id` in the
+  diff and nothing else, proving the census reads the tree rather than a memory of it.
+
+Both mutations were reverted and the full suite re-run: **206 tests / 1167 assertions green**
+(200/1090 before this commit).
 
 ---
 
@@ -4004,6 +4104,167 @@ JSON دون التهريب الذي يمنع قيمةً من إغلاق `<script
 
 
 
+
+---
+
+## 17. شاشاتُ الوحدات — الجردُ وسِجِلُّ الأصول (البند 11، الشُّعبتان الأُوليان)
+
+> **حالةُ هذا القسم: شُعبةُ الجرد وشُعبةُ الأصول مكتوبتان بالكامل، واختباراتُ الأصولِ مكتوبةٌ
+> ولم تُشَغَّلْ بعد** — الغلافُ الأمنيُّ منع `php artisan test` طولَ الجلسة. وما يُقال أدناه عن
+> التصميمِ مُتحقَّقٌ منه بالقراءةِ لا بالتشغيل، وهو تمييزٌ يُحمَل لا يُطوى (الدرسُ نفسُه في §16.21
+> و§16.23). أمّا Accounting وEssentials/HRM فلم تبدآ، وSuperadmin وCms مؤجَّلتان بأسبابهما
+> المكتوبةِ في علامةِ «◀ عند العودة».
+
+البندُ 11 ليس شاشاتٍ فحسب: هو أوّلُ موضعٍ اضطُرَّ فيه هذا البناءُ إلى **إضافةِ** ما لم يكن في
+النظام المصدر — نوعُ حركةٍ ثالث، وخمسُ صلاحيات. وكلُّ إضافةٍ منها لم تُختَرْ رغبةً في التحسين، بل
+لأن الترميزَ القائمَ لم يكن يستطيع التعبيرَ عمّا تفعلُه شاشاتُه هي.
+
+### 17.1 `stock_count` — نوعُ حركةٍ ثالث، والاثنان اللذان رفض أن يكونَهما
+
+الجردُ الفعليُّ هو الروتينُ الوحيدُ في النظام الذي يقارنُ الدفاترَ بالواقع، فهو الوحيدُ الذي
+يُحرِّكُ المخزونَ في **الاتجاهَين**. ولكلِّ ما عداه إشارةٌ طبيعيّة: الشراءُ يزيد، البيعُ ينقص،
+التسويةُ تُعدِم. والجردُ يقول «الرفُّ فيه تسعةٌ وأنت تحسبُها سبعًا»، ولا بدَّ لنصفَي هذه العبارةِ
+من مأوى.
+
+فالزيادةُ لم تصلحْ أن تكونَ:
+
+| الاختيارُ الواضح | ولماذا رُفض |
+|---|---|
+| `stock_adjustment` بإشارةٍ موجبة | `StockAdjustmentService` **مُنقِصٌ فقط** بتصميمه، وذلك صائبٌ: المخزونُ الوارد له *كُلفة*، والكُلفةُ تحتاجُ دُفعةً (lot) تُعلَّقُ عليها. و«تسويةٌ بالزيادة» تُنشئُ كميةً بلا دُفعة، فيرتفعُ `qty_available` ولا يجدُ `availableLots()` ما يبيع — والبيعةُ التاليةُ تُبلِّغُ عن نقصٍ في مخزونٍ قال النظامُ إنّه موجود |
+| `purchase` — وهو ما نصح به تعليقُ تلك الخدمةِ نفسُه | `PurchaseController` يُوجِبُ `contact_id`. فـ«أدخِلْ الشراءَ الذي لم يُسجِّلْهُ أحدٌ» لا يُمكن دونَ تسميةِ مورِّد، وتسميتُه **تُفبرِكُ مديونيّة**: مالٌ حقيقيٌّ مستحقٌّ لجهةٍ حقيقيّةٍ لم تبِعْنا شيئًا. والجردُ الذي يجدُ ثلاثَ وحداتٍ زائدةٍ سببُه عادةً خطأُ عدٍّ، أو بيعةٌ سُجِّلت على متغيّرٍ خاطئ، أو مرتجعٌ أُعيد للرفّ — ولا واحدٌ من هذه فاتورةُ مورِّد. وإفسادُ دفترِ الدائنين لتنظيفِ دفترِ المخزونِ مقايضةٌ خاسرة |
+| `opening_stock` | يزعمُ أن المخزونَ كان موجودًا في اليوم الأوّل، وهو خبرٌ كاذبٌ عن التاريخِ لا عن الكميّة |
+
+فصار للمخزونِ المُكتشَفِ نوعُه الخاصّ، **وهو عضوٌ في `TransactionTypes::stockIn()`** — وتلك
+العضويةُ هي المقصودُ كلُّه، لأنها ما يجعلُ الدُفعةَ قابلةً للاستهلاكِ بـFIFO بدلًا من رقمٍ يشبهُ
+المخزونَ ولا يُباع. (والتعليلُ كاملًا على `TransactionTypes::STOCK_COUNT`، ومرجعُه `SC`.)
+
+### 17.2 والنقصُ يسلكُ طريقًا آخرَ عن قصد
+
+النقصُ إعدام. له كُلفةٌ مضبوطةٌ — دُفعاتُ FIFO التي جاءت منها الوحداتُ الغائبة — وثَمَّ خدمةٌ
+تُزيلُ المخزونَ بتلك الكُلفةِ بالضبط، وتُسجِّلُ من أيِّ دُفعةٍ أخذت، وترفضُ أن تنزلَ تحتَ الصفر.
+فصار النقصُ `stock_adjustment` عبرَ `StockAdjustmentService`، ومعناهُ أنه يظهرُ كذلك على شاشةِ
+تسوياتِ المخزون بمرجعِ `SA` خاصٍّ به. فالمُراجِعُ الذي يسأل «ماذا أعدمنا هذا الربع؟» يحصلُ على
+**جوابٍ واحدٍ لا اثنَين** — وهذا وحدَه سببُ عدمِ توحيدِ الاتجاهَين في نوعٍ واحد.
+
+وكُلفةُ الوحدةِ المُكتشَفةِ `variations.dpp_inc_tax`: رقمٌ **مُعلَنٌ** لا مُشتَقّ، وهذا هو الموقفُ
+الأمين — فالمنشأةُ لا تعرفُ ما كلَّفتْها هذه الوحداتُ بعينِها لأنها لا تعرفُ من أين أتت. وهو
+كذلك ما يُقوِّمُ به تقريرُ المخزونِ الرصيدَ القائم، فلا يُغيِّرُ الجردُ قيمةَ المخزونِ نفسِه لحظةَ
+تسجيلِه. وحيثُ يكون صفرًا — منتجٌ لم يُشترَ قَطُّ — تكونُ الوحداتُ المُكتشَفةُ بصفر، وذلك يُقرأُ
+«غيرُ معلوم» في كلِّ هامشٍ لاحق، وهو أفضلُ من تخمينٍ يُقرأُ حقيقةً.
+
+### 17.3 الصلاحياتُ الخمسُ المضافة — ولماذا لم تكن ترفًا
+
+أسماءُ الصلاحياتِ في هذا البناءِ محفوظةٌ **حرفًا بحرف** من النظام المصدر، لأن الشريطَ الجانبيَّ
+وشاشاتِ التقارير وكلَّ `can()` تُفتَحُ بها. وخمسةُ أسماءٍ في `app/Support/Permissions.php` ملكُنا،
+لأن مجموعةَ المصدر لم تكن تستطيعُ التعبيرَ عمّا تفعلُه شاشاتُه:
+
+- **`inventorymanagement.create` و`.update` و`.delete` و`.close`** — المصدرُ يشحنُ
+  `inventorymanagement.view` **ولا شيءَ غيرَها**، فالدَّورُ الذي يستطيعُ فتحَ جردٍ يستطيعُ
+  ترحيلَه. وإغلاقُ الجردِ يُحرِّكُ مخزونًا ويكتبُ دُفعاتِ FIFO؛ وإدخالُ الأرقامِ المعدودةِ لا يفعل.
+  فالمتجرُ الذي يريدُ اعتمادَ مشرفٍ لم يكنْ لديه سبيلٌ ليقولَ ذلك، وصلاحيةُ `view` واحدةٌ تُغطّي
+  الأمرَين ليست نظامَ صلاحياتٍ بل مفتاحَ نور.
+- **`accounting.view`** — كلُّ صلاحياتِ المحاسبةِ في المصدرِ **كتابة** (`.create`, `.reverse`,
+  `.edit`)، فـ«له أن ينظرَ في ميزانِ المراجعة» لم تكن قابلةً للتعبيرِ إلا كـ«له أن يُرحِّلَ قيودَ
+  يوميّة». والشريطُ الجانبيُّ في المصدرِ يتحايلُ على ذلك بتعليقِ رابطِ المحاسبةِ على
+  `accounting.journal_entries.create` — وهو بالضبطِ سببُ استحالةِ نمذجةِ **مُراجِعٍ قارئٍ فقط**.
+
+والخمسةُ كلُّها داخلَ بادئاتٍ يعرفُها `moduleMap()` أصلًا، فهي مُقيَّدةٌ بالوحدةِ في محرِّرِ
+الأدوارِ مجّانًا، وغيرُ مرئيّةٍ لمستأجِرٍ بلا تلك الوحدة.
+
+### 17.4 والثمانُ والثلاثون تسميةً — تكافؤُ ترجمةٍ كان مكسورًا في صمت
+
+٣٨ صلاحيةَ وحدةٍ كانت تُعرَض في محرِّرِ الأدوارِ **بمفتاحِها الخام** لأن `lang/ar` لم يكن فيها
+تسمياتُها. ولم يُسقِطْ ذلك اختبارًا ولم يُطلِقْ تحذيرًا: مساعدُ `__()` يُعيدُ المفتاحَ عندما لا
+يجدُ ترجمة، فالشاشةُ تعمل، وتُري مديرًا عربيًّا `essentials.crud_all_leave` مكانَ عبارةٍ مفهومة.
+وهذا هو الشكلُ الذي تأخذُه فجواتُ الترجمةِ دائمًا — لا انهيارًا بل **إنجليزيةً تظهرُ حيثُ لا يُنظَر**،
+ولذلك يقيسُ `ScreensRenderTest` المفاتيحَ غيرَ المترجَمةِ آليًّا بدلًا من الاعتمادِ على العين.
+
+### 17.5 `asset.update` تحكمُ شيئَين، وذلك ليس سهوًا لكنه يستحقُّ أن يُكتَب
+
+`AssetMaintenanceController` يُقسِّمُ صلاحياتِه هكذا:
+
+| الفعل | الصلاحية |
+|---|---|
+| `index` | `asset.view_own_maintenance` **أو** `asset.view_all_maintenance` |
+| `create` / `store` | `asset.create` |
+| **`edit` / `update`** | **`asset.update`** |
+| `destroy` | `asset.delete` |
+
+فالفنّيُّ الذي يُحدِّثُ حالةَ عملِ صيانةٍ يحملُ الصلاحيةَ نفسَها التي تُعدِّلُ **الأصلَ نفسَه** —
+كميّتَه وسعرَه وفرعَه. وهذا مقبولٌ في متجرٍ صغيرٍ وغيرُ مقبولٍ في منشأةٍ فيها ورشة، والحلُّ سطرٌ
+واحد (`asset.update_maintenance`) لم يُضَفْ لأن إضافةَ صلاحيةٍ سادسةٍ لم يطلبْها أحدٌ تُوسِّعُ
+النطاقَ من تلقاءِ نفسها. **مكتوبٌ هنا ليكونَ قرارًا مُعلَنًا قابلًا للنقض، لا مصادفةً في ترميز.**
+وقد كلَّف هذا الالتباسُ بالفعل: مسوَّدةُ `AssetsTest` الأولى منحت الفنّيَّ صلاحياتِ العرضِ وحدَها
+فكان `edit` سيُجيبُ 403 حيثُ يُوكِّدُ الاختبارُ 404 و200.
+
+### 17.6 لا حقلَ تصنيفٍ في نموذجِ الأصل — مُتعمَّدٌ لا منسيّ
+
+`assets.category_id` موجودٌ في المخطَّطِ ويُحمَّلُ في `index()` و`show()`، ومع ذلك **لا حقلَ
+تصنيفٍ في النموذج**. لأن `category_id` يشيرُ إلى `categories`، ونوعُها المُدارُ الوحيدُ
+`product` — فالقائمةُ المنسدلةُ إمّا أن تعرضَ تصنيفاتِ المنتجاتِ (مفرداتُ مخزنٍ لا تقولُ شيئًا عن
+سيارة) أو تعرضَ قائمةً فارغةً دائمًا. والطريقُ إلى إضافتِه صحيحًا سطرٌ واحد: نوعٌ `asset` في
+`CategoryController` وشاشةُ إدارةٍ له. وحتى ذلك الحين، عرضُ حقلٍ لا يُمكنُ تعبئتُه أسوأُ من
+غيابِه.
+
+### 17.7 `maitenance_id` — خطأٌ إملائيٌّ أُبقي عن قصد
+
+العمودُ مكتوبٌ خطأً في المخطَّطِ المصدر، وأُبقي كذلك. وتصحيحُه يعني ترحيلَ إعادةِ تسميةٍ على جدولٍ
+حيٍّ مقابلَ لا شيءٍ يراهُ المستخدم — فالتسميةُ المعروضةُ تُقرأُ من ملفّاتِ اللغة. وقاعدةُ هذا
+البناءِ في المخطَّط (§6): تُصحَّحُ الانحرافاتُ التي تُغيِّرُ **سلوكًا**، وتُوثَّقُ التي تُغيِّرُ
+**جمالًا** فقط. وهو مُعلَّقٌ عند مَولِدِه في `AssetService::createMaintenance()` حتى لا «يُصلِحَه»
+قارئٌ لاحقٌ فيكسرَ الاستعلامات.
+
+### 17.8 كُلفةُ الاقتناءِ لا القيمةُ الدفتريّة في بطاقةِ الإجمالي
+
+بطاقةُ سِجِلِّ الأصولِ تُظهِرُ `SUM(quantity * unit_price)` — ما دُفِع — لا مجموعَ القيمِ
+الدفتريّة. والقيمةُ الدفتريّةُ حسابٌ لكلِّ أصلٍ على تاريخِ شرائه، مُعرَّفٌ مرّةً واحدةً في
+`Asset::getCurrentValueAttribute()`. وإعادةُ التعبيرِ عن الإهلاكِ بالقسطِ الثابتِ كتجميعِ SQL
+تُنتِجُ رقمًا رئيسيًّا **يخالفُ مجموعَ الصفوفِ تحتَه بكسرِ سنة**، وهو بالضبطِ صنفُ العيوبِ الذي
+يُواصلُ هذا الملفُّ إيجادَه. فالقيمةُ الدفتريّةُ تبقى على الصفِّ وعلى شاشةِ الأصلِ نفسِه، حيثُ
+تحسبُها دالّةٌ واحدة. والتسميةُ تقول «كُلفةُ الاقتناء / قبلَ الإهلاك» فلا يُقرأُ الرقمُ على غيرِ
+ما هو.
+
+### 17.9 مراجعُ الحركات: عدّادٌ واحدٌ للتخصيصِ وسحبِه
+
+أُضيفت أربعةُ مسبوقاتٍ إلى `ReferenceService`: `SC` للجرد، و`AST` للأصل، و`ALC` لحركةِ الأصل،
+و`MNT` لعملِ الصيانة. والتخصيصُ وسحبُه **يتقاسمان عدّادًا واحدًا** (`asset_transaction`) عن قصد،
+فيقعُ التخصيصُ والإعادةُ التي تُغلِقُه متجاورَين في أيِّ قائمةٍ مرتَّبةٍ بالمرجع — وهكذا يُقرأُ
+الزوجُ فعلًا.
+
+### 17.10 `AssetsTest` — تسعةُ عيوبٍ وجدتها القراءةُ قبل أوّلِ تشغيل
+
+الملفُّ كُتب أوّلًا (٢٢ حالةً)، ثم قُرِئت عشرةُ ملفّاتِ مصدرٍ للتحقُّقِ من كلِّ افتراضٍ فيه.
+فسقط تسعةٌ، **كلُّها كانت ستكونُ حالةً حمراء**، واثنان منها معماريّان لا مطبعيّان:
+
+| العيب | التشخيص |
+|---|---|
+| توكيدُ الرفضِ بـ`followingRedirects()->assertOk()->assertSee('0.00')` | `store`/`update`/`allocate`/`storeWarranty` تفشلُ بـ`back()`، و`back()` في اختبارٍ بلا مُحيلٍ تُحَلُّ إلى `/`. فصار التوكيدُ على `assertSessionHas('status.msg', …)` — وهو المكانُ الوحيدُ الذي يتّفقُ عليه **مسارا الخروجِ كلاهما**، إذ يفشلُ `revoke`/`destroy` إلى مسارٍ مُسمًّى لا إلى المُحيل. والسابقةُ قائمةٌ في `PrintingTest.php:553` |
+| `withSession(['business.enabled_modules' => ['account']])` | **لا يمكنُ أن يعملَ.** `SetSessionData::needsHydrating()` صحيحٌ متى كان `session('user')` فارغًا، فيُعيدُ بناءَ `business` من قاعدةِ البيانات جملةً. فصار الاختبارُ يُقلِّبُ **العمودَ نفسَه** ثم `flushSession()`، مع ضبطٍ موجَبٍ قبلَ التقليب — فهو الآن يُشغِّلُ المفتاحَ الحقيقيَّ لا نسخةً منه في الجلسة |
+| `staff()` بلا `access_all_locations` | `Asset::scopePermitted()` يُنادي `BusinessLocation::permittedLocations()`، وهي تُعيدُ `[]` لمستخدِمٍ بلا `location.{id}` — فكلُّ أصلٍ له فرعٌ يختفي، وكان اختبارا الفنّيِّ سيُوكِّدان على قائمتَين فارغتَين ويَخضَرّان |
+| الفنّيُّ بلا `asset.update` | `edit()` يشترطُها، فكان سيُجيبُ 403 حيثُ يُوكِّدُ الاختبارُ 404 ثم 200 (§17.5) |
+| `receiver` الأجنبيُّ يُبحَثُ عنه بـ`where('business_id','!=',…)` | استعلامٌ يُنقِّبُ عن مستأجِرٍ آخرَ ليختبرَ عزلَ المستأجرين. صار `$foreignUserId` مُخزَّنًا في `setUp()` من التسجيلِ نفسِه |
+| أكوادُ أصولٍ ثابتة | فهرسُ `asset_code` فريدٌ لكلِّ مستأجِر، والحالاتُ تعملُ داخلَ معاملةٍ مُرتَجَعة. صارت `uniqid()` |
+| `where('transaction_type','allocate')` خامًا | صارت نطاقاتِ `allocations()`/`revocations()` الموجودةَ على النموذج |
+| استيرادان ناقصان | `Business` و`FormattingService` |
+| حالتان ناقصتان بالتصميم | أُضيفتا، وهما أنفعُ ما في الملفّ (أدناه) |
+
+**والحالتان المُضافتان:**
+
+`a_job_with_no_status_still_counts_as_open` يكتبُ صفَّهُ بـ`insert()` خامٍّ، لأن **لا شيءَ في
+التطبيقِ يستطيعُ إنتاجَه**: `status` واجبٌ في المتحكِّم ومُهيَّأٌ في الخدمة. والعمودُ مع ذلك يقبلُ
+`NULL`، و`NOT IN` تُسقِطُ الـNULLاتِ في صمت — فبغيرِ شقِّ `whereNull` من ذلك الشرطِ يختفي صفٌّ
+بلا حالةٍ من البطاقةِ الوحيدةِ التي وُجدت لتقولَ لأحدٍ إنّ ثَمَّ عملًا قائمًا. وهو النمطُ نفسُه
+المُسجَّلُ في §16.16: المُدخَلُ المستحيلُ يُسجَّلُ لا يُفبرَك.
+
+`a_job_is_invisible_when_its_asset_sits_at_an_unreachable_branch` يُوكِّدُ **شقَّي**
+`scopePermitted()` في نفَسٍ واحد: عملٌ على أصلٍ في فرعٍ لا يبلغُه القارئُ ليس له أن يراه *وإنْ
+كان مُسنَدًا إليه*، وأصلٌ **بلا فرعٍ أصلًا** يبقى مرئيًّا — وهو الاستثناءُ المقصودُ الذي يُبقي
+سِجِلَّ الإدارةِ مقروءًا لمن وصولُه محدودٌ بمتجر. وهكذا صار الخطرُ الذي كان سيُفسِدُ اختبارَين
+تغطيةً لسلوكٍ لم يكن مُغطًّى.
+
+**والدرسُ هو الدرسُ نفسُه، ثالثةً:** لا واحدٌ من هذه التسعةِ كان يُظهِرُ نفسَه لقارئٍ للملفِّ
+وحدَه — كلُّها ظهرت من قراءةِ **ما يُنادي**. والتشغيلُ سيجدُ صنفًا آخرَ، ولذلك يبقى واجبًا لا
+تُغني عنه هذه القراءة: **الملفُّ لم يُشغَّلْ بعد، وهذا القسمُ لا يزعمُ غيرَ ذلك.**
 
 ---
 
