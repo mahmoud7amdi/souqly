@@ -269,6 +269,25 @@ return [
     'variation_template' => 'Variation template',
     'variation_templates' => 'Variation templates',
     'variation_name_placeholder' => 'e.g. Size',
+
+    // Variable-product editor (product/_form + _variation_group + _variation_value).
+    'variation_group' => 'Variation group',
+    'variation_name' => 'Attribute name',
+    'variation_value' => 'Value',
+    'variation_value_placeholder' => 'e.g. Small',
+    'variation_template_hint' => 'Picking one fills the values below; you can still edit them',
+    'custom_variation' => 'Custom — type the values yourself',
+    'add_variation_value' => 'Add value',
+    'add_variation_group' => 'Add another attribute',
+    'variations_desc' => 'Each value becomes a separately stocked, separately priced item.',
+    'variations_sub_sku_hint' => 'Each value gets its own sub-SKU derived from the product SKU.',
+    'add_variations' => 'Add variations',
+    'add_variations_desc' => 'New values are added to the product; existing ones are priced in the table below and are never removed here.',
+    'combo_components' => 'Components',
+    'combo_components_desc' => 'A combo carries no stock of its own — selling one draws down each component below.',
+    'no_components_yet' => 'No components yet',
+    'no_components_yet_desc' => 'Search a product above and add it to build the bundle.',
+
     'values' => 'Values',
     'values_placeholder' => 'Small
 Medium
@@ -1408,6 +1427,62 @@ Large',
     'role_name_reserved' => 'That name belongs to a built-in role. Choose another.',
     'cannot_delete_default_role' => 'A built-in role cannot be deleted.',
 
+    /* ================================================================
+     | Optional modules (item 11, §17)
+     |
+     | Grouped per module rather than merged into the sections above, because a
+     | module's whole vocabulary is invisible to a tenant that has not enabled
+     | it — so keeping it together is what makes "is this screen fully
+     | translated" a question you can answer by reading one block.
+     ================================================================ */
+
+    /* --- Stock counts (InventoryManagement) --- */
+    'stock_counts' => 'Stock counts',
+    'add_stock_count' => 'New stock count',
+    'edit_stock_count' => 'Edit stock count',
+    'stock_counts_subtitle' => 'Count what is on the shelf, compare it against the books, and post the difference.',
+    'count_details' => 'Count details',
+    'count_name' => 'What is being counted',
+    'count_name_placeholder' => 'Main store — full count, March',
+    'count_name_hint' => 'A name you will still recognise in six months: the shop, the shelf, the month.',
+    'count_end_date' => 'Closed on',
+    'count_end_date_hint' => 'Leave this blank and it is stamped for you when the count is closed.',
+    'open_counts' => 'Open',
+    'closed_counts' => 'Closed',
+    'total_counts' => 'Counts',
+    'counted_items' => 'Counted items',
+    'record_a_count' => 'Record a count',
+    'book_quantity' => 'On the books',
+    'counted_quantity' => 'Counted quantity',
+    'surplus' => 'Surplus',
+    'shortage' => 'Shortage',
+    'matched' => 'Matched',
+    'posted' => 'Posted',
+    'not_posted' => 'Not posted',
+    'close_and_post' => 'Close and post',
+    'confirm_close_and_post' => 'Post this count and close it? Stock moves, and it cannot be undone.',
+    'no_counts_yet' => 'No stock count yet',
+    'no_counts_yet_desc' => 'A count is how the books get corrected. Open one, walk the shelves, and post what you find.',
+    'no_counted_items_yet' => 'Nothing counted yet',
+    'no_counted_items_yet_desc' => 'Find a product above, enter what is actually on the shelf, and the difference appears here.',
+    'lines_pending' => ':count waiting to post',
+    'lines_posted' => ':count already posted',
+    'branch_locked_after_posting' => 'The branch cannot be moved once part of the count has posted.',
+    'stock_count_note_two_directions' => 'A shortage is written off through a stock adjustment, at what those units actually cost. A surplus becomes a found-stock document valued at the item’s purchase price.',
+    'stock_count_note_book_read_now' => 'The book quantity is read at the moment the line is saved, not when this screen opened.',
+    'stock_count_note_close_once' => 'Closing posts every line at once and cannot be undone. Counting is safe to interrupt; closing is not.',
+    'shortage_document' => 'Write-off document',
+    'surplus_document' => 'Found-stock document',
+    'posted_documents' => 'Posted documents',
+    'count_is_closed' => 'This count is closed',
+    'count_is_closed_desc' => 'Its lines have posted to stock, and nothing further can be entered against it.',
+    'cannot_count_untracked_product' => ':product does not track stock, so there is no quantity to count.',
+    'cannot_remove_posted_count_line' => 'This line has already posted to stock and cannot be removed.',
+    'cannot_delete_posted_count' => 'Part of this count has already posted to stock, so the count cannot be deleted.',
+    'count_already_closed' => 'This count is already closed.',
+    'stock_count_closed' => 'Count closed. Lines posted to stock: :lines',
+    'raised_by_stock_count' => 'Raised by stock count: :count',
+
     /* Permission group headings and permission labels.
        Sub-arrays rather than flat `perm_<name>` keys: a permission name contains
        dots (`user.view`), and __() splits on dots, so a flat key would never be
@@ -1553,7 +1628,11 @@ Large',
         'stock_adjustment.create' => 'Add stock adjustments',
         'stock_adjustment.update' => 'Edit stock adjustments',
         'stock_adjustment.delete' => 'Delete stock adjustments',
-        'inventorymanagement.view' => 'View inventory management',
+        'inventorymanagement.view' => 'View stock counts',
+        'inventorymanagement.create' => 'Open a stock count and enter counted quantities',
+        'inventorymanagement.update' => 'Edit a stock count',
+        'inventorymanagement.delete' => 'Delete a stock count',
+        'inventorymanagement.close' => 'Close a stock count and post it to stock',
 
         'all_expense.access' => 'Manage all expenses',
         'view_own_expense' => 'View own expenses only',
@@ -1586,5 +1665,55 @@ Large',
         'invoice_settings.access' => 'Invoice settings',
         'access_printers' => 'Manage printers',
         'access_all_locations' => 'Access all locations',
+
+        /*
+         * Module permissions. Absent from the source system's label set, so they
+         * fell through to Permissions::humanise() and rendered as English
+         * headline text on an Arabic role editor — invisible to the render
+         * walk's untranslated-key guard, because a humanised name is not a key.
+         * Item 11 makes these modules' screens real, so their permissions are
+         * now things a manager actually ticks.
+         */
+        'essentials.access_sales_target' => 'See sales targets',
+        'essentials.add_todos' => 'Add tasks',
+        'essentials.edit_todos' => 'Edit tasks',
+        'essentials.delete_todos' => 'Delete tasks',
+        'essentials.assign_todos' => 'Assign tasks to others',
+        'essentials.view_message' => 'Read internal messages',
+        'essentials.create_message' => 'Send internal messages',
+        'essentials.crud_department' => 'Manage departments',
+        'essentials.crud_designation' => 'Manage job titles',
+        'essentials.crud_leave_type' => 'Manage leave types',
+        'essentials.crud_own_leave' => 'Request own leave',
+        'essentials.crud_all_leave' => 'Manage everyone’s leave',
+        'essentials.approve_leave' => 'Approve or decline leave',
+        'essentials.view_own_attendance' => 'See own attendance',
+        'essentials.crud_all_attendance' => 'Manage everyone’s attendance',
+        'essentials.allow_users_for_attendance_from_web' => 'Clock in and out from the browser',
+        'essentials.view_allowance_and_deduction' => 'See allowances and deductions',
+        'essentials.add_allowance_and_deduction' => 'Add allowances and deductions',
+        'essentials.create_payroll' => 'Create payroll',
+        'essentials.update_payroll' => 'Edit payroll',
+        'essentials.delete_payroll' => 'Delete payroll',
+        'essentials.view_all_payroll' => 'See everyone’s payroll',
+        'edit_essentials_settings' => 'Edit HR settings',
+
+        'accounting.view' => 'Read the accounts and the trial balance',
+        'accounting.chart_of_accounts.create' => 'Manage the chart of accounts',
+        'accounting.journal_entries.create' => 'Post journal entries',
+        'accounting.journal_entries.reverse' => 'Reverse journal entries',
+        'accounting.transfers.create' => 'Record transfers between accounts',
+        'accounting.cost_centers.create' => 'Add cost centres',
+        'accounting.cost_centers.edit' => 'Edit cost centres',
+
+        'asset.view' => 'View assets',
+        'asset.create' => 'Add assets',
+        'asset.update' => 'Edit assets',
+        'asset.delete' => 'Delete assets',
+        'asset.view_own_maintenance' => 'See own maintenance records',
+        'asset.view_all_maintenance' => 'See all maintenance records',
+
+        'superadmin.access_package_subscriptions' => 'Manage subscription packages',
+        'access_package_subscriptions' => 'See own subscription',
     ],
 ];

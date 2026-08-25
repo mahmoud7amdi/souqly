@@ -1057,6 +1057,41 @@
         @apply min-w-0 text-sm font-medium text-slate-700;
     }
 
+    /* ------------------------------------------------------------------
+       Repeatable field groups (product/_variation_group).
+
+       A variable product's editor is n groups of m rows, and the nesting is the
+       whole difficulty: without a container of its own, four attributes read as
+       one long table and the Remove button beside row 12 is ambiguous about what
+       it removes. So a group is a bounded region — tinted head, white body, one
+       ring around both — which is `.surface-quiet` inverted: the tint marks the
+       *frame* rather than the contents, because the contents are inputs and an
+       input on a tinted ground looks disabled.
+       ------------------------------------------------------------------ */
+    .variation-group {
+        @apply overflow-hidden rounded-xl bg-white ring-1 ring-slate-200/80;
+        box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+    }
+
+    .variation-group-head {
+        @apply flex items-center justify-between gap-3 border-b border-slate-200/80 bg-slate-50/80 px-4 py-2.5;
+    }
+
+    .variation-group-title {
+        @apply flex min-w-0 items-center gap-2 text-sm font-semibold text-slate-700;
+    }
+
+    .variation-group-body {
+        @apply p-4;
+    }
+
+    /* Add-a-row sits under the rows it adds to, aligned with them rather than
+       pushed to the far edge: it belongs to this group's table, and a button on
+       the opposite side of the card reads as belonging to the card. */
+    .variation-group-foot {
+        @apply mt-3 flex items-center;
+    }
+
     /* Second line under a checkbox label, explaining what turning it on does.
        font-normal because it inherits the label's medium weight. */
     .checkbox-hint {

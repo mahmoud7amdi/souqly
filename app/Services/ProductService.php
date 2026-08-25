@@ -50,13 +50,19 @@ class ProductService
     /**
      * Create the variation groups and variations of a `variable` product.
      *
+     * Also the append path: a shop that starts stocking XL later adds it here,
+     * and nothing in this method touches what already exists. That is why the
+     * sub-SKU counter starts from the variations already on the product instead
+     * of from zero — restarting it would mint a second `SKU-1`, and a barcode
+     * that resolves to two variations is worse than an ugly one.
+     *
      * @param  array<int, array{name: string, variation_template_id?: int, variations: array<int, array<string, mixed>>}>  $groups
      * @return array<int, Variation>
      */
     public function createVariableVariations(Product $product, array $groups): array
     {
         $created = [];
-        $index = 0;
+        $index = $product->variations()->count();
 
         foreach ($groups as $group) {
             $productVariation = ProductVariation::create([

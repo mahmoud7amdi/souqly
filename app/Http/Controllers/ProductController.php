@@ -17,8 +17,10 @@ use App\Models\Warranty;
 use App\Services\FormattingService;
 use App\Services\ProductService;
 use App\Services\StockService;
+use App\Support\Tenancy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 /**
  * Products: single, variable and combo, with their variations, price groups
@@ -149,6 +151,7 @@ class ProductController extends Controller
                 // The type is immutable once variations carry stock — changing
                 // single↔variable would orphan the FIFO lots.
                 $this->updateVariationPrices($product, $request);
+                $this->appendVariations($product, $request);
                 $this->syncLocations($product, $request);
 
                 event(new ProductsCreatedOrModified($product));
@@ -411,7 +414,9 @@ class ProductController extends Controller
      */
     protected function validateProduct(Request $request, ?Product $product = null): array
     {
-        return $request->validate([
+        $this->pruneStructureInput($request);
+
+        $rules = [
             'name' => 'required|string|max:255',
             'type' => 'required|in:single,variable,combo',
             'unit_id' => 'required|integer|exists:units,id',
@@ -431,7 +436,107 @@ class ProductController extends Controller
             'expiry_period' => 'nullable|numeric|min:0',
             'expiry_period_type' => 'nullable|in:days,months',
             'location_ids' => 'nullable|array',
-        ]);
+        ];
+
+        return $request->validate($rules + $this->structureRules($request, $product));
+    }
+
+    /**
+     * Rules for the parts of the form that depend on the product's type.
+     *
+     * A variable product with no variations is not a product: it has nothing to
+     * stock, nothing to price and nothing to sell. `buildVariations()` was always
+     * willing to build them and `ProductService` always knew how, but nothing ever
+     * insisted they had been sent — so a variable product created from the form
+     * came out with zero variations, silently unsellable. Same for a combo with no
+     * components. These rules are what closes that.
+     *
+     * Required on create only. `update()` appends rather than rebuilds, so an edit
+     * that leaves the section untouched is not an error, and combo components are
+     * not editable after creation at all.
+     *
+     * Both `exists` checks are scoped, and neither scope is decoration. A bare
+     * `exists:variations,id` would accept **any** row in the table: `variations` has
+     * no `business_id` of its own — its tenant is its product's — so the rule has to
+     * reach through `products`, where `BusinessScope` does the filtering. Without
+     * that, a posted id nobody's picker could ever offer puts another shop's
+     * variation inside this shop's combo, and selling the combo then draws down
+     * their stock. `whereNull('deleted_at')` closes the same door on a variation
+     * that was deleted: the table is soft-deleting, so `exists` finds trashed rows.
+     *
+     * @return array<string, string|array<int, mixed>>
+     */
+    protected function structureRules(Request $request, ?Product $product = null): array
+    {
+        $isCreate = empty($product);
+        $type = (string) $request->input('type', $product->type ?? '');
+
+        if ($type === 'variable') {
+            return [
+                'variations' => $isCreate ? 'required|array|min:1' : 'nullable|array',
+                'variations.*.template_id' => ['nullable', 'integer',
+                    Rule::exists('variation_templates', 'id')->where('business_id', Tenancy::id())],
+                'variations.*.name' => 'required|string|max:255',
+                'variations.*.variations' => 'required|array|min:1',
+                'variations.*.variations.*.name' => 'required|string|max:255',
+                'variations.*.variations.*.dpp' => 'nullable|numeric|min:0',
+                'variations.*.variations.*.profit_percent' => 'nullable|numeric',
+                'variations.*.variations.*.dsp' => 'nullable|numeric|min:0',
+            ];
+        }
+
+        if ($type === 'combo' && $isCreate) {
+            return [
+                'combo' => 'required|array|min:1',
+                'combo.*.variation_id' => ['required', 'integer',
+                    Rule::exists('variations', 'id')->where(fn ($q) => $q
+                        ->whereNull('deleted_at')
+                        ->whereIn('product_id', Product::query()->select('id')))],
+                'combo.*.quantity' => 'required|numeric|gt:0',
+
+                // Carried by the form only so a failed round-trip can redraw the
+                // component's name instead of its id. Never read on the way in.
+                'combo.*.name' => 'nullable|string|max:255',
+            ];
+        }
+
+        return [];
+    }
+
+    /**
+     * Drop the rows the editor leaves behind before anything is validated.
+     *
+     * The variations table always shows one more empty row than has been filled,
+     * and a half-filled combo row is what a mistyped search leaves. Both are
+     * interface noise rather than input, and failing validation on them would
+     * teach people to distrust the Save button. What survives pruning is then held
+     * to the rules above without exception — a wholly empty section is a real
+     * error, and after pruning it is an empty array, which `required` catches.
+     */
+    protected function pruneStructureInput(Request $request): void
+    {
+        if ($request->has('variations')) {
+            $groups = [];
+
+            foreach ((array) $request->input('variations') as $group) {
+                $values = collect((array) ($group['variations'] ?? []))
+                    ->filter(fn ($value) => filled($value['name'] ?? null))
+                    ->values()->all();
+
+                if ($values !== []) {
+                    $group['variations'] = $values;
+                    $groups[] = $group;
+                }
+            }
+
+            $request->merge(['variations' => $groups]);
+        }
+
+        if ($request->has('combo')) {
+            $request->merge(['combo' => collect((array) $request->input('combo'))
+                ->filter(fn ($row) => filled($row['variation_id'] ?? null))
+                ->values()->all()]);
+        }
     }
 
     /**
@@ -441,7 +546,15 @@ class ProductController extends Controller
     protected function productAttributes(array $validated, Request $request, ?Product $product = null): array
     {
         $attributes = $validated;
-        unset($attributes['location_ids']);
+
+        /*
+         * `Product::$guarded = ['id']`, so every validated key that is not a column
+         * reaches the INSERT. `location_ids` is a pivot, `variations` and `combo`
+         * are child rows built after the product exists — none of the three is a
+         * product attribute, and leaving any of them in is a SQL error, not a
+         * silently ignored key.
+         */
+        unset($attributes['location_ids'], $attributes['variations'], $attributes['combo']);
 
         $attributes['enable_stock'] = $request->boolean('enable_stock');
         $attributes['not_for_selling'] = $request->boolean('not_for_selling');
@@ -472,35 +585,7 @@ class ProductController extends Controller
         ];
 
         if ($product->type === 'variable') {
-            $groups = [];
-
-            foreach ($request->input('variations', []) as $group) {
-                $variations = [];
-
-                foreach ($group['variations'] ?? [] as $variation) {
-                    if (empty($variation['name'])) {
-                        continue;
-                    }
-
-                    $variations[] = [
-                        'name' => $variation['name'],
-                        'default_purchase_price' => $variation['dpp'] ?? 0,
-                        'dpp_inc_tax' => $variation['dpp_inc_tax'] ?? 0,
-                        'profit_percent' => $variation['profit_percent'] ?? 0,
-                        'default_sell_price' => $variation['dsp'] ?? 0,
-                    ];
-                }
-
-                if (! empty($variations)) {
-                    $groups[] = [
-                        'name' => $group['name'] ?? __('lang_v1.variation'),
-                        'variation_template_id' => $group['template_id'] ?? null,
-                        'variations' => $variations,
-                    ];
-                }
-            }
-
-            $this->products->createVariableVariations($product, $groups);
+            $this->products->createVariableVariations($product, $this->variationGroups($request));
 
             return;
         }
@@ -517,6 +602,70 @@ class ProductController extends Controller
         }
 
         $this->products->createSingleVariation($product, $prices);
+    }
+
+    /**
+     * Add variations to a product that already has some.
+     *
+     * Append-only by construction: it reads the groups the form sent and creates
+     * them, and there is no path here that touches an existing variation. That is
+     * the whole reason the edit screen may offer this at all — a shop that starts
+     * stocking XL in March needs the row, and deleting a variation instead would
+     * orphan the FIFO lots pointing at it (see {@see updateVariationPrices()}).
+     */
+    protected function appendVariations(Product $product, Request $request): void
+    {
+        if ($product->type !== 'variable') {
+            return;
+        }
+
+        $groups = $this->variationGroups($request);
+
+        if ($groups !== []) {
+            $this->products->createVariableVariations($product, $groups);
+        }
+    }
+
+    /**
+     * The `variations[]` half of the form, in the shape ProductService wants.
+     *
+     * Shared by create and append so the two cannot drift: the day they disagree
+     * about what an empty value means is the day a product gains a nameless
+     * variation nobody can scan.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function variationGroups(Request $request): array
+    {
+        $groups = [];
+
+        foreach ($request->input('variations', []) as $group) {
+            $variations = [];
+
+            foreach ($group['variations'] ?? [] as $variation) {
+                if (empty($variation['name'])) {
+                    continue;
+                }
+
+                $variations[] = [
+                    'name' => $variation['name'],
+                    'default_purchase_price' => $variation['dpp'] ?? 0,
+                    'dpp_inc_tax' => $variation['dpp_inc_tax'] ?? 0,
+                    'profit_percent' => $variation['profit_percent'] ?? 0,
+                    'default_sell_price' => $variation['dsp'] ?? 0,
+                ];
+            }
+
+            if (! empty($variations)) {
+                $groups[] = [
+                    'name' => $group['name'] ?? __('lang_v1.variation'),
+                    'variation_template_id' => $group['template_id'] ?? null,
+                    'variations' => $variations,
+                ];
+            }
+        }
+
+        return $groups;
     }
 
     /**

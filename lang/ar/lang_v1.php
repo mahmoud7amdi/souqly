@@ -271,6 +271,25 @@ return [
     'variation_template' => 'قالب متغيّرات',
     'variation_templates' => 'قوالب المتغيّرات',
     'variation_name_placeholder' => 'مثال: المقاس',
+
+    // محرّر المنتج متعدّد المتغيّرات (product/_form + _variation_group + _variation_value).
+    'variation_group' => 'مجموعة متغيّرات',
+    'variation_name' => 'اسم الخاصية',
+    'variation_value' => 'القيمة',
+    'variation_value_placeholder' => 'مثال: صغير',
+    'variation_template_hint' => 'اختيار قالب يملأ القيم أدناه، وتبقى قابلة للتعديل',
+    'custom_variation' => 'مخصّص — اكتب القيم بنفسك',
+    'add_variation_value' => 'إضافة قيمة',
+    'add_variation_group' => 'إضافة خاصية أخرى',
+    'variations_desc' => 'كل قيمة تصبح صنفًا مستقلًا له مخزونه وسعره.',
+    'variations_sub_sku_hint' => 'لكل قيمة رمز فرعي (sub-SKU) مشتقّ من رمز المنتج.',
+    'add_variations' => 'إضافة متغيّرات',
+    'add_variations_desc' => 'القيم الجديدة تُضاف إلى المنتج، أما الموجودة فتُسعَّر في الجدول أدناه ولا تُحذف من هنا.',
+    'combo_components' => 'المكوّنات',
+    'combo_components_desc' => 'المنتج المركّب لا يحمل مخزونًا خاصًا به — بيع واحد منه يخصم من كل مكوّن أدناه.',
+    'no_components_yet' => 'لا توجد مكوّنات بعد',
+    'no_components_yet_desc' => 'ابحث عن منتج بالأعلى وأضِفه لتكوين الحزمة.',
+
     'values' => 'القيم',
     'values_placeholder' => 'صغير
 وسط
@@ -1410,6 +1429,61 @@ return [
     'role_name_reserved' => 'هذا الاسم لدور مدمج. اختر غيره.',
     'cannot_delete_default_role' => 'لا يمكن حذف دور مدمج.',
 
+    /* ================================================================
+     | الوحدات الاختيارية (البند 11، §17)
+     |
+     | مجموعة حسب الوحدة لا مدموجة في الأقسام أعلاه، لأن مفردات الوحدة كلها
+     | غير مرئية لمنشأة لم تُفعِّلها — فإبقاؤها معًا هو ما يجعل سؤال «هل هذه
+     | الشاشة مترجَمة بالكامل» سؤالًا تُجيب عنه بقراءة كتلة واحدة.
+     ================================================================ */
+
+    /* --- الجرد الفعلي (إدارة المخزون) --- */
+    'stock_counts' => 'عمليات الجرد',
+    'add_stock_count' => 'جرد جديد',
+    'edit_stock_count' => 'تعديل الجرد',
+    'stock_counts_subtitle' => 'اجرد ما على الرفّ، وقارنه بالدفاتر، ثم رحِّل الفرق.',
+    'count_details' => 'بيانات الجرد',
+    'count_name' => 'ما الذي يُجرَد',
+    'count_name_placeholder' => 'المخزن الرئيسي — جرد كامل، مارس',
+    'count_name_hint' => 'اسمٌ ستعرفه بعد ستة أشهر: الفرع، أو الرفّ، أو الشهر.',
+    'count_end_date' => 'أُغلق في',
+    'count_end_date_hint' => 'اتركه فارغًا ويُسجَّل تلقائيًا عند إغلاق الجرد.',
+    'open_counts' => 'مفتوحة',
+    'closed_counts' => 'مغلقة',
+    'total_counts' => 'عمليات الجرد',
+    'counted_items' => 'الأصناف المجرودة',
+    'record_a_count' => 'تسجيل جرد صنف',
+    'book_quantity' => 'في الدفاتر',
+    'counted_quantity' => 'الكمية المجرودة',
+    'surplus' => 'زيادة',
+    'shortage' => 'نقص',
+    'matched' => 'مطابق',
+    'posted' => 'مُرحَّل',
+    'not_posted' => 'غير مُرحَّل',
+    'close_and_post' => 'إغلاق وترحيل',
+    'confirm_close_and_post' => 'ترحيل هذا الجرد وإغلاقه؟ المخزون يتحرك، ولا رجوع عن ذلك.',
+    'no_counts_yet' => 'لا يوجد جرد بعد',
+    'no_counts_yet_desc' => 'الجرد هو ما يصحِّح الدفاتر. افتح واحدًا، وامشِ على الرفوف، ورحِّل ما تجده.',
+    'no_counted_items_yet' => 'لم يُجرَد شيء بعد',
+    'no_counted_items_yet_desc' => 'ابحث عن منتج أعلاه، وأدخِل ما هو موجود فعلًا على الرفّ، ليظهر الفرق هنا.',
+    'lines_pending' => ':count في انتظار الترحيل',
+    'lines_posted' => ':count مُرحَّل بالفعل',
+    'branch_locked_after_posting' => 'لا يمكن نقل الفرع بعد ترحيل جزء من الجرد.',
+    'stock_count_note_two_directions' => 'النقص يُعدَم عبر تسوية مخزنية بتكلفة تلك الوحدات الفعلية. والزيادة تصبح مستند مخزون مُكتشَف مُقيَّمًا بسعر شراء الصنف.',
+    'stock_count_note_book_read_now' => 'تُقرأ كمية الدفاتر لحظة حفظ السطر، لا لحظة فتح هذه الشاشة.',
+    'stock_count_note_close_once' => 'الإغلاق يُرحِّل كل السطور معًا ولا رجوع عنه. الجرد آمنٌ أن يُقاطَع، أما الإغلاق فلا.',
+    'shortage_document' => 'مستند الإعدام',
+    'surplus_document' => 'مستند المخزون المُكتشَف',
+    'posted_documents' => 'المستندات المُرحَّلة',
+    'count_is_closed' => 'هذا الجرد مغلق',
+    'count_is_closed_desc' => 'رُحِّلت سطوره إلى المخزون، ولا يمكن إدخال شيء آخر عليه.',
+    'cannot_count_untracked_product' => ':product لا يتتبَّع المخزون، فلا توجد كمية لجردها.',
+    'cannot_remove_posted_count_line' => 'رُحِّل هذا السطر إلى المخزون بالفعل ولا يمكن حذفه.',
+    'cannot_delete_posted_count' => 'رُحِّل جزء من هذا الجرد إلى المخزون بالفعل، فلا يمكن حذف الجرد.',
+    'count_already_closed' => 'هذا الجرد مغلق بالفعل.',
+    'stock_count_closed' => 'أُغلق الجرد. السطور المُرحَّلة إلى المخزون: :lines',
+    'raised_by_stock_count' => 'ناتج عن جرد فعلي: :count',
+
     /* عناوين مجموعات الصلاحيات ومسمّياتها.
        مصفوفات فرعية بدل مفاتيح مسطّحة perm_<name>: اسم الصلاحية يحوي نقاطًا
        (user.view)، و__() تقسم على النقاط، فالمفتاح المسطّح لن يُوجَد أبدًا.
@@ -1555,7 +1629,11 @@ return [
         'stock_adjustment.create' => 'إضافة تسويات مخزون',
         'stock_adjustment.update' => 'تعديل تسويات المخزون',
         'stock_adjustment.delete' => 'حذف تسويات المخزون',
-        'inventorymanagement.view' => 'عرض إدارة المخزون',
+        'inventorymanagement.view' => 'عرض عمليات الجرد',
+        'inventorymanagement.create' => 'فتح جرد وإدخال الكميات المجرودة',
+        'inventorymanagement.update' => 'تعديل الجرد',
+        'inventorymanagement.delete' => 'حذف الجرد',
+        'inventorymanagement.close' => 'إغلاق الجرد وترحيله إلى المخزون',
 
         'all_expense.access' => 'إدارة كل المصروفات',
         'view_own_expense' => 'عرض المصروفات الخاصة فقط',
@@ -1588,5 +1666,54 @@ return [
         'invoice_settings.access' => 'إعدادات الفواتير',
         'access_printers' => 'إدارة الطابعات',
         'access_all_locations' => 'الوصول إلى كل الفروع',
+
+        /*
+         * صلاحيات الوحدات. غائبة عن مسمّيات النظام الأصلي، فكانت تسقط إلى
+         * Permissions::humanise() وتظهر نصًّا إنجليزيًّا في محرِّر أدوار عربي —
+         * وهو ما لا يراه فحص المفاتيح غير المترجَمة في جولة العرض، لأن الاسم
+         * المُنسَّن ليس مفتاحًا. البند 11 يجعل شاشات هذه الوحدات حقيقية، فصارت
+         * صلاحياتها أشياء يحدِّدها مسؤولٌ فعلًا.
+         */
+        'essentials.access_sales_target' => 'رؤية مستهدفات البيع',
+        'essentials.add_todos' => 'إضافة مهام',
+        'essentials.edit_todos' => 'تعديل المهام',
+        'essentials.delete_todos' => 'حذف المهام',
+        'essentials.assign_todos' => 'إسناد المهام إلى آخرين',
+        'essentials.view_message' => 'قراءة الرسائل الداخلية',
+        'essentials.create_message' => 'إرسال رسائل داخلية',
+        'essentials.crud_department' => 'إدارة الأقسام',
+        'essentials.crud_designation' => 'إدارة المسمّيات الوظيفية',
+        'essentials.crud_leave_type' => 'إدارة أنواع الإجازات',
+        'essentials.crud_own_leave' => 'طلب إجازة خاصة',
+        'essentials.crud_all_leave' => 'إدارة إجازات الجميع',
+        'essentials.approve_leave' => 'اعتماد الإجازات أو رفضها',
+        'essentials.view_own_attendance' => 'رؤية الحضور الخاص',
+        'essentials.crud_all_attendance' => 'إدارة حضور الجميع',
+        'essentials.allow_users_for_attendance_from_web' => 'تسجيل الحضور والانصراف من المتصفح',
+        'essentials.view_allowance_and_deduction' => 'رؤية البدلات والاستقطاعات',
+        'essentials.add_allowance_and_deduction' => 'إضافة بدلات واستقطاعات',
+        'essentials.create_payroll' => 'إنشاء مسيّر الرواتب',
+        'essentials.update_payroll' => 'تعديل مسيّر الرواتب',
+        'essentials.delete_payroll' => 'حذف مسيّر الرواتب',
+        'essentials.view_all_payroll' => 'رؤية رواتب الجميع',
+        'edit_essentials_settings' => 'تعديل إعدادات الموارد البشرية',
+
+        'accounting.view' => 'قراءة الحسابات وميزان المراجعة',
+        'accounting.chart_of_accounts.create' => 'إدارة دليل الحسابات',
+        'accounting.journal_entries.create' => 'تسجيل قيود اليومية',
+        'accounting.journal_entries.reverse' => 'عكس قيود اليومية',
+        'accounting.transfers.create' => 'تسجيل تحويلات بين الحسابات',
+        'accounting.cost_centers.create' => 'إضافة مراكز تكلفة',
+        'accounting.cost_centers.edit' => 'تعديل مراكز التكلفة',
+
+        'asset.view' => 'عرض الأصول',
+        'asset.create' => 'إضافة أصول',
+        'asset.update' => 'تعديل الأصول',
+        'asset.delete' => 'حذف الأصول',
+        'asset.view_own_maintenance' => 'رؤية سجلات الصيانة الخاصة',
+        'asset.view_all_maintenance' => 'رؤية كل سجلات الصيانة',
+
+        'superadmin.access_package_subscriptions' => 'إدارة حِزم الاشتراك',
+        'access_package_subscriptions' => 'رؤية الاشتراك الخاص',
     ],
 ];

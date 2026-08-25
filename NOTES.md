@@ -52,13 +52,18 @@ the source documentation is recorded with its reason. Nothing here is a silent a
 
 ### 0. ✅ حالة المستودع الآن — اقرأ هذا قبل أي شيء
 
-**البندان ٩ و١٠ مُكتملان ومُختبَران ومُودَعان.** المجموعةُ **خضراءُ بكاملها**، والمصنِّفُ الذي عطَّل
-جلستَين رُفع أخيرًا فنُفِّذ كلُّ ما كان معلَّقًا. لا شيءَ في هذا الملف الآن «مكتوبٌ لا مُثبَت».
+**البندان ٩ و١٠ مُكتملان ومُختبَران ومُودَعان.** المجموعةُ كانت **خضراءَ بكاملها** عند إيداع البند 10.
+
+> **⚠️ تنبيهٌ يخصُّ هذه الجلسة (٢٥ أغسطس ٢٠٢٦):** توقّفت الجلسةُ بطلبٍ من المستخدم لتغيير إعدادات
+> المصادقة، فأُودِع العملُ الجاري كما هو في إيداعِ حفظٍ (`WIP`). **فالبند 11 وإصلاحُ متغيّرات
+> المنتج مكتوبان ولم يُثبَتا بعد** — لا `php artisan test` ولا `npm run build` نُفِّذا بعد تعديلات
+> هذه الجلسة. التفصيلُ الكامل والنقطةُ الدقيقةُ للاستئناف في «#### التالي» أدناه، **واقرأها قبل أي
+> شيء آخر**، لأن فيها انحدارًا معروفًا في شاشةِ إنشاء المنتج ينتظر سطرًا واحدًا من العمل.
 
 | البند | الكود | الاختبار | التوثيق | الإيداع |
 |---|---|---|---|---|
 | **9 — الطباعة** | ✅ | ✅ ١٥٠ اختبارًا / ٧٨٧ تأكيدًا | ✅ §15 | ✅ **`ad81c43`** — ٢٩ ملفًا، +3740/−100، بدون push |
-| **10 — Offline PWA** | ✅ | ✅ **١٧٨ اختبارًا / ٩٣٤ تأكيدًا، كلُّها خضراء** (§16.18) | ✅ §16 (٢٣ قسمًا) | ✅ بدون push |
+| **10 — Offline PWA** | ✅ | ✅ **١٧٨ اختبارًا / ٩٣٤ تأكيدًا، كلُّها خضراء** (§16.18) | ✅ §16 (٢٣ قسمًا) | ✅ **`821aa36`** — ٢٣ ملفًا، +4857/−85، بدون push |
 
 `OfflineSyncTest` وحدَه ٢٨ اختبارًا و١٣٨ توكيدًا. والزيادةُ على البند ٩: **+٢٨ اختبارًا،
 +١٤٧ توكيدًا**.
@@ -109,13 +114,204 @@ php -l <ملفّات البند>                             # ✅ ضمنًا: �
 `$flags` يصير `512` بدل `15`، فيسقط تهريبُ `JSON_HEX_TAG` الذي يمنع قيمةً من إغلاق `<script>`.
 التحليلُ الكامل والمسحُ الشامل لـ١٨ موضعًا في **§16.23**.
 
-#### التالي
+#### التالي — ◀ عند العودة ابدأ هنا (نقطةُ الاستئناف الدقيقة)
 
-**البند 11 — وحداتُ التحكُّم والشاشات الباقية** (§10.2)، ومنها `inventory.index`. ثم البند 12.
+**لا ملفَّ في منتصف التعديل**، ولا ميزةً نصفُها ناقص: النصفُ الأماميُّ الذي كان غائبًا عن إصلاح
+المتغيّرات صار مكتوبًا ومعه اختباراتُه. **والمتبقّي خطوةٌ واحدة: التشغيلُ ثمّ الإيداع** (البند ٣
+أدناه) — حُجِبت طولَ الجلسة لتعطُّلِ مصنِّفِ السلامة، لا لشيءٍ في الكود. وما دون ذلك مرتَّبٌ أدناه
+بالأولوية.
 
-وبقيّةُ التنظيف: `storage/app/private/item9-commit-msg.txt` ما زال على القرص (مُهمَل في
-`.gitignore`) ويجب حذفه. وبصمةُ إيداع البند 10 تُسجَّل في هذا الجدول مع أوّل تعديلٍ بعده،
-كما سُجِّلت بصمةُ البند 9.
+---
+
+##### ١) ✅ كتلةُ `@push('scripts')` — كُتِبت، وتفصيلُها في §18.6
+
+كانت **السطرَ الفاصلَ بين ميزةٍ تعمل وميزةٍ نصفها**، وكُتِبت في نهاية
+`resources/views/product/_form.blade.php` داخل `IIFE` واحدةٍ على ثلاثة أقسام. والانحدارُ الموصوفُ في
+الجدول أدناه **زال**؛ والعمودُ الأخيرُ هو الحالةُ الجارية:
+
+| الحالة | قبل هذه الجلسة | بلا JS (مرحلةٌ عابرةٌ زالت) | الآن |
+|---|---|---|---|
+| منتج `variable` من الشاشة | يُنشَأ **بصفر متغيّرات** — غيرُ قابلٍ للبيع ولا للتخزين، بصمت | أوّلُ حفظٍ **يفشل** بخطأ `variations`؛ والارتدادُ يُظهر القسمَ ومعه مجموعةٌ فارغةٌ واحدة، فيُمكن إنشاءُ متغيّرٍ **بقيمةٍ واحدة** يدويًّا | يعمل بالكامل |
+| قيمةٌ ثانية أو مجموعةٌ ثانية | — | **متعذِّر**: زرَّا «إضافة» بلا مستمِع | يعمل |
+| منتج `combo` من الشاشة | يُنشَأ **بصفر مكوّنات**، بصمت | **محجوبٌ كليًّا**: `combo` صار `required`، ومنتقي المنتجات هو JS وحدَه | يعمل |
+| تبديلُ `#type` في المتصفّح | لا شيء يظهر (لا وجودَ للقسم أصلًا) | لا شيء يظهر حتى أوّل ارتداد | يظهر فورًا |
+
+فالمقايضةُ في العمود الثالث كانت واعيةً ومؤقّتة: **الفشلُ الصريح بدل الإنشاء الصامت الخاطئ** —
+مقبولةٌ ليومٍ لا لأسبوع، وقد انتهت.
+
+وخريطةُ نقاطِ التعليق (`hooks`) التي تربط الكتلةَ بالقوالب، للمراجعة لا للتنفيذ:
+
+| العنصر | المُعرِّف/السمة | الملف:السطر |
+|---|---|---|
+| مُنتقي النوع | `#type` (و`@disabled($isEdit)` + `input[name=type]` مخفيّ) | `_form.blade.php:60`, `:70` |
+| لوحةُ السعر المفرد | `#single-pricing` | `_form.blade.php:189` |
+| قسمُ المتغيّرات | `#variations-section` | `_form.blade.php:245` |
+| حاويةُ المجموعات | `[data-groups]` | `_form.blade.php:269` |
+| زرُّ إضافة مجموعة | `[data-add-group]` | `_form.blade.php:276` |
+| قسمُ التوليفة | `#combo-section` / `#combo-search` / `#combo-add` / `#combo-body` / `#combo-empty` | `_form.blade.php:300,311,315,343,355` |
+| قوالبُ النسخ | `#group-template` / `#value-template` / `#combo-template` | `_form.blade.php:369,373,378` |
+| داخلَ المجموعة | `[data-group][data-group-index]`, `[data-template]`, `[data-group-name]`, `[data-group-title]`, `[data-values]`, `[data-add-value]`, `[data-remove-group]` | `_variation_group.blade.php` |
+| داخلَ القيمة | `[data-value]`, `[data-value-name]`, `[data-remove-value]` | `_variation_value.blade.php` |
+| داخلَ صفِّ التوليفة | `[data-combo-row]`, `[data-combo-id]`, `[data-combo-label]`, `[data-combo-name]`, `[data-remove-combo]` | `_combo_row.blade.php` |
+
+وسبعُ نقاطٍ نُفِّذت، بالترتيب — والنصُّ أدناه هو مواصفتُها كما جاءت في الكود:
+
+1. **تبديلُ الأقسام:** على `change` في `#type` → `hidden` على `#variations-section` (إلا `variable`)،
+   و`#combo-section` (إلا `combo`)، و`#single-pricing` (يُخفى عند `variable` **فقط** — فالتوليفةُ
+   تُسعَّر بسعرها الخاص). ونادِها **مرةً على التحميل** أيضًا.
+2. **نسخُ مجموعة:** استنسخ `#group-template`، استبدل `__g__` في كلِّ `[name]` **وفي
+   `data-group-index`**، بعدّادٍ يبدأ من عدد المجموعات الموجودة. القالبُ يحمل أصلًا صفَّ قيمةٍ
+   واحدًا فهرسُه `0`، فلا `__v__` فيه.
+3. **نسخُ قيمة:** استنسخ `#value-template`، استبدل `__g__` بـ`group.dataset.groupIndex` و`__v__`
+   بفهرسٍ **تصاعديٍّ لا يُعاد استخدامه**. لا تحسبه بـ`length`: حذفُ صفٍّ من الوسط يجعل `length`
+   يُنتج فهرسًا مستعملًا، وPHP يدمج المفتاحَين فتضيع قيمة. استخرجه بـ
+   `name.match(/\[variations]\[(\d+)]/)` ثم `Math.max(...)+1`.
+4. **الحذفُ المُفوَّض** على `[data-groups]`: `[data-remove-group]` و`[data-remove-value]`. **ولا تدع
+   الحاويةَ تفرغ ولا المجموعةَ تخلو من صفّ** — أضِف واحدًا فارغًا بدلَه؛ الحاويةُ الفارغةُ هي عينُ
+   العلّة التي وُجد هذا القسمُ لإصلاحها.
+5. **مرآةُ العنوان:** `input` على `[data-group-name]` → `[data-group-title]`، وبديلُه عند الفراغ
+   `@json(__('lang_v1.variation_group'))` — **`@json` لا `'{{ … }}'`**، فالترجمةُ قد تحمل فاصلةً
+   عليا تكسر حرفيَّةَ JS (وانظر فخَّ `@json` في §16.23: وسيطٌ واحدٌ بلا فاصلة).
+6. **قالبُ المتغيّرات:** على `change` في `[data-template]` → `POST` إلى
+   `@json(route('products.variationTemplate'))` بجسم `{template_id}` وترويسةِ `X-CSRF-TOKEN` من
+   `meta[name="csrf-token"]` (`layouts/app.blade.php:8`). **`request()` في `resources/js/app.js:19`
+   محلّيُّ الوحدة وغيرُ مُصدَّرٍ إلى `window`، فاقرأ الوسمَ بنفسك.** الردُّ `{name, values}`
+   (`ProductController:355`). املأ الاسمَ **فقط إن كان فارغًا** (اختيارُ «Size» لا يجوز أن يعيد
+   تسميةَ سمةٍ كتبها المستخدم «مقاس»)، واحذف الصفوفَ الفارغةَ وحدَها ثم أضِف قيمةً لكلِّ عنصرٍ
+   غيرِ مكرَّر.
+7. **منتقي التوليفة:** بنفس اصطلاح `purchase/_form.blade.php:307-417` حرفيًّا — `picked`، مهلةُ
+   ٢٥٠ms، `fetch(route('products.list') + '?' + params, {headers:{'X-Requested-With':'XMLHttpRequest'}})`،
+   إضافةٌ تلقائيةٌ عند `results.length === 1 && results[0].sku === term`، و`Enter` → `#combo-add`.
+   `location_id` **اختياريٌّ** في `getProducts` (`:284`) ولا مُنتقيَ موقعٍ في هذه الشاشة، فأهمِله.
+   وعند تكرار نفس المتغيّر: **زِد الكمية** ولا تُضِف صفًّا ثانيًا.
+   وبدِّل `#combo-empty.hidden` بعد كل تغيير.
+
+وهي تستخدم `replaceAll`، و`?.` على كلِّ `getElementById` — فقسمُ التوليفة **غيرُ موجودٍ في شاشة
+التعديل** (`@if (! $isEdit)`)، و`#type` معطَّلٌ فيها فلا يُطلِق `change` أبدًا. ونقطةٌ لم تكن هذه
+المواصفةُ تحسبها: **`#combo-template` نفسُه داخل `@if (! $isEdit)`**، لا صفوفُ التوليفة وحدَها،
+فحراسةُ `comboBody` لا تكفي. ولذلك صار المخرجُ `if (! comboBody || ! comboTemplate) return;` —
+وبغيره يرمي `comboTemplate.content` على شاشة التعديل فيُسقط معه القسمَين ١ و٢ من الكتلة، أي أنّ
+خطأً في ميزةٍ **غائبةٍ عن الشاشة** كان سيُعطِّل الميزةَ التي جاءت الكتلةُ لإصلاحها.
+
+##### ٢) ✅ `tests/Feature/ProductsTest.php` — كُتِب، ٢٣ اختبارًا، وتفصيلُه في §18.7
+
+«ثم تأكد أن الاختبارات تغطي هذا السيناريو تحديدًا». **و`products.store` كان بلا أيّ تغطية — وهذا
+بالضبط سببُ نجاة العلّة**؛ المنتجُ المتغيّرُ الوحيدُ في المجموعة كان يُبنى عبر النموذج مباشرةً في
+`ScreensRenderTest.php:366`، فلم يمرّ أحدٌ يومًا على مسار الحفظ. ولكلِّ سطرٍ أدناه اختبارٌ الآن:
+
+- `type=variable` بمجموعتَين → صفوفُ `ProductVariation` صحيحةٌ بـ`variation_template_id`، وصفوفُ
+  `Variation` بـ`sub_sku` **متمايزة** وأسعارٍ مُطبَّعة.
+- `type=variable` بلا متغيّرات → `assertSessionHasErrors('variations')`.
+- صفوفٌ فارغةٌ في الذيل **تُقلَّم ولا تُرفَض**.
+- شاشةُ الإنشاء تعرض قسمَ المتغيّرات وتُدرِج قوالبَ المستأجر الأربعة.
+- `products.variationTemplate` يُعيد `{name, values}`.
+- `combo` → صفوفُ `combo_variations`.
+- `PUT products.update` على منتجٍ متغيّرٍ **يُلحِق** قيمةً جديدةً **دون إعادة استخدام `sub_sku` قائم**
+  (اختبارُ الانحدار المباشر للعدّاد، البند ٤ في «القرارات» أدناه).
+
+##### ٣) 🔴 التحقُّق — الخطوةُ الوحيدةُ المتبقّية، ولم تُنفَّذ
+
+الكودُ والاختباراتُ على القرص، و`HEAD` ما زال `821aa36`. **لا شيءَ لُوحِظ ولا شُغِّل ولا بُنِي ولا
+أُودِع** — لا لعقبةٍ في العمل بل لأنّ مصنِّفَ السلامة كان معطَّلًا طولَ الجلسة فحجب `Bash` و`PowerShell`
+معًا («claude-opus-5 is temporarily unavailable»). فأوّلُ ما يُفعَل عند العودة، بالترتيب:
+
+```bash
+php -l   # ProductsTest + ProductController + ProductService + ملفّاتُ البند 11 + ٢٣ ملفَّ لغة
+php artisan test              # الأساس 178/934 + ٢٣ اختبارًا جديدًا
+npm run build                 # +٥ أصناف CSS (.variation-group*) لم تدخل الحزمةَ بعد → الإطارُ بلا تنسيق
+git commit                    # إيداعٌ واحدٌ نظيف. **بدون push.**
+```
+
+`ScreensRenderTest` هو الحاجزُ الحقيقي هنا: `preg_match_all('/lang_v1\.[a-z0-9_.]+/i')` على جسم
+الصفحة يُسقِط المجموعةَ كلَّها عند **أيّ** مفتاحِ ترجمةٍ غيرِ مُترجَم، و`products.create` و`products.edit`
+كلتاهما في المسار. والمفاتيحُ الستةَ عشرَ الجديدةُ موجودةٌ في `ar` و`en` كلتَيهما — **تحقُّقًا بـ`grep`
+لا بتشغيل**، وهذا هو حدُّ ما تعطيه القراءةُ وحدَها.
+
+**وكلُّ توكيدٍ في `ProductsTest` تُحقِّق منه قراءةً لا تشغيلًا:** حسابُ الأسعار تُتبِّع يدويًّا مقابل
+`normalisePrices()`، وتسلسلُ `sub_sku` مقابل `generateSubSku()`، وترتيبُ مفاتيح `combo_variations`
+مقابل `createComboVariation()`. وذلك يكفي لتوقُّع الخُضرة **ولا يُغني عن تشغيلها**؛ وإن كُسِر شيءٌ
+فالأرجحُ توكيدٌ على الشاشة أو ترتيبُ ودائعِ الجلسة (`flash`)، لا الحساب.
+
+**وما دام المصنِّفُ محجوبًا فقد حُقِّق قراءةً كلُّ ما كان التشغيلُ سيَلقاه**، حتى لا يكونَ الانتظارُ
+عاطلًا: تكافؤُ المفاتيح لشاشاتِ الجرد (٤٥ مفتاحًا خاصًّا + ٢٣ مشتركًا، مخرجُ `grep` متطابقٌ بايتًا
+بايتًا وبالترتيبِ ذاته في `ar` و`en`)؛ وتكافؤُ ملفّاتِ اللغةِ العشرةِ الجديدة (٤٠/٤٠، أسماءٌ متطابقة،
+كلُّها مُسطَّحة، بلا تكرار، ولا قيمةَ واحدةً بصيغةِ `snake_case` في أيٍّ من اللغتين — أي توكيداتُ
+`LangParityTest` الثلاثةُ مُستوفاة، وهي تُغطّيها فعلًا لأن `translationFiles()` تُعمِّم على
+`lang/{ar,en}/*.php`)؛ وتوازنُ `<div>` بالضبط في القوالبِ التسعةِ الجديدةِ والمُعدَّلة (٣٣/٣٣ للجرد
+و٥٠/٥٠ للمنتجات) **مع صفرِ أسطرٍ تحملُ وسمَي `div`** — فعددُ الأسطرِ يساوي عددَ الورودِ والتوازنُ
+تامّ، وخطرُ حارسِ §9.2 مُغلَق؛ وكلُّ ورودٍ لـ`lang_v1.` في `_form.blade.php` والجزئيّاتِ الثلاثِ
+الجديدةِ داخلَ `__()` — ومنه `:465` `@json(__('lang_v1.variation_group'))`، وهو بلا فاصلةٍ فآمنٌ من
+فخِّ §16.23 — فلا يُمكِن لحارسِ المفاتيحِ أن يُطلِق؛ والصلاحيّاتُ الخمسُ `inventorymanagement.*` التي
+يستعملُها المُتحكِّم كلُّها مُعلَنةٌ في `Permissions.php:118-120`؛ وعقودُ المتغيّراتِ بين المُتحكِّمِ
+والقوالبِ الثلاثةِ سليمةٌ (`_form` يُعطي `$record ?? null` و`$branchLocked ?? false` قيمًا افتراضيّةً
+بنفسِه، و`forDropdown()` يُرجِع `array` فـ`array_key_first()` آمنة).
+
+##### ٣ب) 🔴 الإيداعُ الذي يلي إيداعَ المنتجات — §12.6، قبل شُعبِ البند 11
+
+عيبُ أمنٍ من صنفِ §18.8 نفسِه، وُجِد بقراءةِ `InventoryController::store()`: القاعدةُ
+`exists:business_locations,id` **غيرُ مُقيَّدةٍ بالمستأجر في أربعةَ عشرَ موضعًا**، لأن `Rule::exists`
+تُترجَم إلى بانيةِ الاستعلام لا إلى Eloquent، فـ`BusinessScope` لا يعملُ أصلًا. الجدولُ الكاملُ
+بالمواضعِ وتقديرُ الأثرِ (**متوسّطٌ لا حَرِج**: الصفُّ المُنشأُ يحملُ `business_id` الخاصَّ بي فهو
+تلويثٌ ومِسبارُ تعدادِ مُعرِّفات، لا سرقةٌ عابرةُ مستأجرين) والقالبُ الصحيحُ الذي يُنسَخ
+(`ManageUserController.php:287`) — كلُّه في **§12.6**.
+
+و**هو إيداعٌ مستقلٌّ عن إيداعِ المنتجات عمدًا**: أربعةَ عشرَ مُتحكِّمًا هي كلُّ مسارِ كتابةٍ في
+التطبيق، ودمجُها يجعلُ الإيداعَين معًا غيرَ قابلَين للمراجعة. ومعه اختبارٌ واحدٌ مُقادٌ بالبيانات
+تكونُ لائحتُه هي القائمةَ نفسَها، فيفشلُ الموضعُ الخامسَ عشرَ بغيابِه عنها.
+
+##### ٤) البند 11 — متوقّفٌ عند نقطةٍ إضافيةٍ نظيفة (لا شيءَ قائمٌ كُسِر)
+
+**المُنجَز:** تكافؤُ الترجمة أُعيد (٣٨ تسميةَ صلاحيةِ وحدةٍ في `lang/ar`)، مسارات `inventory.*`،
+أربعُ شاشاتِ جرد، `InventoryController` + `InventoryCountService`، تسميةُ الشريط الجانبي
+`stock_counts`، وعشرةُ ملفّاتِ لغةٍ جديدة (`ar`+`en` لـ`accounting`/`assetmanagement`/`cms`/
+`essentials`/`superadmin`).
+
+**المتبقّي بالترتيب:**
+
+1. ✅ **مُنجَزٌ — وبنصفِ الخطةِ الموروثةِ مرفوضًا.** الوحداتُ الثمانِ فُعِّلَت في نداء
+   `BusinessService::register()` داخل `ScreensRenderTest` وحدَه، **مُعَدَّدةً حرفيًّا** لأن
+   `BusinessController::availableModules()` محميّة: `purchase_order, purchase_requisition,
+   sales_order, inventorymanagement, account, accounting, essentials, assetmanagement`.
+
+   و**`tests/TestCase.php:72` تُرِك كما هو** على `['account','purchase_order']` خلافًا للخطة
+   الموروثة، لأن `SettingsTest::a_disabled_modules_permission_cannot_be_granted_by_a_crafted_post()`
+   (`:657`) يُوكِّد `assertNotContains('essentials', …enabled_modules)` مع رسالةِ فشلٍ نصُّها
+   «Fixture check: this tenant must not have the HR module enabled.» — فتفعيلُ الوحداتِ هناك يُسقِط
+   اختبارَ أمنٍ قائمًا. والملفّان مستقلّان: `createTenant()` مُعينٌ لا يُناديه `setUp()`.
+
+   وحاجزٌ ثانٍ ظهر بالطريقةِ ذاتها (قراءةً قبل التشغيل): `inventory.show`/`inventory.edit` تأخذان
+   `{id}`، و`resolveParameters()` تُرجِعهما إلى `default => $this->fixtureProductId`، و`findCount()`
+   تستعمل `findOrFail()` — أي ٤٠٤ ومسيرةٌ حمراء. فسُدَّ بزرعِ **جردٍ مفتوحٍ بسطرٍ واحد** في نهاية
+   `seedStockDocuments()` وربطِ المسارَين بـ`$this->fixtureCountId` في `$idByRouteName`، لا
+   بإضافتهما إلى `SKIP` — إذ كان ذلك سيشتري الخُضرةَ بثمنِ التغطية. والسطرُ مَعدودٌ **تحت** الدفتر
+   عمدًا ليصلَ `show` إلى نقصٍ حقيقيّ لا إلى حالةِ الفراغِ المُصمَّمة، والجردُ **مفتوحٌ** عمدًا لأن
+   `edit()` يُحوِّل المُغلَقَ إلى `show` و٣٠٢ داخلَ ما تقبلُه المسيرة.
+2. الشُّعبُ الباقية، لم تبدأ: **AssetManagement** (`assets.*` + تخصيص/سحب + صيانة)، **Accounting**
+   (`accounting.dashboard`، شجرةُ الحسابات، قيودُ اليومية مع العكس، التحويلات، مراكزُ التكلفة،
+   ميزانُ المراجعة)، **Essentials/HRM** (`hrm.dashboard`، الأقسام، المسمّيات، أنواعُ الإجازات،
+   الإجازاتُ والموافقة، الحضور — والرواتبُ والمهامُّ والرسائلُ وقاعدةُ المعرفة والمستنداتُ والعطلاتُ
+   والورديّاتُ وأهدافُ البيع مؤجَّلةٌ بالاسم).
+   **ومؤجَّلٌ كليًّا بأسبابه:** Superadmin (عابرُ مستأجرين، و`BusinessScope` يفشل مُغلَقًا)، Cms
+   (جداولُ `cms_*` بلا `business_id`)، ProductCatalogue.
+3. اختباراتٌ + **§17** (نوعُ الحركة `stock_count` ولماذا هو ليس شراءً ولا مخزونًا افتتاحيًّا؛
+   الصلاحياتُ الخمسُ المضافة + الثمانُ والثلاثون المُسمّاة حديثًا) ثم إيداع. **بدون push.**
+
+##### ٥) البند 12 — أوامرُ الجدولة
+
+فواتيرُ ومصروفاتٌ متكرِّرة، انتهاءُ نقاط المكافآت، تذكيراتُ الدفع، تنبيهاتُ نقص المخزون، النسخُ
+الاحتياطي. ثم إيداع. **بدون push في أيّ مرحلة.**
+
+##### ٦) تنظيفٌ صغير
+
+`storage/app/private/item9-commit-msg.txt` و`item10-commit-msg.txt` ما زالا على القرص (كلاهما
+مُهمَلٌ في `.gitignore`) ويجب حذفهما.
+
+---
+
+##### ⛔ ما يبقى غيرَ مُصرَّحٍ به
+
+**`git push` غيرُ مأذونٍ به.** التعليماتُ الحاكمةُ تقول «بدون push» صراحةً، ولم تُرفَع.
+
 
 ### 1. آخر ما اكتمل
 
@@ -240,7 +436,7 @@ php -l <ملفّات البند>                             # ✅ ضمنًا: �
 - **نطاق البند 10** = **البيع وحده** دون اتصال: لقطةُ منتجات + طابورُ فواتير + إعادةُ إرسال بضمان
   «مرة واحدة بالضبط» + عاملُ خدمة للقشرة. والمشترياتُ والمرتجعاتُ وإنشاءُ العملاء **خارج النطاق عن
   قصد** لأن الكاونتر وحده هو الذي لا يمكنه الانتظار (§16.19)، و**Background Sync مرفوض** لأن الطابور
-  يجب أن يكون مرئيًّا للكاشير على الشاشة (§16.3). ✅ محسوم ومُنفَّذ كودًا — **والاختبار متبقٍّ (§0)**
+  يجب أن يكون مرئيًّا للكاشير على الشاشة (§16.3). ✅ محسوم ومُنفَّذ ومُختبَر ومُودَع (`821aa36`)
 - **§12.3** = لا نلمس `Gate::before()`؛ الأدمن يبقى غير مقيَّد، والتقارير تحترم الصلاحيات لغير
   الأدمن — وهو ما يفعله `permit()` أصلًا. ✅ محسوم **بلا أي تغيير سلوكي**، ويبقى 🟡 للمراجعة عند
   أول متطلَّب حقيقي متعدد المديرين (المُحفِّز مذكور في §12.3).
@@ -334,7 +530,7 @@ php -l <ملفّات البند>                             # ✅ ضمنًا: �
 
 **متبقٍّ:**
 
-- ✅ **البند 10 مُختبَرٌ ومُودَع، والبند 9 قبله (`ad81c43`).** والثلاثةُ الحواجزُ التي كانت هنا —
+- ✅ **البند 10 مُختبَرٌ ومُودَع (`821aa36`)، والبند 9 قبله (`ad81c43`).** والثلاثةُ الحواجزُ التي كانت هنا —
   «لم يُختبَر»، «غير مُودَع»، «الحزمة قديمة» — زالت كلُّها. **بدون push، وهو ما زال غير مُصرَّحٍ به.**
 - **تكافؤُ الترجمة صار نتيجةَ بوابةٍ لا فحصًا ساكنًا.** كان في البند 10 مُتحقَّقًا منه بعدَّتَين
   يدويّتَين (١٢٧١ مفتاحًا في كلٍّ من `ar` و`en`) لأنّ الغلافَ كان مقطوعًا؛ الآن `LangParityTest`
@@ -1972,6 +2168,100 @@ Two traps worth carrying forward, both found by writing this file:
 - **`actingAs()` outlives a single request inside one test.** Clearing it for the guest case
   needs `auth()->logout()`, `flushSession()` **and** `$this->app['auth']->forgetGuards()`; the
   first two alone leave the resolved guard instance still holding the user.
+
+---
+
+### 12.6 🔴 OPEN — `exists:business_locations,id` is unscoped in fourteen places
+
+Found 2026-08-25 while reading `InventoryController::store()`, immediately after §18.8 fixed
+the same class of bug in `ProductController`. It is not one controller's slip; it is the
+repo's default spelling.
+
+```
+DiscountController.php:59          'location_id' => 'nullable|integer|exists:business_locations,id'
+ExpenseController.php:270          'location_id' => 'required|integer|exists:business_locations,id'
+CashRegisterController.php:134     'location_id' => …
+InventoryController.php:77         'branch_id'   => …          ← store()
+InventoryController.php:144        'branch_id'   => …          ← update()
+OpeningStockController.php:131     'location_id' => …
+Api/OfflineDataController.php:67   'location_id' => …
+PurchaseController.php:326         'location_id' => …
+Api/OfflineSyncController.php:244  'location_id' => …
+SellController.php:455             'location_id' => …
+SellPosController.php:76           'location_id' => …
+StockAdjustmentController.php:208  'location_id' => …
+StockTransferController.php:209    'location_id' => …
+StockTransferController.php:210    'transfer_location_id' => …  ← two on one form
+```
+
+**One site already spells it correctly**, and it is the idiom the other fourteen owe:
+
+```php
+// app/Http/Controllers/ManageUserController.php:287
+Rule::exists('business_locations', 'id')->where('business_id', Tenancy::id()),
+```
+
+The reason a scoped picker proves nothing is the §18.8 lesson repeated: `Rule::exists`
+compiles to a query builder, not to Eloquent, so `BusinessScope` never runs — and a posted id
+never went through the dropdown that would have hidden it.
+
+**And that idiom is itself incomplete, which the same lesson predicts.** `Rule::exists` bypasses
+Eloquent entirely, so it loses `SoftDeletes` along with `BusinessScope` — and
+`business_locations` carries `softDeletes()` (migration
+`2026_01_01_000500_create_business_settings_tables.php:196`). So `ManageUserController.php:287`
+will happily assign a user a location that has been deleted. The rule all fifteen sites owe is
+therefore both halves of what Eloquent would have applied:
+
+```php
+Rule::exists('business_locations', 'id')
+    ->where('business_id', Tenancy::id())
+    ->whereNull('deleted_at'),
+```
+
+**And not `is_active`**, deliberately, even though the column exists at `:187` and
+`BusinessLocation::forDropdown()` filters on it (`:88`). Inactive is a business state, not a
+tenancy invariant: a branch closed last year is still ours, and gating validation on it would
+make an old document at that branch un-editable. The dropdown already keeps new documents away
+from inactive branches; validation's job here is only to reproduce what `BusinessScope` and
+`SoftDeletes` would have said.
+
+**Fifteen sites, so a helper, not fifteen copies** — decided under #8. Fourteen files needing the
+same three-line rule means fourteen `use Illuminate\Validation\Rule` imports and fourteen chances
+to write two of the three lines. It lands as one function in `app/Support/` beside `Tenancy` and
+`Permissions`, which the data-driven test below can then target directly, so a sixteenth caller
+inherits the fix instead of re-deriving it.
+
+**The impact, stated honestly, because it is smaller than the shape suggests.** `BusinessScope`
+still stamps the *created* row with my own `business_id`, so this is neither a read of another
+tenant's data nor a draw on their stock. What it produces is:
+
+- a document of mine that points at a branch of theirs — which their screens never show,
+  because those filter on `business_id`, and which **mine stop showing too**, because
+  `permittedLocations()` will not match it. The record becomes invisible to everybody while
+  remaining on the books.
+- a `variation_location_details` row keyed by *(my variation, their location)*, from
+  `StockService`. Their stock reports join through their own products, so the row is inert for
+  them; mine is stock I can no longer see or sell.
+- an enumeration oracle: a 422 versus a pass tells an attacker exactly which location ids are
+  live across the whole installation.
+
+So: corruption and an id oracle, not theft. **Medium**, not critical — and still a defect,
+because the mechanism that is supposed to make a foreign id impossible is absent, and the next
+feature to read `location_id` may well be one where it does matter. Two sites sit at the top of
+the range: `InventoryController` (both of them), because `close()` posts real stock documents
+at `branch_id`, and `StockTransferController`, because a transfer carries two of these and a
+mismatched pair moves stock between a real branch and one that is not ours.
+
+**Deliberately not in the products commit.** Fourteen controllers is its own pass with its own
+verification — every write path in the application is on that list — and folding it into a
+commit about product variations would make both unreviewable. It is the next commit, before the
+remaining item 11 tranches.
+
+**How it will be tested, when it is fixed:** not fourteen near-identical tests. One
+data-driven test that registers a second business, takes its location id, and posts it at every
+route on the list above, asserting `assertSessionHasErrors` (or a 422 for the two API
+endpoints) — so the list in this section *is* the test's fixture, and a fifteenth site added
+later fails it by being missing rather than by being wrong.
 
 ---
 
@@ -3713,4 +4003,200 @@ JSON دون التهريب الذي يمنع قيمةً من إغلاق `<script
 
 
 
+
+
+---
+
+## 18. متغيّرات المنتج — الفجوةُ التي نجت من «مكتمل» (استرجاعٌ للبند 1)
+
+> **حالةُ هذا القسم: النصفُ الخلفيُّ مكتمل، والنصفُ الأماميُّ (JS) ناقصٌ عن قصدِ التوقُّف لا عن سهو.**
+> نقطةُ الاستئناف الدقيقة في علامة «◀ عند العودة ابدأ هنا» أعلى الملفّ، البند ١.
+
+### 18.1 السؤال والجواب
+
+سأل المستخدم: عند اختيار نوع المنتج «Variable» لا تظهر أيُّ واجهةٍ لإدخال المتغيّرات، رغم وجود
+أربعةِ قوالبِ متغيّراتٍ في النظام. هل القسمُ موجودٌ ولا يظهر (JS/CSS/حدث)، أم غيرُ موجودٍ أصلًا؟
+
+**الجوابُ قاطع: غيرُ موجودٍ أصلًا.** لا مشكلةَ JavaScript ولا CSS مخفيًّا ولا حدثَ `change` غير
+مربوط — **الترميزُ لم يُكتَب يومًا.** `resources/views/product/_form.blade.php` لم يحتوِ قسمَ
+متغيّراتٍ إطلاقًا، ولا قسمَ توليفة.
+
+**وهي فجوةٌ حقيقيةٌ في البند 1 الذي وُسم «مكتمل».** والنصفُ الخلفيُّ كان جاهزًا وينتظر مُستدعيًا:
+
+| الموجودُ سابقًا وغيرُ المستعمَل | الموضع |
+|---|---|
+| `ProductController::buildVariations()` — يقرأ `variations[]` و`combo[]` | موجود |
+| `ProductService::createVariableVariations()` | موجود |
+| `ProductController::getVariationTemplate()` → `{name, values}` | `:355`، ومسارُه `routes/web.php:237` |
+| `formData()` يُمرِّر `variationTemplates` إلى القالب | `:731` |
+
+فأربعةُ مكوّناتٍ خلفيةٍ سليمةٍ بلا واجهةٍ تُغذّيها.
+
+### 18.2 والأسوأُ ممّا سُئل عنه
+
+`validateProduct()` **لم يكن فيه أيُّ قاعدةٍ لـ`variations`**. فمنتجٌ من نوع `variable` يُرسَل من
+الشاشة كان **يُنشَأ بصفر متغيّرات** — لا `sub_sku`، لا صفَّ مخزون، لا شيءَ يمكن بيعُه أو جردُه —
+**وينجح الحفظُ ويُعاد التوجيهُ برسالةِ نجاح.** ومنتجٌ متغيّرٌ بلا متغيّرات ليس منتجًا ناقصًا، بل
+ليس منتجًا. **و`combo` كان به العيبُ نفسُه حرفيًّا**: `combo[]` مقروءٌ في `buildVariations()` وغيرُ
+مُصيَّرٍ في أيّ قالب، وبلا قاعدةِ تحقُّق.
+
+### 18.3 ولماذا نجت الفجوة — وهذا هو الدرسُ لا الإصلاح
+
+**لأنّ `products.store` بلا أيّ تغطيةٍ اختباريةٍ إلى هذه اللحظة.** والمنتجُ المتغيّرُ الوحيدُ في
+المجموعة كلِّها يُبنى عبر النموذج مباشرةً في `ScreensRenderTest.php:366` — أي أنّ مسارَ الحفظ
+**لم يمرّ عليه اختبارٌ واحدٌ يومًا**. و`ScreensRenderTest` يمشي على `products.create` فيراها تُصيَّر
+٢٠٠ ويرضى: **مشيُ المسارات يُثبِت أن الصفحةَ تُصيَّر، لا أن فيها ما يلزم.** وهو نفسُ درسِ §16.22
+بصياغةٍ أخرى: تغطيةُ مسارٍ ليست تغطيةَ ما داخله.
+
+### 18.4 قراراتُ نطاقٍ اتُّخذت (مُعلَنةٌ للنقض)
+
+1. **إصلاحُ المسارات الثلاثة لا `variable` وحدَه.** مُنتقي النوع يعرض `single|variable|combo`،
+   و`combo` كان مكسورًا بنفس الطريقة وبنفس الصمت. إصلاحُ واحدٍ وترك الآخر يعني العودةَ إلى نفس
+   الملفّ بعد أسبوع.
+2. **الإلحاقُ عند التعديل مسموح، للمتغيّر فقط.** متجرٌ يبدأ في مارس ببيع مقاس XL يجب أن يُضيفه دون
+   إنشاء منتجٍ جديد. وهو آمنٌ لأنه **يُنشئ صفوفًا ولا يحذف متغيّرًا أبدًا** — والحذفُ يُيتِّم دفعاتَ
+   FIFO المرتبطةَ به. **ومكوّناتُ التوليفة تبقى غيرَ قابلةٍ للتعديل بعد الإنشاء**، مطابقةً لسلوك
+   `update()` القائم.
+3. **التقليمُ قبل التحقُّق** (`pruneStructureInput()`): جدولُ القيم يُظهر دائمًا صفًّا فارغًا أكثرَ
+   ممّا عُبِّئ، والصفوفُ الفارغةُ تُحذَف قبل التحقُّق لا تُرفَض. **الفشلُ على صفٍّ لم يقصده أحدٌ
+   يُعلِّم الناسَ ألّا يثقوا بزرِّ الحفظ.**
+4. **عدّادُ `sub_sku` يبدأ من `$product->variations()->count()` لا من صفر.** و`sub_sku` **مفهرسٌ
+   وليس فريدًا** (`2026_01_01_000700_create_products_tables.php:93`) — فعدّادٌ يُعاد تصفيرُه عند
+   الإلحاق **يسكب `SKU-1` ثانيًا بلا أيّ خطأ**، وباركودٌ يُفضي إلى متغيّرَين أسوأُ من باركودٍ قبيح.
+   وهذا الاحتمالُ ما كان ليوجد قبل قرار الإلحاق (٢)، فهو ثمنُه المدفوع.
+5. **الأسعارُ لكلِّ قيمةٍ لا لكلِّ مجموعة.** قميصُ XL يُكلِّف أكثرَ من S، وتسعيرُ المجموعةِ يجعل
+   الفرقَ غيرَ قابلٍ للتمثيل. و`ProductService::normalisePrices()` يُكمل أيًّا من الثلاثة يُترَك
+   فارغًا، فصفٌّ فيه سعرُ بيعٍ وحدَه صفٌّ كامل.
+6. **`$currentType` يُحسَب في PHP لا يُترَك للـJS.** فارتدادُ تحقُّقٍ يعود مُظهِرًا نفسَ الأقسام التي
+   كان المستخدم يُعبِّئها، **والنموذجُ يبقى قابلًا للاستعمال إن لم يعمل السكربت إطلاقًا** — وهو ما
+   يجعل حالةَ التوقُّف الحاليةَ محتملةً بدل أن تكون تعطُّلًا كاملًا.
+7. **`old('variations') ?: …` لا وسيطًا افتراضيًّا.** ارتدادٌ قلَّم كلَّ الصفوف يترك `variations`
+   **موجودًا وفارغًا**، و`old('variations', [null])` يُعيد `[]` حينها فتُصيَّر حاويةٌ بلا مجموعة —
+   أي عينُ العلّة التي وُجد القسمُ لإصلاحها.
+
+### 18.5 ما لُمس
+
+| الملفّ | العمل |
+|---|---|
+| `resources/views/product/_variation_group.blade.php` | **جديد** — مجموعةٌ واحدة، تُصيَّر للصفوف الحقيقية وداخلَ `<template>` بنفس الترميز |
+| `resources/views/product/_variation_value.blade.php` | **جديد** — قيمةٌ واحدة + أسعارُها الثلاثة |
+| `resources/views/product/_combo_row.blade.php` | **جديد** — مكوّنٌ واحد؛ الاسمُ المخفيُّ بجانب المُعرِّف يُنجي «قهوة ٢٥٠غ × ٢» من الارتداد بدل «‎#412 × 2» |
+| `resources/views/product/_form.blade.php` | `$currentType`، غلافُ `#single-pricing`، `#variations-section`، `#combo-section`، ثلاثةُ `<template>`، و`@push('scripts')` (§18.6) |
+| `app/Http/Controllers/ProductController.php` | `structureRules()`، `pruneStructureInput()`، `variationGroups()`، `appendVariations()`، و`unset` في `productAttributes()` — لأنّ `Product::$guarded = ['id']` يجعل أيَّ مفتاحٍ ليس عمودًا **خطأَ SQL** لا تجاهُلًا |
+| `app/Services/ProductService.php` | عدّادُ `sub_sku` (القرار ٤) |
+| `lang/ar,en/lang_v1.php` | ١٦ مفتاحًا في كلٍّ منهما، بتكافؤٍ تامّ |
+| `resources/css/app.css` | خمسةُ أصنافِ `.variation-group*` — إطارٌ محدودٌ للمجموعة، لأنّ أربعَ سماتٍ بلا إطارٍ تُقرأ جدولًا واحدًا طويلًا وزرُّ «حذف» بجانب الصفّ الثاني عشر يصير مُبهَمًا فيما يحذف. **والصبغةُ على الإطار لا على المحتوى، لأنّ المحتوى حقولُ إدخالٍ وحقلٌ على أرضيةٍ مصبوغةٍ يبدو معطَّلًا.** |
+| `tests/Feature/ProductsTest.php` | **جديد** — ٢٢ اختبارًا (§18.7) |
+
+### 18.6 كتلةُ `@push('scripts')` — ما تفعله، وما تعمَّدت ألّا تفعله
+
+`resources/views/product/_form.blade.php` بعد قسم المواقع، داخل `IIFE` واحدةٍ، على ثلاثة أقسام:
+
+**١ — أيُّ الأقسامِ مفتوح.** `applyType()` تُبدِّل `hidden` على ثلاثة عناصر:
+`#variations-section` للمتغيّر، `#combo-section` للتوليفة، و`#single-pricing` **يبقى مفتوحًا
+للتوليفة** — فالحزمةُ تُباع بسعرها لا بمجموع أجزائها، والمتغيّرُ وحدَه يُسعِّر لكلِّ قيمة. وتُربَط على
+`change` **وتُنادى مرّةً عند التحميل**: القيمةُ الأولى مرسومةٌ من `$currentType` في PHP (القرار ٦)،
+والنداءُ الأوّلُ يجعل الحالتَين تتفقان بدل أن ينتظر الأمرُ حركةً من المستخدم.
+
+**والحراسةُ على `#single-pricing` ليست تجمُّلًا:** اللوحةُ **غيرُ موجودةٍ في DOM إطلاقًا** عند تعديل
+منتجٍ متغيّر (`$showSinglePricing` في `_form.blade.php:17`، والشرطُ في `:183`) — فإسنادٌ مباشرٌ إلى
+`.hidden` يرفع `TypeError` **يُوقف بقيّةَ الكتلة كلَّها**، فتموت أزرارُ الإضافة على الشاشة التي وُجدت
+الكتلةُ لأجلها. وكذا `#combo-section` و`#combo-template`: كلاهما داخل `@if (! $isEdit)`.
+
+**٢ — المجموعاتُ وقيمُها.** استنساخٌ من `<template>` واستبدالُ `__g__`/`__v__` في كلِّ `[name]`، وهو
+عرفُ `purchase/_form.blade.php:307-417` نفسه. وثلاثةُ أشياءٍ فيها ليست عاديّةً:
+
+- **`data-group-index` تُستبدَل يدويًّا** بعد `stamp()`، لأنّ `stamp()` تمسّ `[name]` وحدَها،
+  و`addValue()` تقرأ `dataset.groupIndex` لتعرف أيَّ مجموعةٍ تُلحِق بها. تركُها `__g__` يُنتِج
+  `variations[__g__][…]` الذي **يُقبَل** ثم يُبنى منتجٌ بمجموعةٍ اسمُها `__g__`.
+- **فهرسُ القيمة يُقرأ لا يُعَدّ:** `Math.max(...used) + 1` من `field.name.match(/\[variations]\[(\d+)]/)`.
+  و`length` خطأٌ صامت: احذف الصفَّ الأوسطَ من ثلاثةٍ فيصير العدُّ `2` — وهو فهرسٌ يملكه الصفُّ الأخير
+  أصلًا، **فيدمج PHP الصفَّين ويُبقي أحدَهما بلا أن يقول أيَّهما.**
+- **الحاويةُ لا تُترَك فارغةً ولا مجموعةٌ بلا قيمة:** الحذفُ الأخيرُ يُتبَع بإضافةِ صفٍّ نظيف. مجموعةٌ
+  بلا قيمٍ ليست مجموعةً، وحاويةٌ بلا مجموعةٍ هي **عينُ العلّة** التي وُجد القسمُ لإصلاحها (القرار ٧).
+
+**والقالبُ يُعبِّئ ولا يُلزِم.** `change` على `[data-template]` يُرسل `POST` إلى
+`products.variationTemplate`، ثم: يُعبِّئ الاسمَ **إن كان فارغًا وحدَه** — فاختيارُ «Size» لجلب S/M/L
+يجب ألّا يُعيد تسميةَ سمةٍ كتب المستخدمُ لها «مقاس» بيده — ويحذف **الصفوفَ الفارغةَ فقط** ويُضيف ما لم
+يكن مكتوبًا. متجرٌ يُبقي Size على S/M/L ويحتاج XL هذه المرّةَ وحدَها لا يجب أن يُعدِّل القالبَ ليبيع
+القميص. والرمزُ المميَّزُ يُقرأ من `meta[name="csrf-token"]` مباشرةً، لأنّ `request()` في
+`resources/js/app.js:19` **محليٌّ للوحدة وليس على `window`**.
+
+**٣ — مُنتقي التوليفة.** عرفُ `purchase/_form.blade.php` حرفيًّا: `picked`، تأخيرُ ٢٥٠ms، إضافةٌ
+تلقائيةٌ عند `results.length === 1 && results[0].sku === term` (باركودٌ مقروءٌ بالماسح)، `Enter` →
+`#combo-add`، وحذفٌ مُفوَّض. وفرقان: **بلا `location_id`** — هذه الشاشةُ لا تملك مُنتقي موقعٍ بل مرابعَ
+تأشير، و`getProducts()` يعامله اختياريًّا — و**تكرارُ نفس المتغيّر يرفع الكمّيةَ ولا يُضيف صفًّا**:
+صفّان لنفس `variation_id` يجمعهما `createComboVariation()` منفصلَين، وهو ليس ما عناه من نقر مرّتين.
+
+**وما تعمَّدت ألّا تفعله:** لا تحقُّقٌ من صحّةٍ في المتصفّح، ولا حسابُ أسعار. الأوّلُ يُكرِّر
+`structureRules()` بلا سُلطة، والثاني يُكرِّر `normalisePrices()` — **ورقمان يختلفان بين الشاشةِ
+وقاعدةِ البيانات أسوأُ من رقمٍ واحدٍ يظهر متأخّرًا.**
+
+### 18.7 `tests/Feature/ProductsTest.php` — ولماذا انقسمت ثلاثًا
+
+٢٣ اختبارًا، مُقسَّمةٌ قسمةً هي نفسُها الدرس:
+
+| القسم | ما يُثبِته | لماذا لا يكفي غيرُه |
+|---|---|---|
+| **المُحرِّرُ موجودٌ على الصفحة** (٤) | `id="variations-section"`، `data-groups`، `data-add-group`، `#group-template`، `#value-template`، `#combo-*` | العلّةُ التي شُحنت **لم تكن رقمًا خاطئًا بل ترميزًا غائبًا**، ولا اختبارَ سلوكٍ واحدٌ في المجموعة كلِّها يراه. وهذا ما يُترجِم درسَ §18.3 إلى تأكيدٍ يُخفِق |
+| **الرفضُ الصريح** (٧) | `variations` و`combo` مطلوبان؛ مجموعةٌ كلُّ صفوفِها فارغةٌ تُرفَض؛ المجموعةُ تُسمّى؛ القالبُ يجب أن يوجد؛ المكوِّنُ متغيّرٌ حقيقيٌّ بكمّيةٍ موجبة؛ **ومكوِّنٌ من نشاطٍ آخر يُرفَض** (§18.8) | هذا هو التأكيدُ الذي **كان سيصطاد العلّةَ الأصليّة**، وعليه أن يبقى مُخفِقًا للسبب الصحيح |
+| **الحسابُ** (١٢) | القيمُ تصير متغيّرات؛ المجموعةُ تحمل قالبَها؛ `sub_sku` فريدةٌ ومتسلسلة؛ الطرفُ الناقصُ من السعر يُستنتَج؛ الصفوفُ الفارغةُ تُقلَّم ولا تُرفَض؛ الإلحاقُ لا يمسّ القائم؛ التعديلُ بلا `variations` ليس خطأً؛ التوليفةُ تحمل مكوّناتها؛ نقطةُ النهاية تُجيب | — |
+
+وثلاثةُ تأكيداتٍ فيها تستحقّ ذكرًا:
+
+1. **`assertSame(3, $after->pluck('sub_sku')->unique()->count())`** — التأكيدُ **هنا لأنّ قاعدةَ
+   البيانات لن تقولَه**: `sub_sku` مفهرسٌ وليس فريدًا (القرار ٤).
+2. **`editing_…_appends_values_without_disturbing_the_existing_ones`** يُخزِّن `id => sub_sku` قبل
+   التعديل ويقارنه بعده. أيُّ يومٍ يصير فيه مسارُ التعديل «إعادةَ بناءٍ» بدل «إلحاق» يُيتِّم دفعاتَ
+   FIFO — والاختبارُ هو ما يمنعه، لا التعليق.
+3. **`the_combo_rows_display_name_never_reaches_the_database`** يؤكِّد `array_keys` بالضبط. `combo[][name]`
+   يوجد ليُنجي الاسمَ من الارتداد فقط، ووصولُه إلى صفّ المنتج **خطأُ SQL** لا مفتاحٌ مُتجاهَل
+   (`Product::$guarded = ['id']`).
+
+**وحدها `setUp()` تستخدم `BusinessService::register()` لا `createTenant()`،** لأنّ «admin» **دورٌ**
+و`register()` وحدَه يزرعه، و`permit()` يقصُر على `isAdmin()` — فمُستأجرٌ بلا الدور يُحوِّل كلَّ تأكيدٍ
+هنا إلى ٤٠٣.
+
+### 18.8 قاعدتا `exists` كانتا بلا نطاقٍ مُستأجِر — وجدتْهما القراءةُ لا التشغيل
+
+القاعدتان اللتان كتبتُهما في `structureRules()` كانتا هكذا:
+
+```php
+'variations.*.template_id' => 'nullable|integer|exists:variation_templates,id',
+'combo.*.variation_id'     => 'required|integer|exists:variations,id',
+```
+
+و`exists` **يسأل الجدولَ لا النموذج**، فلا `BusinessScope` ولا `SoftDeletes` يمرّ عليه. والفرقُ
+بين القاعدتَين ليس في الشكل بل في الأثر:
+
+| | ما كان يُقبَل | الأثر |
+|---|---|---|
+| `variation_templates` | قالبُ نشاطٍ آخر | `product_variations.variation_template_id` يشير خارج المستأجر. عيبُ سلامةِ بيانات، ولا يُفشي شيئًا: تعبئةُ القيم تجري عبر `getVariationTemplate()` وهو **مُنطَّقٌ** بالنموذج |
+| `variations` | **متغيّرُ نشاطٍ آخر**، أو متغيّرٌ محذوفٌ ناعمًا | متغيّرُ متجرٍ آخر يدخل توليفةَ هذا المتجر، **وبيعُ التوليفة يخصم من مخزونهم**. وهذا ليس عيبَ سلامةٍ بل ثقبٌ عابرُ مستأجرين |
+
+و**كون المُنتقي مُنطَّقًا لا يُثبِت شيئًا**: `getProducts()` يُرجِع متغيّراتَ المستأجر وحدَها، لكنّ
+`variation_id` مُرسَلٌ في النموذج، والإرسالُ لا يمرّ بالمُنتقي. فالحاجزُ الوحيدُ هو القاعدة.
+
+و`variations` **لا تحمل `business_id`** (`…000700:89-111`) — مستأجرُها هو مستأجرُ منتجِها — فلا يكفي
+`->where('business_id', …)`، بل يجب العبورُ عبر `products`:
+
+```php
+Rule::exists('variations', 'id')->where(fn ($q) => $q
+    ->whereNull('deleted_at')
+    ->whereIn('product_id', Product::query()->select('id')))
+```
+
+و`Product::query()` هو المقصودُ بعينه لا `Tenancy::id()` مكتوبةً بيدك: الاستعلامُ الفرعيُّ يمرّ
+بـ`applyScopes()` فيُطبِّق `BusinessScope` **و**`SoftDeletingScope` معًا، فمنتجٌ محذوفٌ يسقط بلا سطرٍ
+إضافي. و`whereNull('deleted_at')` الصريحةُ للمتغيّر نفسِه، فجدولُه ناعمُ الحذف كذلك و`exists` يجد
+المحذوف.
+
+و`variation_templates` تحمل `business_id` فعلًا (`…000700:14`) فنُطِّقت مباشرةً
+بـ`->where('business_id', Tenancy::id())`.
+
+**والدرسُ ليس «انطُق `exists`» بل أنّ الطبقةَ التي تراها ليست الطبقةَ التي تحمي.** أربعُ شاشاتٍ
+تعرض متغيّراتِ المستأجر وحدَها، وقاعدةٌ واحدةٌ تقبل الجدولَ كلَّه — والشاشاتُ هي ما يُراجَع بالعين.
+ولهذا صار للثقب اختبارٌ يبلغه بما لا تبلغه أيُّ واجهة: يُنشئ نشاطًا ثانيًا حقيقيًّا (لأنّ
+`products.business_id` مفتاحٌ أجنبيّ)، **ينقل المنتجَ إليه** — فمستأجرُ المتغيّر هو مستأجرُ منتجِه،
+وهذا نفسُه سببُ وجوب العبور عبر `products` — ثم يُرسِل المُعرِّفَ ويتوقّع `combo.0.variation_id`.
 
