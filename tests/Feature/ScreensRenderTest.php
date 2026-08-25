@@ -56,6 +56,14 @@ class ScreensRenderTest extends TestCase
         'sells.orderLines' => 'JSON only',
         'sells.customerOrders' => 'JSON only',
         /*
+         * The offline snapshot. JSON, and large — walking it would download the
+         * whole fixture catalogue on every run to assert nothing the JSON guards
+         * above can see. Covered properly in OfflineSyncTest, which is where the
+         * things that matter about it live: the location gate, the row shape, and
+         * that one variation costs one query rather than two.
+         */
+        'offline.data' => 'JSON only',
+        /*
          * Streams a spreadsheet, and its `{report}` is a slug from
          * ReportController::REPORTS — not an id. resolveParameters() falls back
          * to the fixture product id for any name it does not recognise, so the

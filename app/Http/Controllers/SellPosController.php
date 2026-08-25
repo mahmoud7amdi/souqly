@@ -91,7 +91,40 @@ class SellPosController extends Controller
             'payments.*.amount' => 'nullable|numeric|min:0',
             'payments.*.method' => 'nullable|string|max:50',
             'payments.*.account_id' => 'nullable|integer|exists:accounts,id',
+
+            /*
+             * The terminal's write-ahead id, and the reason the online path and
+             * the offline path cannot produce the same sale twice.
+             *
+             * The POS writes every sale into its local queue before it posts, so
+             * a request that dies in flight leaves the money recorded somewhere.
+             * Stamping the same id on the request means the copy on the device
+             * and the row in the database are the same sale by identity, not by
+             * resemblance — the queue drain later finds the id already present
+             * and answers `duplicate` instead of ringing it up again.
+             *
+             * A client-supplied identifier is safe here because of the unique
+             * index on (business_id, offline_temp_id): the worst a caller can do
+             * by choosing one is have their own second submission refused, which
+             * is also what happens when a cashier hits Back and re-posts — and
+             * refusing that is the correct answer.
+             */
+            'offline_temp_id' => 'nullable|string|max:64',
+            'offline_device_id' => 'nullable|string|max:64',
         ]);
+
+        /*
+         * A hidden field that was never filled in arrives as '', and '' is a
+         * value: the unique index on (business_id, offline_temp_id) would accept
+         * the first empty string and refuse every sale after it. NULL is the only
+         * thing that index treats as "no id", so an empty one is dropped
+         * altogether rather than passed along.
+         */
+        foreach (['offline_temp_id', 'offline_device_id'] as $key) {
+            if (($validated[$key] ?? '') === '') {
+                unset($validated[$key]);
+            }
+        }
 
         $lines = collect($validated['lines'])
             ->filter(fn ($line) => $this->format->numUf($line['quantity'] ?? 0) > 0)
@@ -133,21 +166,29 @@ class SellPosController extends Controller
          * gesture a clerk makes after ringing up a sale — hand over the paper —
          * is a single click that lands on a print dialog, and the terminal stays
          * where it is behind it.
+         *
+         * `offline_acknowledged` is the acknowledgement the terminal needs to
+         * clear its write-ahead copy of this sale. Flashed separately rather than
+         * folded into `status`: that key is read by the banner partial on every
+         * screen in the application, and it is not the place to put a value only
+         * one screen understands.
          */
-        return redirect()->route('pos.create')->with('status', [
-            'success' => 1,
-            'msg' => __('lang_v1.sale_completed'),
-            'links' => [
-                [
-                    'url' => route('print.receipt', ['id' => $sale->id, 'auto' => 1]),
-                    'label' => __('lang_v1.print_receipt'),
-                    'blank' => true,
+        return redirect()->route('pos.create')
+            ->with('offline_acknowledged', $sale->offline_temp_id)
+            ->with('status', [
+                'success' => 1,
+                'msg' => __('lang_v1.sale_completed'),
+                'links' => [
+                    [
+                        'url' => route('print.receipt', ['id' => $sale->id, 'auto' => 1]),
+                        'label' => __('lang_v1.print_receipt'),
+                        'blank' => true,
+                    ],
+                    [
+                        'url' => route('sells.show', $sale->id),
+                        'label' => $sale->invoice_no,
+                    ],
                 ],
-                [
-                    'url' => route('sells.show', $sale->id),
-                    'label' => $sale->invoice_no,
-                ],
-            ],
-        ]);
+            ]);
     }
 }

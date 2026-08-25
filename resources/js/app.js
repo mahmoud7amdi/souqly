@@ -6,6 +6,8 @@
  * is server-rendered Blade, so a framework would be dead weight.
  */
 
+import { initOffline, offline, pwaSettings } from './offline.js';
+
 /* ------------------------------------------------------------------ *
  * CSRF for every fetch we make
  * ------------------------------------------------------------------ */
@@ -103,11 +105,50 @@ function initConnectionStatus() {
     const badge = document.getElementById('connection-status');
     if (!badge) return;
 
+    /*
+     * The text lives in its own span so writing it cannot destroy the glyph
+     * beside it. `?? badge` keeps the function working against markup that has
+     * no inner span, which is what the header used to ship.
+     */
+    const text = badge.querySelector('[data-badge-text]') ?? badge;
+    const iconOnline = badge.querySelector('[data-icon-online]');
+    const iconOffline = badge.querySelector('[data-icon-offline]');
+
+    // Was hardcoded to 20 seconds while `config/pwa.php` carried a
+    // `ping_interval` nothing read — an operator could set PWA_PING_INTERVAL and
+    // watch it change nothing. A configuration value with no consumer is worse
+    // than no value at all: it is a promise the code does not keep.
+    const interval = Math.max(5, Number(pwaSettings().ping_interval) || 20) * 1000;
+
+    // `null` rather than a boolean, so the first probe is always a transition and
+    // the initial state is never mistaken for "was already online".
+    let wasOnline = null;
+
     const render = (online) => {
-        badge.textContent = online
+        text.textContent = online
             ? badge.dataset.onlineLabel
             : badge.dataset.offlineLabel;
         badge.className = online ? 'badge-success' : 'badge-warning';
+
+        // Both glyphs ship in the markup and one is hidden, rather than the
+        // script rewriting an SVG path: the icon set stays the only place a path
+        // is written, which is the rule the whole component exists to enforce.
+        iconOnline?.classList.toggle('hidden', !online);
+        iconOffline?.classList.toggle('hidden', online);
+
+        /*
+         * Announce the edge, not the state. This is the trigger the offline queue
+         * drains on, and it is the trustworthy one: `navigator.onLine` reports
+         * that a cable is plugged in, whereas reaching this line means the server
+         * itself answered. Firing on every probe instead of on the transition
+         * would restart the drain every interval for as long as the shop is
+         * online, which is a request storm rather than a sync.
+         */
+        if (online && wasOnline === false) {
+            document.dispatchEvent(new CustomEvent('souqly:online'));
+        }
+
+        wasOnline = online;
     };
 
     // navigator.onLine only reports link state, not reachability — probe the
@@ -127,7 +168,29 @@ function initConnectionStatus() {
     window.addEventListener('offline', () => render(false));
 
     probe();
-    setInterval(probe, 20000);
+    setInterval(probe, interval);
+}
+
+/* ------------------------------------------------------------------ *
+ * Queued-sale badge
+ *
+ * The count of sales taken on this device that the server has not acknowledged.
+ * It is in the header rather than only on the terminal because it is the one
+ * number a shop must not have to go looking for: while it is above zero, the
+ * takings exist on one machine and nowhere else.
+ * ------------------------------------------------------------------ */
+function initQueueBadge() {
+    const badge = document.getElementById('queue-status');
+    if (!badge) return;
+
+    const text = badge.querySelector('[data-badge-text]') ?? badge;
+
+    document.addEventListener('souqly:queue', (event) => {
+        const pending = Number(event.detail?.pending ?? 0);
+
+        text.textContent = badge.dataset.label.replace(':count', String(pending));
+        badge.classList.toggle('hidden', pending < 1);
+    });
 }
 
 /* ------------------------------------------------------------------ *
@@ -181,6 +244,11 @@ function initNotifications() {
         }
     };
 
+    /*
+     * The other interval that was hardcoded, and this one stays that way: it has
+     * no configuration key and needs none. A minute is not a deployment concern —
+     * nothing about a slow uplink makes a shop want its unread count sooner.
+     */
     refresh();
     setInterval(refresh, 60000);
 }
@@ -189,9 +257,23 @@ document.addEventListener('DOMContentLoaded', () => {
     initSidebar();
     initDropdowns();
     initConfirmations();
+    initQueueBadge();
+    /*
+     * Before the connection badge, so the badge's first probe cannot dispatch
+     * `souqly:online` before there is a listener for it. Ordering matters here in
+     * a way it does not for the rest: this pair communicates by event.
+     */
+    initOffline();
     initConnectionStatus();
     initNumericInputs();
     initNotifications();
 });
+
+/*
+ * The POS terminal's script is inlined in Blade — it is generated from
+ * server-side values and is not a module, so it cannot `import`. This is the
+ * bridge, and the only reason a global exists at all.
+ */
+window.Souqly = { request, normaliseArabicDigits, offline };
 
 export { request, normaliseArabicDigits };

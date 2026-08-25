@@ -1,0 +1,39 @@
+<!--
+  The installed application's mark.
+
+  SVG rather than the PNG pair the manifest used to claim. Two reasons, and the
+  first is simply that the PNGs were never there: the manifest advertised
+  /img/icon-192.png and /img/icon-512.png and both answered 404, so an install
+  prompt never appeared and nobody noticed, because a missing icon is silent.
+
+  The second is that one vector file is the right artefact for this mark. It is
+  flat colour and straight geometry — there is nothing in it a bitmap represents
+  better, and a single file cannot go out of step with a second one at a different
+  size. Chrome, Edge, Firefox and Safari all accept an SVG icon declared with
+  sizes="any" as satisfying installability.
+
+  The trade-off is recorded rather than hidden: some older Android launchers
+  rasterise PNG only and will fall back to a generic glyph. See NOTES §16.
+
+  currentColor is not used anywhere: an icon is rendered by the operating system,
+  outside the page, where no CSS custom property and no inherited colour exist.
+  The brand green is written literally, which is the same reason config/pwa.php
+  carries theme_color as a literal.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"
+     role="img" aria-label="Souqly">
+    <rect width="512" height="512" rx="112" fill="#00a76f"/>
+
+    <!-- A market bag. The handle is a stroked arc rather than a filled shape so
+         it stays a clean two-pixel line when the launcher draws it at 48px. -->
+    <path d="M196 176v-26a60 60 0 0 1 120 0v26"
+          fill="none" stroke="#ffffff" stroke-width="26" stroke-linecap="round"/>
+
+    <path d="M136 176h240a24 24 0 0 1 23.9 26.2l-18.6 168A48 48 0 0 1 333.6 414H178.4a48 48 0 0 1-47.7-43.8l-18.6-168A24 24 0 0 1 136 176z"
+          fill="#ffffff"/>
+
+    <!-- Two slots read as goods in the bag at large sizes and disappear into the
+         silhouette at small ones, which is the correct behaviour for detail. -->
+    <rect x="176" y="236" width="36" height="14" rx="7" fill="#00a76f" opacity=".55"/>
+    <rect x="300" y="236" width="36" height="14" rx="7" fill="#00a76f" opacity=".55"/>
+</svg>

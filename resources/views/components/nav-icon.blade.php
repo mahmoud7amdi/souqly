@@ -137,7 +137,12 @@
     $sizeClass = $sizes[(int) $size] ?? 'size-5';
 @endphp
 
-<svg class="{{ $sizeClass }} shrink-0 {{ in_array($name, $directional, true) ? 'icon-directional' : '' }}"
+{{-- Attributes are forwarded rather than dropped, which is what let the header
+     render both `wifi` and `wifi-off` and hide one of them. Until now every
+     caller passed only `name` and `size`, so nothing relied on the old silent
+     discard; `merge` keeps the size and shrink classes when a caller adds its
+     own. --}}
+<svg {{ $attributes->merge(['class' => $sizeClass.' shrink-0 '.(in_array($name, $directional, true) ? 'icon-directional' : '')]) }}
      fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
     @foreach (explode(' M', $path) as $index => $segment)
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"

@@ -19,6 +19,55 @@
         <meta name="apple-mobile-web-app-capable" content="yes">
     @endif
 
+    {{-- The settings the front end needs, published as data rather than as
+         generated JavaScript: `config/pwa.php` stays the single source of truth
+         and the layout never emits an executable statement. Read once and
+         memoised by resources/js/offline.js.
+
+         Only these five keys. The rest of `config('pwa')` is the manifest block,
+         which the browser gets from the manifest route and the page has no use
+         for — and an island is a habit worth keeping narrow, because "publish the
+         whole config array" is how a secret eventually ships to a browser.
+
+         EMITTED EVEN WHEN THE PWA IS OFF, which is the case it exists for.
+         Setting PWA_ENABLED=false has to reach tills that already registered a
+         service worker; a page that omitted the island would leave them serving
+         the old worker's cache indefinitely. Shipping `enabled: false` is what
+         tells the browser to unregister. --}}
+    @php
+        /*
+         * Built into a variable first, deliberately. Blade's `json` directive is
+         * not a PHP echo: `CompilesJson::compileJson()` — in
+         * framework/src/Illuminate/View/Compilers/Concerns/CompilesJson.php:22 —
+         * runs `explode(',', $expression)` and then treats `$parts[1]` as
+         * json_encode's `$flags` and `$parts[2]` as its `$depth`. An array
+         * literal is nothing but commas, so this same list passed inline
+         * compiled down to `json_encode(['enabled' => …, 'offline_mode' => …,
+         * 'ping_interval' => …)`: three of the five keys, and an unclosed `[`
+         * closed by a `)`.
+         *
+         * That is a ParseError in a *compiled* file, so it 500s every
+         * authenticated page while the Blade source reads as perfectly
+         * well-formed, and `view:clear` does not help because the compiler
+         * reproduces it byte for byte. Two keys would be worse than five: two
+         * commas compile to *valid* PHP with the second key silently passed as
+         * `$flags`, so there is no error at all, just wrong output.
+         *
+         * With one variable and no comma the directive is safe again — and worth
+         * keeping over a hand-rolled `json_encode`, because its default flags
+         * are `JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT`, which is
+         * exactly the set that stops a value closing this `<script>` early.
+         */
+        $pwaConfig = [
+            'enabled' => (bool) config('pwa.enabled'),
+            'offline_mode' => (bool) config('pwa.offline_mode'),
+            'ping_interval' => (int) config('pwa.ping_interval'),
+            'auto_sync_interval' => (int) config('pwa.auto_sync_interval'),
+            'max_queued_documents' => (int) config('pwa.max_queued_documents'),
+        ];
+    @endphp
+    <script type="application/json" id="pwa-config">@json($pwaConfig)</script>
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('head')
 </head>
@@ -89,13 +138,32 @@
                 </h1>
             </div>
 
-            {{-- Offline / sync indicator (PWA) --}}
+            {{-- Offline / sync indicators (PWA).
+
+                 Both badges keep their glyph in the markup and their text in an
+                 inner `[data-badge-text]` span, because the script writes
+                 `textContent` — writing it on the badge itself replaced the icon
+                 with a string on the very first probe, so the wifi glyph was
+                 visible only until the page had been open for a millisecond. --}}
             @if ($pwa_enabled ?? false)
                 <span id="connection-status" class="badge-success"
                       data-online-label="{{ __('lang_v1.online') }}"
                       data-offline-label="{{ __('lang_v1.offline') }}">
-                    <x-nav-icon name="wifi" :size="4"/>
-                    <span class="hidden sm:inline">{{ __('lang_v1.online') }}</span>
+                    <x-nav-icon name="wifi" :size="4" data-icon-online/>
+                    <x-nav-icon name="wifi-off" :size="4" class="hidden" data-icon-offline/>
+                    <span data-badge-text class="hidden sm:inline">{{ __('lang_v1.online') }}</span>
+                </span>
+
+                {{-- Hidden until there is something in the queue: a permanent
+                     "0 pending" is chrome the eye learns to skip, and this is the
+                     one number in the application that must still register on the
+                     hundredth day. Shown, it is a warning — while it is above
+                     zero the takings exist on this device and nowhere else. --}}
+                <span id="queue-status" class="badge-warning hidden"
+                      data-label="{{ __('lang_v1.pending_sync_count') }}"
+                      title="{{ __('lang_v1.pending_sync_hint') }}">
+                    <x-nav-icon name="cloud-off" :size="4"/>
+                    <span data-badge-text></span>
                 </span>
             @endif
 

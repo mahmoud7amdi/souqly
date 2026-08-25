@@ -34,6 +34,44 @@
 <form method="POST" action="{{ route('pos.store') }}" id="pos-form">
     @csrf
 
+    {{-- The write-ahead identity of this sale. Empty on arrival and filled in by
+         the script the instant the cashier finalises — before anything is sent —
+         so the copy on the device and the row in the database are the same sale
+         by identity. See the note on the matching rules in SellPosController. --}}
+    <input type="hidden" name="offline_temp_id" id="offline_temp_id" value="">
+    <input type="hidden" name="offline_device_id" id="offline_device_id" value="">
+
+    {{-- ---------------------------------------------------------------
+         The offline bar
+         ---------------------------------------------------------------
+         Hidden until it has something to say, and then it says the two things a
+         cashier working through an outage actually needs: that the prices on
+         screen are a snapshot rather than live, and which sales are still only on
+         this machine. It is placed above the selector card rather than between
+         the card and the shell, because `.pos-shell` measures its own top offset
+         from the element before it — see fitShell(). --}}
+    <div id="pos-offline" class="pos-offline hidden" role="status" aria-live="polite">
+        <div class="pos-offline-head">
+            <span class="pos-offline-icon"><x-nav-icon name="cloud-off" :size="5"/></span>
+
+            <div class="min-w-0 flex-1">
+                <p class="pos-offline-title" id="pos-offline-title"></p>
+                <p class="pos-offline-note" id="pos-offline-note"></p>
+            </div>
+
+            <button type="button" id="pos-offline-retry" class="btn-secondary btn-sm">
+                <x-nav-icon name="refresh" :size="4"/>
+                <span class="hidden sm:inline">{{ __('lang_v1.sync_now') }}</span>
+            </button>
+        </div>
+
+        {{-- The list is what turns a count into an answer. "3 pending" invites the
+             question "which three?", and a shop that cannot answer it at the
+             counter will start writing sales on paper as well, which is worse
+             than either. --}}
+        <ul id="pos-offline-list" class="pos-offline-list"></ul>
+    </div>
+
     {{-- Who and where. Three selects, no labels above them: the icon and the
          value say what each one is, and a label row here would push the product
          grid a further 20px down the screen on every sale of the day. --}}
@@ -500,6 +538,58 @@
     const TAX_RATES = @json($taxAmounts);
     const OUT_OF_STOCK = @json(__('lang_v1.out_of_stock'));
 
+    /* --- Offline -----------------------------------------------------------
+       `window.Souqly.offline` is the bridge from resources/js/offline.js, which
+       this inline script cannot import. Every use of it is optional-chained: if
+       the bundle failed to load, or the browser has no IndexedDB, the terminal
+       must still take a sale over the network exactly as it did before this
+       feature existed. An offline layer that can break the online till is worse
+       than no offline layer.
+
+       RESOLVED LATER, NOT HERE. This script is a classic <script> in the body, so
+       it runs while the document is still parsing; `app.js` is a module, and a
+       module is deferred by definition. Reading `window.Souqly` on this line
+       would read it before it exists, and the whole offline layer would be
+       silently inert. The assignment happens on DOMContentLoaded, by which point
+       every module has been evaluated. */
+    let OFFLINE = null;
+    let OFFLINE_MODE = false;
+
+    @php
+        /* Assembled into a variable because Blade's `json` directive splits its
+           argument on commas and reassigns the pieces to json_encode's `$flags`
+           and `$depth` (CompilesJson.php:22). An eight-key array inline compiled
+           to a call holding three of the keys and an unclosed `[`, which is a
+           ParseError in the compiled view — a 500 on the one screen this whole
+           item exists for, from a source line that reads as correct. Same reason
+           as the island in layouts/app.blade.php; see NOTES §16.23. */
+        $offlineText = [
+            'offline' => __('lang_v1.offline'),
+            'saved' => __('lang_v1.offline_sale_saved'),
+            'pending' => __('lang_v1.offline_pending_title'),
+            'note' => __('lang_v1.offline_pending_note'),
+            'snapshot' => __('lang_v1.offline_snapshot_note'),
+            'full' => __('lang_v1.offline_queue_full'),
+            'unavailable' => __('lang_v1.offline_unavailable'),
+            'sale' => __('lang_v1.offline_queued_sale'),
+        ];
+    @endphp
+    const OFFLINE_TEXT = @json($offlineText);
+
+    const offlineBar = document.getElementById('pos-offline');
+    const offlineTitle = document.getElementById('pos-offline-title');
+    const offlineNote = document.getElementById('pos-offline-note');
+    const offlineList = document.getElementById('pos-offline-list');
+    const tempIdField = document.getElementById('offline_temp_id');
+    const deviceIdField = document.getElementById('offline_device_id');
+
+    /* Whether the grid currently shows the local snapshot rather than a live
+       answer, and the hook the product loader uses to say so. Declared here
+       because loadProducts() is defined above the offline section and calls it;
+       the no-op default is also the correct behaviour when offline mode is off. */
+    let usingSnapshot = false;
+    let syncOfflineBar = function () {};
+
     let index = 0;
     let total = 0;
 
@@ -754,14 +844,40 @@
         const request = ++inFlight;
         setLoading(true);
 
+        /* The local snapshot, used when the server cannot answer. Returned
+           through the same code path as a live result — same row shape, same
+           renderProducts() — so nothing downstream has to know which one it got.
+
+           `[]` is still the answer when there is no snapshot either. An empty
+           grid with the designed empty state under it is honest; a grid of
+           stale rows from a different location would not be. */
+        const fallback = async function () {
+            if (!OFFLINE_MODE) return [];
+
+            try {
+                return await OFFLINE.searchProducts(term ?? '', locationSelect.value);
+            } catch (error) {
+                return [];
+            }
+        };
+
         try {
             const response = await fetch('{{ route('products.list') }}?' + params, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
             });
 
-            if (!response.ok) return [];
+            /* A 5xx or a captive portal's login page is not a live catalogue, so
+               it degrades to the snapshot rather than to nothing. A 403 does the
+               same, which is deliberate: whether the session expired or the
+               uplink died, the till is on its own either way. */
+            const results = response.ok ? await response.json() : await fallback();
 
-            const results = await response.json();
+            /* Gated on OFFLINE_MODE, not on the response alone: with offline
+               selling switched off there is no snapshot to be showing, so a 500
+               from the catalogue must leave the grid's own empty state to explain
+               itself rather than put "cached prices" in front of a cashier who
+               has none. */
+            usingSnapshot = OFFLINE_MODE && ! response.ok;
 
             // A slower earlier request must not overwrite a later one's grid.
             if (request === inFlight) {
@@ -770,10 +886,19 @@
 
             return results;
         } catch (error) {
-            return [];
+            const results = await fallback();
+
+            usingSnapshot = OFFLINE_MODE;
+
+            if (request === inFlight) {
+                renderProducts(results);
+            }
+
+            return results;
         } finally {
             if (request === inFlight) {
                 setLoading(false);
+                syncOfflineBar();
             }
         }
     };
@@ -903,6 +1028,200 @@
         }
     });
 
+    /* --- Offline -----------------------------------------------------------
+       Everything from here to the submit handler is the terminal's half of the
+       offline layer. The device-side machinery — IndexedDB, the queue, the
+       snapshot, the drain — lives in resources/js/offline.js; what is here is
+       the part that has to know about *this* screen: which form to serialise,
+       what to reset afterwards, and what to tell the cashier. */
+
+    /* Is the server actually there, right now?
+
+       `navigator.onLine` only knows whether a cable is plugged in, and the header
+       badge's answer can be up to `ping_interval` seconds old — which on a till
+       is long enough to take a sale into a dead uplink. So the sale asks for
+       itself, immediately before posting. The timeout matters as much as the
+       probe: without it a half-open connection would hang the sale indefinitely,
+       and the cashier would have no idea whether to take the money. */
+    const reachable = async function () {
+        if (!navigator.onLine) return false;
+
+        try {
+            const response = await fetch('/api/ping', {
+                cache: 'no-store',
+                signal: AbortSignal.timeout?.(3000),
+            });
+
+            return response.ok;
+        } catch (error) {
+            return false;
+        }
+    };
+
+    const resetTerminal = function () {
+        cart.replaceChildren();
+        tendered.value = '';
+        document.getElementById('additional_notes').value = '';
+        tempIdField.value = '';
+        closePayment();
+        recalc();
+        updateChange();
+        document.getElementById('finalize').disabled = false;
+        search.focus();
+    };
+
+    /* --- The bar -----------------------------------------------------------
+
+       Two independent facts share it, and they are ranked rather than merged:
+
+         the queue — sales taken here that the server has not acknowledged. This
+         is the one that goes in the title, because it is money.
+
+         the snapshot — the grid is showing cached prices. Real, worth saying,
+         but second: a stale price is a small error and the cashier can see the
+         number they are charging.
+
+       The third line is transient — what just happened — and it goes in the note
+       rather than the title, so a "saved on this device" cannot paint over a
+       standing count of three unsent sales.
+
+       Both facts are read from state rather than passed in, so whichever of the
+       two changes can call this without knowing about the other. */
+    let notice = '';
+
+    const renderOfflineBar = function (sales) {
+        if (!offlineBar) return;
+
+        if (sales) {
+            offlineList.replaceChildren();
+
+            sales.forEach(function (sale) {
+                const value = (sale.lines ?? []).reduce(function (sum, line) {
+                    return sum + (parseFloat(line.quantity) || 0) * (parseFloat(line.unit_price) || 0);
+                }, 0);
+
+                const when = new Date(sale.created_at);
+                const item = document.createElement('li');
+
+                const label = document.createElement('span');
+                label.textContent = OFFLINE_TEXT.sale
+                    .replace(':time', isNaN(when) ? '—' : when.toLocaleTimeString())
+                    .replace(':count', String((sale.lines ?? []).length));
+
+                const amount = document.createElement('span');
+                amount.className = 'font-mono tabular-nums font-semibold force-ltr';
+                amount.textContent = money(value);
+
+                item.append(label, amount);
+                offlineList.append(item);
+            });
+        }
+
+        const queued = offlineList.children.length;
+
+        if (queued === 0 && !usingSnapshot && notice === '') {
+            offlineBar.classList.add('hidden');
+            queueFit();
+
+            return;
+        }
+
+        offlineBar.classList.remove('hidden');
+
+        offlineTitle.textContent = queued > 0
+            ? OFFLINE_TEXT.pending.replace(':count', String(queued))
+            : OFFLINE_TEXT.offline;
+
+        offlineNote.textContent = notice !== ''
+            ? notice
+            : (queued > 0 ? OFFLINE_TEXT.note : OFFLINE_TEXT.snapshot);
+
+        // The bar changes the shell's top offset without changing the size of the
+        // element the ResizeObserver watches, so ask for the refit explicitly.
+        queueFit();
+    };
+
+    /* A one-line message that outlives a single render but not the next real
+       change of state — which is why it is cleared by the queue announcement
+       rather than by a timer. A cashier who looks up eight seconds later must
+       still see what happened. */
+    const flash = function (message) {
+        notice = message;
+
+        if (!offlineBar) return window.alert(message);
+
+        renderOfflineBar(null);
+    };
+
+    syncOfflineBar = function () { renderOfflineBar(null); };
+
+    /* Everything above is inert until this runs. Registered here rather than
+       called: `app.js` publishes the bridge when its module is evaluated, which is
+       after this script but before DOMContentLoaded.
+
+       Ordering with app.js's own DOMContentLoaded work is not left to luck. This
+       listener is registered during parsing and app.js's inside a module, so this
+       one runs first — which is what it needs, because `initOffline()` announces
+       the queue immediately and the listener below has to already exist to hear
+       the first announcement. */
+    document.addEventListener('DOMContentLoaded', function () {
+        const bridge = window.Souqly?.offline ?? null;
+        const settings = bridge?.settings?.() ?? {};
+
+        OFFLINE = bridge;
+        OFFLINE_MODE = !!(bridge && settings.enabled && settings.offline_mode);
+
+        if (!OFFLINE_MODE) return;
+
+        deviceIdField.value = OFFLINE.deviceId();
+
+        document.addEventListener('souqly:queue', function (event) {
+            notice = '';
+            renderOfflineBar(event.detail?.sales ?? []);
+        });
+
+        document.getElementById('pos-offline-retry').addEventListener('click', function () {
+            OFFLINE.sync();
+            loadProducts(search.value.trim());
+        });
+
+        /* Keep the snapshot current while the shop is open, because the moment it
+           is needed is the moment it cannot be fetched. On load and on a change of
+           location or price group — the two selects that change what a product
+           costs and what is on the shelf.
+
+           Failures are swallowed on purpose: a terminal that cannot reach the
+           server has nothing to gain from being told so here, and the connection
+           badge is already saying it. */
+        const refreshSnapshot = function () {
+            OFFLINE.refreshSnapshot(locationSelect.value, priceGroup.value || null)
+                .catch(function () { /* offline — the previous snapshot stands */ });
+        };
+
+        [locationSelect, priceGroup].forEach(function (select) {
+            select.addEventListener('change', refreshSnapshot);
+        });
+
+        if (navigator.onLine) {
+            refreshSnapshot();
+        } else {
+            /* The shop opened with the uplink already down. The first grid load
+               ran during parsing, before the bridge existed, so it had no snapshot
+               to fall back to and rendered nothing. Ask again now that it does —
+               otherwise a till that was rebooted during an outage would show an
+               empty catalogue for as long as the outage lasted, which is the exact
+               scenario this whole layer is for. */
+            loadProducts(search.value.trim());
+        }
+
+        /* The write-ahead copy of the sale that just posted successfully. Dropping
+           it here is a courtesy — see offline.js's note on forget() — so a missing
+           acknowledgement is not an error path. */
+        const acknowledged = @json(session('offline_acknowledged'));
+
+        if (acknowledged) OFFLINE.forget(acknowledged);
+    });
+
     /* --- Submit ---------------------------------------------------------- */
 
     /* Enter must never finalise a sale by accident. Implicit submission from the
@@ -918,9 +1237,99 @@
         event.preventDefault();
     });
 
-    form.addEventListener('submit', function () {
+    /*
+     * Finalising a sale.
+     *
+     * WRITE-AHEAD, THEN POST. In that order, and the order is the whole design.
+     *
+     * The obvious shape — try the network, queue if it fails — loses a sale in
+     * the one case that matters most: the POST leaves the browser, the uplink
+     * dies halfway, and the navigation lands on an error page with the basket
+     * gone. A till on shop wifi does that. So the sale is written to the device
+     * first, while nothing can interrupt it, and only then sent.
+     *
+     * Which leaves the copy to clean up, and that is what the temp id is for. It
+     * rides along on the request, the server stores it, and the sale on the
+     * device and the row in the database are afterwards the same sale by
+     * identity. The redirect hands the id back and the copy is dropped; if that
+     * acknowledgement never arrives, the ordinary queue drain sends it, the
+     * server recognises the id and answers `duplicate`, and it is dropped then
+     * instead. Two paths, one outcome, and the unique index behind both.
+     *
+     * With offline mode switched off none of this runs and the handler does what
+     * it always did: disable the button and let the browser post.
+     */
+    form.addEventListener('submit', async function (event) {
         // A double tap on a touch screen is two sales otherwise.
         document.getElementById('finalize').disabled = true;
+
+        if (!OFFLINE_MODE) return;
+
+        event.preventDefault();
+
+        const payload = OFFLINE.serialise(form);
+
+        // Our own bookkeeping fields, not part of the sale. The temp id is
+        // generated by queueSale() and the device id is stamped there too.
+        delete payload.offline_temp_id;
+        delete payload.offline_device_id;
+
+        let queued = null;
+
+        try {
+            queued = await OFFLINE.queueSale(payload);
+
+            /*
+             * Both fields, so the row the server writes carries the same
+             * provenance as the copy on the device. The temp id is what makes
+             * them the same sale; the device id is what says which till took it —
+             * the only per-terminal attribution the schema has, and it would
+             * otherwise be recorded for sales that synced from a queue and left
+             * blank for the ones taken at the counter.
+             *
+             * `resetTerminal()` clears the temp id and deliberately not this: a
+             * stale temp id would make the next sale a duplicate, whereas the
+             * device id is a property of the machine and true for every sale it
+             * ever takes.
+             */
+            tempIdField.value = queued.temp_id;
+            deviceIdField.value = queued.device_id;
+        } catch (error) {
+            /*
+             * The device cannot hold the sale. If the server is reachable the sale
+             * is still perfectly takeable — post it and lose only the safety net.
+             * If it is not, this is the one case where the terminal has to refuse,
+             * and it says which of the two reasons it is: a full queue is a shop
+             * that has been offline too long and needs someone to look at it, and
+             * that is a different message from a browser with no storage.
+             */
+            if (!(await reachable())) {
+                flash(
+                    error instanceof OFFLINE.QueueFullError
+                        ? OFFLINE_TEXT.full.replace(':count', String(error.count ?? 0))
+                        : OFFLINE_TEXT.unavailable
+                );
+
+                document.getElementById('finalize').disabled = false;
+
+                return;
+            }
+
+            form.submit();
+
+            return;
+        }
+
+        if (await reachable()) {
+            // Native submit: bypasses this listener, so no recursion, and the
+            // sale posts exactly as it did before any of this existed.
+            form.submit();
+
+            return;
+        }
+
+        resetTerminal();
+        flash(OFFLINE_TEXT.saved);
     });
 
     /* --- Start ------------------------------------------------------------
@@ -928,7 +1337,14 @@
        should not have to rebuild a twenty-item basket because the server refused
        it. The label rides along in the field the validator drops, so putting a
        line back needs no second lookup. */
-    Object.values(@json(old('lines', []))).forEach(function (line) {
+    /* `old('lines') ?? []`, not `old('lines', [])`. The second form has a comma
+       in it, and the `json` directive hands everything after the first comma to
+       json_encode as its `$flags` — so it compiled to
+       `json_encode(old('lines', []), 512)`: valid PHP, but 512 is
+       JSON_PARTIAL_OUTPUT_ON_ERROR rather than the HEX-escaping set the
+       directive is supposed to apply. That matters here more than at the other
+       two sites, because this one replays *user input* into a `<script>`. */
+    Object.values(@json(old('lines') ?? [])).forEach(function (line) {
         addToCart({
             variation_id: line.variation_id,
             text: line.name,

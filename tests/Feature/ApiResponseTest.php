@@ -519,7 +519,36 @@ class ApiResponseTest extends TestCase
         $icons = $response->json('icons');
 
         $this->assertNotEmpty($icons, 'An installable manifest needs at least one icon.');
-        $this->assertSame('192x192', $icons[0]['sizes']);
-        $this->assertStringContainsString('icon-192.png', $icons[0]['src']);
+
+        /*
+         * Written against a PNG pair (`icon-192.png` at `192x192`) before item 10
+         * chose SVG, and updated to assert the *property* rather than the file.
+         * Chromium's install criterion is "an icon of 192px or larger", and
+         * `sizes: "any"` on a vector satisfies it — which is why item 10 ships two
+         * SVGs and no raster set (see the route at routes/web.php:93). Asserting a
+         * filename here would make the test a record of an old decision rather
+         * than a check on the current one.
+         */
+        foreach ($icons as $index => $icon) {
+            foreach (['src', 'sizes', 'type', 'purpose'] as $key) {
+                $this->assertArrayHasKey($key, $icon, "Icon #{$index} is missing `{$key}`.");
+            }
+
+            $this->assertTrue(
+                $icon['sizes'] === 'any' || (int) $icon['sizes'] >= 192,
+                "Icon #{$index} declares `{$icon['sizes']}`, which is below the 192px install threshold."
+            );
+        }
+
+        /*
+         * A maskable icon is what stops Android cropping the logo into its own
+         * shape and cutting the wordmark in half. Not required for installation,
+         * required for the installed thing to look deliberate.
+         */
+        $this->assertContains(
+            'maskable',
+            array_column($icons, 'purpose'),
+            'No maskable icon, so an Android launcher will crop the plain one.'
+        );
     }
 }

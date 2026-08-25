@@ -1762,6 +1762,54 @@
      |  cart and the pay button do not.
      ================================================================== */
 
+    /* ------------------------------------------------------------------
+       The offline bar.
+
+       Only present when the terminal has something on it that the server has
+       not seen, so it is allowed to be loud. Amber and not rose: nothing has
+       gone wrong — the sales are recorded and will send themselves — and a red
+       panel on a till would have a cashier calling someone. Amber says "hold
+       this in mind", which is exactly the ask.
+
+       `ring-1` rather than a border, for the same reason `.card` uses one: the
+       ring composes into the same box-shadow as the lift instead of adding a
+       hairline the rest of the system does not draw. --------------------- */
+    .pos-offline {
+        @apply mb-4 rounded-xl bg-amber-50 p-3 ring-1 ring-amber-600/15;
+        box-shadow: var(--inset-shadow-highlight), var(--shadow-raised);
+    }
+
+    .pos-offline-head {
+        @apply flex items-start gap-3;
+    }
+
+    .pos-offline-icon {
+        @apply grid size-9 shrink-0 place-items-center rounded-lg bg-amber-100 text-amber-700;
+    }
+
+    .pos-offline-title {
+        @apply text-sm font-bold text-amber-900;
+    }
+
+    .pos-offline-note {
+        @apply mt-0.5 text-xs text-amber-800/80;
+    }
+
+    /* Caps at four rows and scrolls: the bar is borrowing height from the shell,
+       and a fifty-sale backlog must not push the pay button off the screen —
+       which is the defect .pos-shell exists to prevent. */
+    .pos-offline-list {
+        @apply mt-3 max-h-28 space-y-1 overflow-y-auto border-t border-amber-600/15 pt-2 text-xs;
+    }
+
+    .pos-offline-list:empty {
+        @apply hidden;
+    }
+
+    .pos-offline-list li {
+        @apply flex items-baseline justify-between gap-3 text-amber-900;
+    }
+
     /*
      * A terminal, not a document: the shell is exactly as tall as the room it
      * has, and each zone scrolls inside itself. Nothing about this screen

@@ -1,0 +1,35 @@
+<!--
+  The maskable variant.
+
+  Android crops an adaptive icon to whatever shape the launcher uses — circle,
+  squircle, rounded square, teardrop — and it does so by keeping only the middle.
+  An icon that fills its canvas loses its corners to that crop, so the mark here
+  is drawn inside the safe zone: the centre 80% circle, which every launcher shape
+  is guaranteed to contain.
+
+  That is why this is a separate file and not a `purpose` flag on icon.svg. The
+  two differ in artwork, not in metadata — the same file cannot be both
+  edge-to-edge for a browser tab and inset for a launcher crop, and declaring one
+  file as both means one of the two contexts renders it wrong.
+
+  The background deliberately does bleed to the edges: it is the part meant to be
+  cropped.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"
+     role="img" aria-label="Souqly">
+    <rect width="512" height="512" fill="#00a76f"/>
+
+    <!-- The same bag, scaled to 0.72 about the centre so it sits within the safe
+         zone. Written as a transform rather than as re-drawn coordinates so the
+         two icons cannot drift apart when the mark is revised. -->
+    <g transform="translate(256 256) scale(0.72) translate(-256 -256)">
+        <path d="M196 176v-26a60 60 0 0 1 120 0v26"
+              fill="none" stroke="#ffffff" stroke-width="26" stroke-linecap="round"/>
+
+        <path d="M136 176h240a24 24 0 0 1 23.9 26.2l-18.6 168A48 48 0 0 1 333.6 414H178.4a48 48 0 0 1-47.7-43.8l-18.6-168A24 24 0 0 1 136 176z"
+              fill="#ffffff"/>
+
+        <rect x="176" y="236" width="36" height="14" rx="7" fill="#00a76f" opacity=".55"/>
+        <rect x="300" y="236" width="36" height="14" rx="7" fill="#00a76f" opacity=".55"/>
+    </g>
+</svg>

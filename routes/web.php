@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\OfflineDataController;
+use App\Http\Controllers\Api\OfflineSyncController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\BarcodeController;
@@ -72,14 +74,58 @@ Route::get('/api/ping', fn () => response()->json([
     'time' => now()->toIso8601String(),
 ]))->name('api.ping');
 
+/*
+ * The install manifest.
+ *
+ * Built here rather than shipped as a static file because three of its values are
+ * the tenant's — the application title, and (through config/pwa.php) the colours
+ * an operator may change — and because `asset()` is what makes the icon URLs
+ * correct under a subdirectory deployment.
+ *
+ * The icons were the reason the install prompt never appeared: this route
+ * advertised icon-192.png and icon-512.png, and `public/img/` has only ever held
+ * a product placeholder. A manifest naming an icon that 404s fails Chrome's
+ * installability check silently. Both entries are now files that exist; see
+ * public/img/icon.svg for why they are SVG and what that costs.
+ */
 Route::get('/pwa/manifest.json', function () {
     return response()->json(array_merge(config('pwa.manifest'), [
         'icons' => [
-            ['src' => asset('img/icon-192.png'), 'sizes' => '192x192', 'type' => 'image/png'],
-            ['src' => asset('img/icon-512.png'), 'sizes' => '512x512', 'type' => 'image/png'],
+            [
+                'src' => asset('img/icon.svg'),
+                // "any" is how a vector declares itself for every size. Listing
+                // 192x192 and 512x512 against one SVG would be three claims about
+                // the same file, two of them arbitrary.
+                'sizes' => 'any',
+                'type' => 'image/svg+xml',
+                'purpose' => 'any',
+            ],
+            [
+                'src' => asset('img/icon-maskable.svg'),
+                'sizes' => 'any',
+                'type' => 'image/svg+xml',
+                'purpose' => 'maskable',
+            ],
         ],
     ]));
 })->name('pwa.manifest');
+
+/*
+ * The page the service worker falls back to.
+ *
+ * Unauthenticated on purpose, and it is the one page in the application where
+ * that is a requirement rather than a convenience: it is served from a cache when
+ * the network is unreachable, which is exactly when a session cannot be checked.
+ * A route behind `auth` would redirect to a sign-in screen that cannot load
+ * either, and the shop would see the browser's own error page.
+ *
+ * It therefore contains nothing belonging to the tenant. No layout, no session
+ * lookup, no queue count — a cached copy of this page tells whoever finds it
+ * nothing. What the cashier actually needs to know (how many sales are waiting to
+ * be sent) lives on the terminal, which stays usable; this page is only what a
+ * *different* URL degrades to.
+ */
+Route::view('/pwa/offline', 'pwa.offline')->name('pwa.offline');
 
 /* ---------------------------------------------------------------- *
  | Authentication
@@ -268,6 +314,21 @@ Route::middleware(['auth', 'tenant.ui'])->group(function () {
      */
     Route::get('/pos', [SellPosController::class, 'create'])->name('pos.create');
     Route::post('/pos', [SellPosController::class, 'store'])->name('pos.store');
+
+    /* --- Offline terminal --- *
+     |
+     | The two endpoints the PWA needs and nothing else: a snapshot to read while
+     | the uplink is down, and a way to hand back the sales taken in the meantime.
+     |
+     | In web.php rather than api.php because they authenticate with the session
+     | cookie the terminal already holds — the same cashier, the same browser, the
+     | same sale. Issuing a bearer token for a screen that is already signed in
+     | would be a second credential to store on a shared till, which is a
+     | liability and not a feature. They carry `tenant.ui` with everything else in
+     | this group, so `business_id` and the locale are resolved the usual way.
+     */
+    Route::get('/offline/data', [OfflineDataController::class, 'index'])->name('offline.data');
+    Route::post('/offline/sync', [OfflineSyncController::class, 'replay'])->name('offline.sync');
 
     /* --- Sales --- */
     Route::controller(SellController::class)->group(function () {

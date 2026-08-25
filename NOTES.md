@@ -48,12 +48,114 @@ the source documentation is recorded with its reason. Nothing here is a silent a
 
 ## ◀️ عند العودة ابدأ هنا / Start here on return
 
-**آخر جلسة: 2026-08-24.** هذه هي العلامة الوحيدة الموثوقة للاستئناف.
+**آخر جلسة: 2026-08-25.** هذه هي العلامة الوحيدة الموثوقة للاستئناف.
+
+### 0. ✅ حالة المستودع الآن — اقرأ هذا قبل أي شيء
+
+**البندان ٩ و١٠ مُكتملان ومُختبَران ومُودَعان.** المجموعةُ **خضراءُ بكاملها**، والمصنِّفُ الذي عطَّل
+جلستَين رُفع أخيرًا فنُفِّذ كلُّ ما كان معلَّقًا. لا شيءَ في هذا الملف الآن «مكتوبٌ لا مُثبَت».
+
+| البند | الكود | الاختبار | التوثيق | الإيداع |
+|---|---|---|---|---|
+| **9 — الطباعة** | ✅ | ✅ ١٥٠ اختبارًا / ٧٨٧ تأكيدًا | ✅ §15 | ✅ **`ad81c43`** — ٢٩ ملفًا، +3740/−100، بدون push |
+| **10 — Offline PWA** | ✅ | ✅ **١٧٨ اختبارًا / ٩٣٤ تأكيدًا، كلُّها خضراء** (§16.18) | ✅ §16 (٢٣ قسمًا) | ✅ بدون push |
+
+`OfflineSyncTest` وحدَه ٢٨ اختبارًا و١٣٨ توكيدًا. والزيادةُ على البند ٩: **+٢٨ اختبارًا،
++١٤٧ توكيدًا**.
+
+**وكلُّ الأوامر المعلَّقة نُفِّذت:**
+
+```bash
+npm run build                                    # ✅ 4 modules، 7.78s — أوّلُ نجاحٍ بعد تسع جلسات
+php artisan migrate                              # ✅ souqly (التطوير): الترحيل المعلَّق DONE في 411ms
+php artisan migrate:fresh --seed --env=testing    # ✅ souqly_test وحدها: 20 ترحيلًا، Permissions 181
+php artisan config:clear && php artisan view:clear # ✅
+php artisan test                                 # ✅ 178 / 178 / 934 توكيدًا في 47.8s
+php -l <ملفّات البند>                             # ✅ ضمنًا: كلُّها حُمِّلت ونُفِّذت في المجموعة (§16.18)
+```
+
+`migrate` وليس `migrate:fresh` على `souqly` — والترحيلُ يضيف فهرسًا فقط ولا يمسّ صفًّا. **و`migrate:fresh`
+على `souqly_test` وحدها؛ قاعدةُ التطوير `souqly` لا تُمسّ إطلاقًا، فيها بياناتك وحساب الأدمن.**
+
+**والحزمةُ المبنيّةُ صارت حديثة** — وهي التي كانت تجعل وضعَ عدم الاتصال لا يعمل في المتصفّح أصلًا،
+لا لنقصٍ في الكود بل لأنّ `npm run build` رُفض ثماني جلسات:
+
+| | قبل | بعد |
+|---|---|---|
+| `public/build/assets/app-*.js` | `app-C_ixjWge.js` — **2,753 بايت** | `app-CpBD1crH.js` — **8.50 kB** (gzip 3.41) |
+| `public/build/assets/app-*.css` | — | `app-CJn7eKSt.css` — **126.03 kB** (gzip 15.30) |
+
+و`offline.js` (22,149 بايتًا من المصدر، جُلُّه تعليقات) ليس مدخلًا مستقلًّا بل `import` في
+`app.js:9`، فهو يسكن حزمة `app.js` ولا يظهر في الـmanifest باسمه. والدليلُ على وجوده فيها
+تحقُّقٌ لا استنتاج: `grep -c "souqly.device_id"` و`grep -c "/offline/sync"` على الملفّ المبنيّ
+يُخرجان `1` لكلٍّ، والنصوصُ الحرفيةُ تنجو من التصغير. **فوضعُ عدم الاتصال قابلٌ للاختبار اليدويّ
+الآن — الإجراء الكامل في §16.20.**
+
+#### ⚠️ فخٌّ في Blade يخصُّ المستودعَ كلَّه، لا هذا البند — اقرأه قبل كتابة أيّ قالب
+
+**لا تُمرِّر مصفوفةً حرفيّةً — ولا أيَّ وسيطٍ فيه فاصلة — إلى `@json`.**
+
+`CompilesJson::compileJson()` يشقّ وسيطَه على الفواصل ويُسند القِطعَ إلى `$flags` و`$depth`
+في `json_encode`. فمصفوفةٌ بخمسة مفاتيح صارت `json_encode(a, b, c` بلا إغلاق — وهو **خطأٌ
+إعرابيٌّ في الملفّ المُصرَّف**، أي 500 على كلِّ صفحةٍ مُصادَقٍ عليها في التطبيق، من سطرِ مصدرٍ
+يبدو سليمًا تمامًا و`view:clear` لا يُصلحه. وُجد في ثلاثة مواضعَ وأُصلحت كلُّها؛ الصواب:
+
+```blade
+@php $config = ['a' => 1, 'b' => 2]; @endphp
+<script type="application/json">@json($config)</script>
+```
+
+وحالةُ الفاصلة **الواحدة** أخطر: `@json(old('lines', []))` يُصرَّف إلى PHP **صالحٍ وصامت** لكنّ
+`$flags` يصير `512` بدل `15`، فيسقط تهريبُ `JSON_HEX_TAG` الذي يمنع قيمةً من إغلاق `<script>`.
+التحليلُ الكامل والمسحُ الشامل لـ١٨ موضعًا في **§16.23**.
+
+#### التالي
+
+**البند 11 — وحداتُ التحكُّم والشاشات الباقية** (§10.2)، ومنها `inventory.index`. ثم البند 12.
+
+وبقيّةُ التنظيف: `storage/app/private/item9-commit-msg.txt` ما زال على القرص (مُهمَل في
+`.gitignore`) ويجب حذفه. وبصمةُ إيداع البند 10 تُسجَّل في هذا الجدول مع أوّل تعديلٍ بعده،
+كما سُجِّلت بصمةُ البند 9.
 
 ### 1. آخر ما اكتمل
 
-**البند 9 — الطباعة: ✅ مكتمل بالكامل — كودًا واختبارًا وتوثيقًا.** التوثيق المعماري الكامل في
-**§15** (خمسة عشر قسمًا فرعيًا).
+**البند 10 — Offline PWA: ✅ مكتملٌ كودًا واختبارًا وتوثيقًا وإيداعًا.** التوثيق المعماري
+الكامل في **§16** (ثلاثةٌ وعشرون قسمًا فرعيًا)، والتحقُّقُ المُنفَّذ في **§16.18**.
+
+**وجوهرُ البند ليس التخزين المؤقَّت، بل التسليم مرةً واحدة بالضبط.** عاملُ الخدمة الذي يجعل `/pos`
+يُحمَّل دون اتصال هو النصفُ السهل؛ والنصفُ الذي يُطابِق النقود هو `temp_id` يُولَّد **مرة واحدة** على
+الجهاز و**فهرسٌ فريد على `(business_id, offline_temp_id)`** خلفه. لأن وضعَ الفشل **ليس طلبًا ضائعًا
+بل ردًّا ضائعًا**: الخادم يُودِع الفواتير، ويموت الردُّ في طريق العودة، فتُعيد نقطةُ البيع إرسال دفعةٍ
+لا تستطيع أن تعرف أنها وصلت. وطبقتان لا واحدة: بحثٌ يُنتج جوابًا **مفيدًا** (`duplicate` يحمل رقم
+الفاتورة الحقيقي كي تُكمل الماكينة الإيصال) وفهرسٌ يجعل ذلك الجواب **صحيحًا عند التسابُق** (§16.4،
+§16.5). و**`duplicate` نجاحٌ لا خطأ** — وإلا صار الطابور طابورًا لا يُفرَّغ أبدًا.
+
+| الطبقة | الملف | الحالة |
+|---|---|---|
+| إعادةُ الإرسال | `app/Http/Controllers/Api/OfflineSyncController.php` | ✅ حكمٌ لكل فاتورة، `MAX_PER_REQUEST = 25` |
+| اللقطة | `app/Http/Controllers/Api/OfflineDataController.php` | ✅ `MAX_ROWS = 5000`، شكلُ الصف مطابقٌ للبحث الحيّ |
+| الفهرس الفريد | `database/migrations/2026_08_25_000100_…` | ✅ مركَّب، وNULL هو ما يجعله آمنًا على جدول حيّ |
+| طبقة الجهاز | `resources/js/offline.js` | ✅ IndexedDB: طابور + لقطة، بلا أي مكتبة |
+| عامل الخدمة | `public/sw.js` | ✅ في `public/` لا في `resources/js/` — والسببُ في §16.10 |
+| صفحة الاحتياط | `resources/views/pwa/offline.blade.php` | ✅ **ثنائيةُ اللغة** — الاستثناء الموثَّق الوحيد للقرار #3 (§16.13) |
+| الشرطة والشارات | `resources/js/app.js` + `layouts/app.blade.php` | ✅ `ping_interval` صار له مستهلِك أخيرًا |
+| الاختبار | `tests/Feature/OfflineSyncTest.php` | ✅ **٢٨ اختبارًا / ١٣٨ توكيدًا، خضراء** |
+| التوثيق | **NOTES §16** | ✅ |
+
+**وأوسعُ إصلاحٍ أثرًا في البند لا علاقة له بانقطاع الاتصال.** الحقلُ المخفي `offline_temp_id` في
+نقطة البيع يُرسَل `''` في كل بيعةِ كاونتر عادية، و**النصُّ الفارغ ليس NULL** — فنصّان فارغان في نفس
+النشاط يتصادمان على الفهرس الفريد الجديد، أي أن **البيعة العادية الثانية في اليوم كانت ستفشل** بخطأ
+قاعدة بيانات على أكثر شاشةٍ استخدامًا في المنتج. سُوِّي إلى NULL في `SellPosController:123-127`،
+وله اختبارُ انحدارٍ مخصَّص (§16.7).
+
+**وثلاث ثغرات أُغلقت على الطريق:** `public/sw.js` **لم يكن موجودًا** (وعلامةُ العودة كانت محقَّة في
+مطالبتها بالتحقُّق لا الافتراض)، و**المانيفست مسارٌ لا ملفٌ ساكن** لأن الساكن لا يحمل اسم المستأجر
+نفسه، و`pwa.ping_interval` **لم يكن له مستهلِك** — الشارةُ تُثبِّت ٢٠ ثانية، فيضبط المشغِّل
+`PWA_PING_INTERVAL` ولا يتغيَّر شيء. **وقيمةُ إعدادٍ بلا مستهلِك أسوأ من عدمها، لأنها وعدٌ لا يُوفيه
+الكود** (§16.1).
+
+**والبند 9 قبله — الطباعة: ✅ مكتمل بالكامل — كودًا واختبارًا وتوثيقًا** (والإيداع وحده متبقٍّ، §0).
+التوثيق المعماري الكامل في **§15** (خمسة عشر قسمًا فرعيًا).
 
 وهذا أول بند يُخرِج شيئًا **يقرأه العميل**، لا شاشةً يقرأها صاحب المتجر. وحقيقتان تُفسِّران شكله كله:
 
@@ -99,29 +201,30 @@ the source documentation is recorded with its reason. Nothing here is a silent a
 وحده، فيظهر الكومبو بصفر تكلفة أي ربحًا خالصًا في التقرير الوحيد الذي يتّخذ المالك قراره عليه.
 أُصلح ومُوثَّق في §13.6.
 
-### 2. البند التالي: 10 — Offline PWA
+### 2. البند التالي: 11 — شاشات الوحدات
 
-لا شيء متبقٍّ من البند 9 يمنع البدء. والمؤجَّل منه مذكور صريحًا في §15.15، وليس ثغرات:
-**رموز QR** (قرارُ ولايةٍ قضائية لا قرارُ تصيير — §15.8)، و**إرسال الفاتورة بالبريد** (يحتاج إعدادات
-البريد التي يُبعدها §12.2 عن شاشات الإعدادات إطلاقًا)، و**برنامج وكيل الطباعة** على جهاز الكاشير
-(خارج هذا المستودع؛ `enqueue()` يكتب المهمة و`print-queue.{locationId}` يبثّها)، و**ملفات الشعار
-اليتيمة** عند حذف قالب (قرارٌ مدروس بالرفض لا سهو — §15.9).
+**شرطُ البدء استُوفي.** كانت القاعدةُ المكتوبةُ هنا «لا يُبدأ البند 11 قبل أن تنجح الأوامر الأربعة
+في §0» — و**قد نجحت كلُّها**: المجموعةُ خضراءُ عند ١٧٨/٩٣٤، و`OfflineSyncTest` بثمانيةٍ وعشرين
+اختبارًا أخضر. والقاعدةُ أثبتت جدواها بالضبط كما وُضعت: التشغيلُ كشف **أربعةَ عيوبٍ** لم تكشفها
+قراءتان كاملتان، أحدُها كان يُسقط كلَّ صفحةٍ مُصادَقٍ عليها في التطبيق (§16.23). **فالبناءُ على كودٍ
+لم يُشغَّل كان بناءً على افتراض، وقد كان الافتراضُ خاطئًا.**
 
-**والبند 9 أنهى تأجيلَ البند 8 الوحيد:** رفعُ شعار النشاط نزل هنا كما وُعد، لأن هذا أول موضع يُطبَع
-فيه. §15.4.
+والمؤجَّل من البند 10 مذكور صريحًا في §16.19 وليس ثغرات: **مشترياتٌ ومرتجعاتٌ دون اتصال** (الكاونتر
+وحده هو الذي لا يستطيع أن يقول «عُد لاحقًا»)، و**إنشاء عميل دون اتصال** (يحتاج قصةَ مطابقةِ هوية
+كاملة لكيانٍ يمكن أن يُنشَأ مرتين بهجاءَين مختلفين على ماكينتين)، و**Background Sync** — مرفوضٌ عن
+قصد لأن الكاشير يجب أن يجيب «هل حُفظت البيعة؟» بالنظر إلى الشاشة، وطابورٌ يملكه عاملُ الخدمة غير
+مرئيٍّ للصفحة أصلًا (§16.3) — وواجهةُ تحرير فاتورةٍ مرفوضة، وإشعارات Push، ونافذةُ «ثبِّت التطبيق».
 
-**البند 10 — Offline PWA:** والبنية التحتية المُتاحة له تُقرأ قبل أي سطر:
+**والبند 9 أنهى تأجيلَ البند 8 الوحيد:** رفعُ شعار النشاط نزل هناك كما وُعد، لأن هذا أول موضع يُطبَع
+فيه. §15.4. والمؤجَّل من البند 9 في §15.15: **رموز QR** (قرارُ ولايةٍ قضائية لا قرارُ تصيير — §15.8)،
+و**إرسال الفاتورة بالبريد**، و**برنامج وكيل الطباعة**، و**ملفات الشعار اليتيمة**.
 
-- **`public/manifest.json` و`public/sw.js`** — يجب التحقق أولًا مما إذا كانا موجودين فعلًا في هذا
-  المستودع أم أنهما من افتراضات المستودع الأصلي، فالبند 3 يسمّي وحداتٍ غائبة تمامًا.
-- **`api/print-queue/*`** — السابقة الوحيدة لواجهة API يستهلكها عميلٌ خارج المتصفِّح، مع مصادقة
-  HMAC عبر `X-Print-Token` وقناة بثّ محروسة (§15.5).
-- **`ApiResponseTest`** (§12.5) — النمط الذي يُقاس عليه أي endpoint جديد يُعيد JSON.
-- **`SellPosController`** — شاشة نقطة البيع هي المُرشَّح الوحيد الجدّي للعمل دون اتصال، وهي التي
-  يجب أن يُبنى الطابور المحلي حولها لا حول التطبيق كله.
+**البند 11 — شاشات الوحدات:** Accounting وEssentials/HRM وSuperadmin وAssetManagement وCms
+وInventoryManagement وProductCatalogue — النماذجُ والمخطَّطُ جاهزان، والناقصُ المتحكِّماتُ والشاشات.
+و`inventory.index` تنتمي هنا (`inventorymanagement`) وكانت مُستبعدةً صريحًا من البنود 8 و9 و10.
 
-ثم 11 → 12 (شاشات الوحدات، الأوامر المجدولة). `inventory.index` تبقى خارج النطاق (تنتمي لـ
-`inventorymanagement`، البند 11).
+ثم 12 (الأوامر المجدولة: الفواتير والمصروفات المتكررة، انتهاءُ نقاط المكافأة، تذكيراتُ الدفع،
+تنبيهاتُ المخزون المنخفض، النسخُ الاحتياطي).
 
 ### 3. القرارات — **لا شيء ينتظر إذنك**
 
@@ -134,6 +237,10 @@ the source documentation is recorded with its reason. Nothing here is a silent a
   الرفع المؤجَّلة من §14.13. و**رموز QR مؤجَّلة صراحةً** لأن الصيغة قرارُ ولايةٍ قضائية لا قرارُ
   تصيير: ETA المصرية وZATCA السعودية تُحدِّدان حِمْلَين مختلفين، وإصدارُ رمزٍ يُقرأ بحِمْلٍ لا تقبله
   أي جهة **أسوأ** من عدم إصداره لأنه يبدو مُلتزمًا (§15.8). ✅ محسوم ومُنفَّذ
+- **نطاق البند 10** = **البيع وحده** دون اتصال: لقطةُ منتجات + طابورُ فواتير + إعادةُ إرسال بضمان
+  «مرة واحدة بالضبط» + عاملُ خدمة للقشرة. والمشترياتُ والمرتجعاتُ وإنشاءُ العملاء **خارج النطاق عن
+  قصد** لأن الكاونتر وحده هو الذي لا يمكنه الانتظار (§16.19)، و**Background Sync مرفوض** لأن الطابور
+  يجب أن يكون مرئيًّا للكاشير على الشاشة (§16.3). ✅ محسوم ومُنفَّذ كودًا — **والاختبار متبقٍّ (§0)**
 - **§12.3** = لا نلمس `Gate::before()`؛ الأدمن يبقى غير مقيَّد، والتقارير تحترم الصلاحيات لغير
   الأدمن — وهو ما يفعله `permit()` أصلًا. ✅ محسوم **بلا أي تغيير سلوكي**، ويبقى 🟡 للمراجعة عند
   أول متطلَّب حقيقي متعدد المديرين (المُحفِّز مذكور في §12.3).
@@ -177,15 +284,31 @@ the source documentation is recorded with its reason. Nothing here is a silent a
   لها سبب واحد، وإصلاحٌ واحد حلَّ أحدَ عشر منها.
 - **وتأكيدٌ أخضر على مُدخَل مستحيل أسوأ من لا تأكيد**، لأنه يُقرأ تغطيةً. حين يرفض المخطَّط المُدخَل
   الذي يدّعي الاختبار اختباره — `design` هو `enum` — يُحذف الاختبار وتُسجَّل الحالة في تعليق، ولا
-  تُصطنَع تأكيدًا (§15.11).
+  تُصطنَع تأكيدًا (§15.11). **وتكرَّر هذا رابعةً في البند 10:** اختبارٌ ادّعى أن `numUf()` تُدوِّر
+  الكمية إلى دقّة النشاط فتُرشِّح `0.0001` — وقراءةُ `FormattingService::numUf()` أثبتت أنها تُعيد
+  `(float) $value` بلا تدوير، أي أن الاختبار كان سيفشل وهو يبدو موثِّقًا لقاعدة. والحارسُ
+  `nothing_to_sell` **غير قابل للوصول عبر مُحقِّق نفس الـendpoint** فسُجِّل تعليقًا وأُعيدت كتابة
+  الاختبار على كمية `0` بلا تأكيدٍ على الرسالة — لأن تأكيد الرسالة تأكيدٌ على **أي طبقة أطلقت** لا
+  على أن البيعة رُفضت (§16.16).
+- **⚠️ وفهرسٌ فريد جديد على عمودٍ يُرسله نموذجٌ قائم فارغًا هو انحدارٌ في الإنتاج، لا ميزة.** أخطرُ
+  ما في البند 10 لم يكن في طبقة الاتصال إطلاقًا: `offline_temp_id` حقلٌ مخفي في نقطة البيع يُرسَل
+  `''` في كل بيعةِ كاونتر عادية، و**النصُّ الفارغ ليس NULL** — ففهرسُ `(business_id,
+  offline_temp_id)` يرى نصّين فارغين تصادُمًا، أي أن **البيعة العادية الثانية في اليوم كانت ستفشل**.
+  فأيُّ فهرس فريد يُضاف إلى عمودٍ nullable قائم يستوجب سؤالًا واحدًا قبل الترحيل: **ما الذي يكتب في
+  هذا العمود اليوم، وهل يكتب فيه فراغًا؟** (§16.7)
 - **وحين يخالف فحصٌ ملفًا قرأتَه، اشكُك في الفحص.** تكرَّر هذا مرتين الآن: مرة عرضُ grep أظهر تعليقًا
   كأنه كود بلا `//`، وقراءةُ السطر نفسه أثبتت أن الملف سليم.
 
 ### 5. حالة التحقق — الصادقة، بلا أرقام من الذاكرة
 
-**نُفِّذ فعليًا ونجح:**
+**نُفِّذ فعليًا ونجح — وكلُّ رقمٍ هنا يعود إلى نهاية البند 10، وهو أوّلُ تشغيلٍ بعد جلستَين من الرفض:**
 
-- `php artisan test` → **150 اختبارًا / 787 تأكيدًا، كلها خضراء.**
+- `php artisan test` → **١٧٨ اختبارًا / ٩٣٤ تأكيدًا، كلها خضراء** (كانت ١٥٠/٧٨٧ عند البند 9).
+- `npm run build` → ✅ **أوّلُ نجاحٍ بعد تسع جلسات**؛ `app.js` من ٢٧٥٣ بايتًا إلى **8.50 kB**، فصارت
+  طبقةُ عدم الاتصال تصل المتصفّح فعلًا (§16.18).
+- `php artisan migrate` على `souqly`، و`migrate:fresh --seed --env=testing` على `souqly_test`. ✅
+- **`php -l` مُستغنًى عنه بما هو أقوى:** كلُّ ملفّات البند حُمِّلت وأُعرِبت و**نُفِّذت** داخل تشغيل
+  المجموعة، وملفٌّ نُفِّذ فقد أُعرِب بالضرورة (§16.18).
 - **تكافؤ الترجمة صار اختبارًا لا رقمًا.** `tests/Feature/LangParityTest.php` يؤكِّد ثلاث خصائص على
   مجلَّدي اللغة معًا: تطابق المفاتيح تطابقًا شجريًّا في الاتجاهين، ولا مفتاح مُعرَّف مرتين في ملف
   واحد، ولا قيمة تُساوي مفتاحها. أخضر بعد `print_receipt`، والتكافؤ تام (§14.10).
@@ -209,15 +332,20 @@ the source documentation is recorded with its reason. Nothing here is a silent a
 - الاختبارات تعمل كأدمن حقيقي عبر `BusinessService::register()` **لا** عبر `createTenant()` — فهذه
   الأخيرة لا تزرع أدوارًا، فلا يُختبَر معها قصرُ `permit()` على `isAdmin()` إطلاقًا.
 
-**متبقٍّ، ولا يمنع البند 10:**
+**متبقٍّ:**
 
-- `npm run build` — **لم يُنفَّذ.** مُصنِّف أمان Bash/PowerShell رفض هذا الأمر تحديدًا في كل محاولة
-  في ثلاث جلسات متتالية (بينما `php artisan test` يمرّ). وأصنافُ البند 9 (`.input-file` و
-  `.file-current`) فُحصت بقراءة `app.css` بدلًا من ذلك: كلاهما موجود في `:1002` و`:1013`، وكلُّ
-  utility يستدعيانه بـ`@apply` — بما فيه اعتمادُ `.thumb-md` على `@utility thumb` في `:611` —
-  يُحَلّ. **لكن هذا فحصٌ ساكن لا بناء، والبناء يبقى غير مُتحقَّق منه.**
+- ✅ **البند 10 مُختبَرٌ ومُودَع، والبند 9 قبله (`ad81c43`).** والثلاثةُ الحواجزُ التي كانت هنا —
+  «لم يُختبَر»، «غير مُودَع»، «الحزمة قديمة» — زالت كلُّها. **بدون push، وهو ما زال غير مُصرَّحٍ به.**
+- **تكافؤُ الترجمة صار نتيجةَ بوابةٍ لا فحصًا ساكنًا.** كان في البند 10 مُتحقَّقًا منه بعدَّتَين
+  يدويّتَين (١٢٧١ مفتاحًا في كلٍّ من `ar` و`en`) لأنّ الغلافَ كان مقطوعًا؛ الآن `LangParityTest`
+  نفسُه أخضر داخل المجموعة.
 - ⚠️ **ثغرة تغطية مذكورة بصراحة، منقولة من البند 7:** قرار «COGS شامل الضريبة» غير مثبَّت باختبار،
   لأن مُثبِّت `buy()` يجعل `purchase_price` و`purchase_price_inc_tax` متساويين — §13.8.
+- ⚠️ **`sw.js` و`offline.js` لا يُغطّيهما اختبار.** المجموعةُ تُثبت الخادمَ (الحكم، الفهرس، اللقطة،
+  الصلاحيات) ولا تُثبت المتصفّح: `install`، و`handlePage()`، و`clearPrivateCache()`، وIndexedDB،
+  وتقطيعُ الدفعات إلى ٢٥ — كلُّها بلا اختبارٍ آليّ، وطريقُ التحقُّق منها هو الإجراءُ اليدويّ في
+  **§16.20** وحده. وهذه ثغرةٌ حقيقيةٌ لا تُصلحها خُضرةُ ١٧٨ اختبارًا، وتُذكر هنا كي لا تُقرأ الخُضرةُ
+  على أنها أوسعُ مما هي.
 - **§12.3 يبقى 🟡 بقرارك** — الأدمن غير مقيَّد، و`Gate::before()` لم يُلمَس؛ توثيق فقط بلا تغيير
   سلوكي.
 
@@ -354,6 +482,15 @@ Arabic is the primary locale, not a translation layer.
 
 Verified by test: `ApplicationSmokeTest::a_registered_owner_can_sign_in_and_reach_the_dashboard`
 asserts `dir="rtl"` and `lang="ar"` render for an Arabic user.
+
+**One documented exception, and it is the only one in the repository.**
+`resources/views/pwa/offline.blade.php` carries **literal text in both languages** rather than
+`__()` calls. The service worker serves that page **from cache, with no request having reached
+Laravel** — so there is no session, no `Language` middleware, and no locale to resolve against.
+Rendering it in whichever locale happened to be active when it was precached would show an
+Arabic-only shop an English page, or the reverse, at the one moment nobody can do anything about
+it. Arabic is placed first. The exemption is earned by being the only file guaranteed to render
+without Laravel; anything reachable through a route has no claim to it. §16.13.
 
 ---
 
@@ -565,26 +702,65 @@ the two adjustment kinds, the two transfer states.
 | **A `recorded=yes/no` filter on the opening-stock listing** | The actual job on that screen is finding the products whose opening position has *not* been stated yet. Without the filter that is a manual scan of the whole catalogue. |
 | **No permitted location renders an empty state, not an empty table** | Nothing on that screen can be true without one, and an empty product table reads as "no products" — a different and wrong message. |
 
+### 8.5 Offline POS (item 10)
+
+The first item whose correctness is not about screens at all. Everything here answers one
+question — *how does a sale taken on a device with no uplink reach the server exactly once* —
+and the decisions are almost all about what **not** to do. Full write-up in §16.
+
+| Decision | Rationale |
+|---|---|
+| **The queue lives in the page's IndexedDB, not in the service worker** | A cashier must be able to answer "did that sale save?" by looking at the screen. A worker-held queue is invisible to the page, not enumerable from it, and drains when the browser feels like it. Held in the page it has a count in the header, a list, and a retry button (§16.3). |
+| **`temp_id` is minted once at finalise and never regenerated** | It is the entire idempotency story. Regenerating it on a retry — the natural thing if it were treated as a request id rather than a sale id — would turn one sale into two on the first lost reply. |
+| **The unique index is composite on `(business_id, offline_temp_id)`** | A client-generated collision across two unrelated businesses is vanishingly unlikely, but that is the wrong standard for a constraint that would refuse a real sale in shop B because shop A once made one. It also matches how every existing read of the column is already scoped. |
+| **`duplicate` is a success verdict, not an error** | The till drops the sale on `accepted` **or** `duplicate`, because both mean "the server has this". Returning an error for a replay builds a queue that can never be emptied. |
+| **The batch is not atomic — one verdict per sale** | One product deleted during the outage would otherwise hold up an entire shift's takings with no way for the till to make progress. |
+| **`MAX_PER_REQUEST = 25`, and the client chunks to match** | A bound on how much work one HTTP request may do, not a policy on queue depth (that is `pwa.max_queued_documents = 500`, enforced on the device). Each sale writes a document, lines, the stock cache, the FIFO map and payments; hundreds in one request fail *after* committing some. |
+| **A future-dated sale is clamped to `now()`; a past-dated one is believed however old** | The past is the whole point of the feature. The future is a till with a wrong clock, and honouring it files a sale into a period that has not happened — possibly past a month already reported on. |
+| **`created_by` is always `auth()->id()`, never a payload value** | These are the sales nobody watched being entered, so a client-supplied attribution matters more here than anywhere else. |
+| **The device's invoice number is stored beside the real one, never used as it** | The server's sequence is the shop's book of record; a device-minted number would put a gap or a collision in it. `duplicate` returns the **real** number so the till can still finish the receipt. |
+| **A full queue is refused loudly — never dropped, never overwriting the oldest** | Both of those lose a real sale silently, which is the one outcome the layer exists to prevent. The cap is also a real limit: IndexedDB has a quota, and a till offline for a week is a shop that needs telling, not helping along. |
+| **The terminal refuses a sale only when the device cannot hold it *and* the server is unreachable — and says which reason** | A full queue needs a person; a browser with no storage is a different problem. One message for both would send the shop looking in the wrong place. |
+| **Write-ahead, then post — even when online** | The alternative loses a sale in the worst case: the POST leaves the browser, the uplink dies halfway, and the navigation lands on an error page with the basket gone. |
+| **`/api/ping` is unauthenticated and returns only `{ok, time}`** | The honest answer to "can I reach the server" must not depend on being signed in — a probe that 302s to `/login` on an expired session reports the network as down. It carries nothing that identifies the installation. |
+| **The service worker never caches `/api/ping`, and never touches a non-GET** | A cache hit on the probe would make the badge report a connection that is not there, which is the exact lie the probe exists to prevent. |
+| **`souqly:online` fires on the false→true edge, not on every successful probe** | Firing per probe would restart the drain every interval for as long as the shop is online — a request storm rather than a sync. |
+| **The drain listens on both `window.online` and `souqly:online`** | They are wrong in opposite directions: link state is early and true behind a captive portal; the probe is right and up to one interval late. |
+| **`skipWaiting()` without `clients.claim()`** | A worker taking over a tab mid-sale changes which cache answers halfway through a basket. Open terminals adopt the new worker on their next navigation. |
+| **The snapshot is its own action, not `getProducts()` with a bigger limit** | The live search resolves stock and price per row; 5,000 rows through it is 5,000 queries. Here each is one query joined in memory — which is what makes a whole-catalogue request sensible. The **row shape is identical**, so the grid cannot tell which one answered. |
+| **`truncated` is measured, not guessed** — `limit(MAX_ROWS + 1)` | The client is told its snapshot is partial rather than quietly believing it holds the catalogue. |
+| **A stale price is shipped, visibly, rather than a sale refused** | The terminal shows how old the snapshot is. The trade is the premise of the whole item. |
+| **`sw.js` is hand-written in `public/`, unbundled** | A service worker's identity *is* its URL, and its scope is the directory it was served from. A fingerprinted `/build/assets/sw-*.js` would be a new worker every build, scoped where it can intercept nothing. |
+| **The asset cache is versioned by the Vite manifest's entry filenames** | Content hashes, so a rebuild rotates the cache by itself and no constant here ever needs bumping. The page cache is versioned separately because it holds authenticated HTML with a sign-out lifecycle, not a build lifecycle. |
+| **Cached pages are cleared on sign-out *and* whenever a navigation lands on `/login`** | A till is a shared machine and the terminal's HTML carries a customer list and the shop's figures. The second trigger catches what the first cannot see: an expired session, a sign-out in another tab, a browser reopened days later. |
+| **The offline fallback page is bilingual with literal text** | The one documented exception to Decision #3. It is served from cache by the worker with no request reaching Laravel — no session, no `Language` middleware, no locale to resolve against (§16.13). |
+| **The PWA config island is emitted even when the PWA is off** | That is the case it exists for: `PWA_ENABLED=false` has to reach tills that already registered a worker. A page omitting the island would leave them serving the old cache forever. |
+| **Only five keys in the island, not `config('pwa')`** | The rest is the manifest block, which the browser gets from its own route. "Publish the whole config array" is how a secret eventually ships to a browser. |
+| **Only `/pos` and `/home` are cached pages** | The terminal is the point; the dashboard is there so the shop is not staring at a fallback the instant it loses signal. Everything else falls back by design. |
+| **No library — `idb`, `workbox` and friends were declined** | Each is a dependency in a framework-free bundle, to wrap an API this code uses six methods of. The promise wrapper is twenty lines. |
+
 ---
 
 ## 9. Verification — what is actually proven
 
 ```bash
-php artisan migrate:fresh --seed   # 19 migrations, 131 tables, 55 currencies, 181 permissions
-php artisan test                   # 150 tests, 787 assertions — all 150 passing (2026-08-24)
+php artisan migrate:fresh --seed   # 20 migrations as of item 10 — re-run 2026-08-25 against
+                                   # souqly_test: 55 currencies, 181 permissions ✅
+php artisan test                   # 178 tests, 934 assertions — all 178 passing (2026-08-25)
 php scripts/verify-models.php      # 109 models, 323 relations, 460 casts — clean
 php artisan test --filter=LangParityTest   # parity is a test now, not a number (§14.10)
-npm run build                      # 121.26 KB CSS (gzip 14.92 KB) — LAST MEASURED before item 8.
-                                   # Refused by the safety classifier in every session since;
-                                   # items 8-9 added .input-static, .input-file, .file-current,
-                                   # checked by reading app.css instead. §15.14.
+npm run build                      # ✅ RUN 2026-08-25, first success in nine sessions.
+                                   # app.js 2,753 B → 8.50 kB (gzip 3.41), app.css 126.03 kB
+                                   # (gzip 15.30). That growth IS the offline layer arriving
+                                   # in the browser for the first time. §16.18
 php artisan route:list             # all routes resolve
 
 php artisan db:seed --class=DemoDataSeeder   # demo catalogue, idempotent — see below
 ```
 
-The test count has moved with each item: **71** (item 6) → **129** (item 8) → **150** (item 9). The
-per-suite table below is the authoritative breakdown; `php scripts/add-lang-keys.php`'s
+The test count has moved with each item: **71** (item 6) → **129** (item 8) → **150** (item 9) →
+**178** (item 10, green). The per-suite table below is the authoritative breakdown;
+`php scripts/add-lang-keys.php`'s
 "906 ar / 906 en" line was dropped from this block because parity became an assertion rather than a
 number a human reads (§14.10) — the count is now 1,404 leaf keys per locale and is recorded in
 §14.12 for orientation only.
@@ -600,7 +776,11 @@ cost to every fourth single product, so the costing code has more than one lot t
 from. Combos carry `enable_stock = 0` on purpose: their availability derives from their
 components. It is idempotent — a second run reports "already seeded" and inserts nothing.
 
-**The suite is fully green as of 2026-08-24.** The failure recorded here previously —
+**The suite is fully green as of 2026-08-25, and that now includes item 10** — 178 tests, 934
+assertions, no failures and no errors. It took three runs to get there; the two red ones and
+the four defects they exposed are in §16.23, because a green figure that hides how it was
+reached is the kind of record §12.4 warns about. The
+failure recorded here previously —
 `ScreensRenderTest` reporting 19 screens as HTTP 500/404 because item 5's routes were
 registered before its views existed — is resolved: those views were written, and the walk now
 renders all of them. The guard did exactly what it was built to do.
@@ -613,6 +793,13 @@ that plainly exists in the migration file. This is how the `transaction_payment_
 `cash_register_transactions` (added when payments were wired to the drawer) presented itself:
 `ProcureToPayCycleTest::deleting_a_sale_returns_its_stock` failed on a column the schema
 defines. The code was correct; the test database was stale.
+
+**And item 10 triggered exactly that condition again — handled.** It adds
+`2026_08_25_000100_add_unique_offline_temp_id_to_transactions_table.php`, so
+`php artisan migrate:fresh --seed --env=testing` was **required** before the first run; without it
+`OfflineSyncTest`'s index assertion fails on a constraint that plainly exists in the migration
+file, which is the most misleading failure this repository knows how to produce. It was run first,
+which is why none of item 10's three runs (§16.23) wasted a cycle on that particular ghost.
 
 | Suite | Covers |
 |---|---|
@@ -629,6 +816,7 @@ defines. The code was correct; the test database was stale.
 | `SettingsTest` (26) | What only a **save** can expose. Business settings' owned-vs-forbidden columns, the logo column's two refusals and the full upload round trip (§15.4), flat permission arrays, notification templates, the cross-tenant barcode table, invoice schemes, locations, roles, users. It is what found the `SetSessionData` re-hydration bug (§14.5) |
 | `LangParityTest` (3) | The two lang files as a pair: tree-equal keys in both directions, no key defined twice in one file, no value equal to its own key. All three mutation-proven (§14.10) |
 | `PrintingTest` (19) | **Obedience to `invoice_layouts`** — ninety columns nothing read before item 9. A label override replacing rather than appending, an empty label falling back to Arabic, `show_*` toggles adding and removing whole blocks, `design` picking a structurally different template, a hand-typed `highlight_color` unable to break the sheet, a location's own layout preferred, a return printing as a credit note. Plus 404-not-403 on another branch's invoice, `sell.view` vs `access_printers`, the PDF's content type and slash-free filename, `size: 72mm auto` on the receipt, opt-in auto-print, and a self-contained `PrintJob` for the agent (§15) |
+| `OfflineSyncTest` (28) | **Exactly-once delivery**, and every verdict asserted **beside a row count** — a controller answering `duplicate` while also inserting would pass a verdict-only test perfectly. The same temp id replayed, twice in one batch, and raced against the index directly at the database (asserting the message names `offline_temp_id`, so another constraint cannot pass for it). Per-sale rejection while siblings land, and a rejected sale never half-recorded. A sale dated days ago keeping its date, a future date clamped, garbage falling back to now. Attribution to the signed-in user and never the payload; a per-sale device id surviving a queue restored onto another till. The snapshot's gate, its fourteen-key row shape, and **the same query count for one product as for seven**. Plus the three POS behaviours item 10 added — including **two ordinary counter sales in a row**, which is the regression with the widest blast radius in the item and has nothing to do with being offline (§16.7) — and `/api/ping` answering with the session flushed (§16.15) |
 
 ### 9.1 Why the 100-screen walk let a 500 through, and what changed
 
@@ -711,13 +899,13 @@ other 105 Blade files are clean, as is the check for an opener with no closer at
 
 | Stage | Status |
 |---|---|
-| 1. Migrations & database | ✅ **Complete** — 19 migrations, 131 tables |
+| 1. Migrations & database | ✅ **Complete** — 20 migrations, 131 tables (the 20th is item 10's unique index; the two additive ones were `ALTER TABLE`, never `migrate:fresh`) |
 | 2. Models & relationships | ✅ **Complete** — 51 core + 58 module models, all verified |
 | 4. Middleware, roles & permissions | ✅ **Complete** — 5 middleware, 2 groups, 181 permissions, tenant-namespaced roles, tenant provisioning |
 | 6. Services / events / listeners | ✅ **Core complete** — 8 services, 11 events, 3 listeners |
-| 7. Run migrations & verify | ✅ **Complete** — all green (§9) |
-| 3. Routes & controllers | ⚠️ **Partial** — items 1–6 and 8 done, 7 first tranche; 9–12 outstanding (§10.2) |
-| 5. Views / frontend | ⚠️ **Foundation complete, screens partial** — items 1–6 and 8 done, 7 first tranche; 9–12 outstanding (§10.2) |
+| 7. Run migrations & verify | ⚠️ **Green as of item 9** — item 10's migration has **not** been run and its 25 tests have **not** been executed (§16.18) |
+| 3. Routes & controllers | ⚠️ **Partial** — items 1–6 and 8–10 done, 7 first tranche; 11–12 outstanding (§10.2) |
+| 5. Views / frontend | ⚠️ **Foundation complete, screens partial** — items 1–6 and 8–10 done, 7 first tranche; 11–12 outstanding (§10.2) |
 
 ### 10.1 Build progress — items 1–12
 
@@ -733,6 +921,8 @@ Each line is written as the item lands.
 | 6. Stock | ✅ Done | 3 (`StockAdjustment`, `StockTransfer`, `OpeningStock`) — 807 lines, 20 methods | 12 (`stock_adjustment` index/create/edit/show + `_form`/`_line`, `stock_transfer` index/create/show + `_line`, `opening_stock` index/edit) — 1,947 lines |
 | 7. Reports | 🟡 First tranche done (5 of 12) | 1 (`Report`) + `ReportService` + `<x-report-filters>` | 6 (`report` index/purchase-sell/stock/profit-loss/tax/expenses) — hub plus the five |
 | 8. Settings | ✅ Done | 9 (`Business`, `BusinessLocation`, `InvoiceScheme`, `InvoiceLayout`, `Barcode`, `Printer`, `NotificationTemplate`, `Role`, `ManageUser`) | 24 named GET screens over 6 view dirs — `business/settings`, `location` ×4, `invoice-layout` ×4, `notification_template` ×2, `role` ×4, `manage_user` ×4, and shared `crud/*` for invoice-schemes, barcodes and printers |
+| 9. Printing | ✅ Done | 1 (`Print`) + `PrintService` + `UploadService` | 4 renderers over 8 templates (`print/invoice`, `print/receipt`, `print/designs/classic`, `print/designs/elegant`, `_appendix`, `_cell`, `_styles`, `_toolbar`) — the tenant's `classic`/`elegant` A4, a DomPDF download, a 72 mm receipt, and a `PrintJob` for hardware |
+| 10. Offline PWA | ✅ Done | 2 (`Api\OfflineData`, `Api\OfflineSync`) + `public/sw.js` + `resources/js/offline.js` | 1 (`pwa/offline` — the cached fallback, **bilingual**, §16.13). The rest is not screens: an IndexedDB queue and snapshot behind the existing terminal, two badges in the header, and a manifest served as a **route** so it carries the tenant's own name |
 
 **Item 5, verified rather than assumed:** 38 routes across the five modules — full CRUD plus
 the account operations (`deposit`, `withdraw`, `transfer`, `setClosed`, transaction
@@ -914,7 +1104,43 @@ valid.
    the **print agent** that consumes `print-queue.{locationId}` on a till PC (not part of this
    repository); and **orphaned layout logos**, decided against rather than skipped (§15.9).
 10. **Offline PWA** — `Api\OfflineDataController`, `Api\OfflineSyncController`, service
-    worker, IndexedDB layer.
+    worker, IndexedDB layer. ✅ **DONE 2026-08-25 — see §16.** Suite green at **178 tests /
+    934 assertions**, of which `OfflineSyncTest` is **28 tests / 138 assertions**; the
+    migration ran on both databases (`migrate:fresh` on `souqly_test`, plain `migrate` on
+    `souqly`) and `npm run build` finally succeeded, taking `app.js` from 2,753 B to
+    8.50 kB (§16.18). It took **three** runs: the first exposed four defects no amount of
+    reading had found, the worst of them a Blade `@json` compilation trap that 500'd every
+    authenticated page in the application from a source line that reads as correct
+    (**§16.23**).
+    **The item's real substance is exactly-once delivery, not caching.** A service worker
+    that makes `/pos` load is the easy half; the half that reconciles to money is a
+    `temp_id` minted once on the device and a **unique index on
+    `(business_id, offline_temp_id)`** behind it, because the failure mode is a lost
+    *reply*, not a lost request — the server commits, the response dies on the way back,
+    and the till resends a batch it cannot know landed (§16.4). Two layers: a lookup that
+    gives a *useful* answer (`duplicate` carries the real invoice number so the till can
+    finish the receipt) and the index that makes that answer true under a race (§16.5).
+    **`duplicate` is a success**, or the queue can never be emptied.
+    Three gaps closed on the way in: `public/sw.js` **did not exist** (the return marker
+    was right to demand it be checked rather than assumed); the manifest is a **route**, not
+    a static file, because a static one cannot carry the tenant's own name; and
+    `pwa.ping_interval` had **no consumer** — the badge hardcoded 20 seconds, so an operator
+    could set `PWA_PING_INTERVAL` and watch it change nothing (§16.1).
+    **The widest-blast-radius fix in the item is about not being offline:** the POS's hidden
+    `offline_temp_id` posts as `''` on an ordinary counter sale, and two empty strings would
+    collide on the new unique index — so the *second* ordinary sale of the day would have
+    failed on the busiest screen in the product. Normalised to NULL in
+    `SellPosController:123-127`, with a dedicated regression test (§16.7).
+    **Deliberately deferred, and not gaps:** offline purchases/returns (only the counter has
+    no "come back later"), offline contact creation (identity reconciliation for an entity
+    that can be created twice with different spellings), **Background Sync** — decided
+    against, because a cashier must be able to answer "did that sale save?" by looking at
+    the screen and a worker-held queue is invisible to the page (§16.3) — a conflict-editing
+    UI, push notifications, and an install prompt (§16.19).
+    **One documented exception to Decision #3:** `resources/views/pwa/offline.blade.php` is
+    bilingual with literal text, because the service worker serves it from cache with no
+    request reaching Laravel — no session, no `Language` middleware, no locale to resolve
+    against (§16.13).
 11. **Modules' controllers/views** — Accounting, Essentials/HRM, Superadmin,
     AssetManagement, Cms, InventoryManagement, ProductCatalogue (models + schema done).
 12. **Scheduled commands** — recurring invoices/expenses, reward-point expiry, payment
@@ -2353,12 +2579,14 @@ php artisan test    # 129 tests, 672 assertions — all passing
 - Any deliberately restricted test user needs `'allow_login' => 1` and `'status' => 'active'`, or
   `CheckUserLogin` turns every 403 assertion into a 302 to `/home` and the test silently measures the
   login gate instead.
-- **`npm run build` was not run.** The environment's safety classifier refused that specific command
-  on every attempt across two sessions, while `php artisan test` passed. Item 8 added exactly one
-  CSS class (`.input-static`, §14.7), so the expected delta on the 121.26 kB bundle is small — but
-  **that is an estimate, not a measurement, and the build stays unverified.** Recorded here rather
-  than quietly omitted, because "the suite is green" and "the assets compile" are two different
-  claims.
+- **`npm run build` was not run *in item 8's session*.** The environment's safety classifier refused
+  that specific command on every attempt across two sessions, while `php artisan test` passed. Item 8
+  added exactly one CSS class (`.input-static`, §14.7), so the expected delta on the 121.26 kB bundle
+  was small — but that was an estimate, not a measurement. Recorded here rather than quietly omitted,
+  because "the suite is green" and "the assets compile" are two different claims.
+  **✅ Settled at item 10:** the build finally ran on 2026-08-25 and the CSS came out at
+  **126.03 kB**, i.e. +4.77 kB across items 8, 9 and 10 together — small, as estimated, and now
+  measured (§16.18).
 
 ### 14.13 Deliberately not done in item 8
 
@@ -2624,7 +2852,7 @@ and fails with a confusing diff.
 ### 15.14 Verified
 
 ```bash
-php artisan test    # 150 tests, 787 assertions — all passing
+php artisan test    # 150 tests, 787 assertions — all passing (item 9's figure; 178/934 at item 10)
 ```
 
 - **`PrintingTest` — 19 tests, 96 assertions.** Groups: layout obedience (4 — label
@@ -2640,13 +2868,15 @@ php artisan test    # 150 tests, 787 assertions — all passing
 - **The upload test cleans up after itself through the app's own delete path** —
   `public/uploads/business_logos/` is empty after the run, asserted by
   `assertFileDoesNotExist` rather than by a `tearDown` that could drift.
-- **`npm run build` still unverified.** The environment's safety classifier refused
-  that command again on every attempt this session, as in §14.12. Item 9's CSS
+- **`npm run build` was still unverified at item 9.** The environment's safety classifier refused
+  that command again on every attempt that session, as in §14.12. Item 9's CSS
   (`.input-file`, `.file-current`) was checked by reading `app.css` instead: both are
   present at `:1002` and `:1013`, and every utility they `@apply` — including
-  `.thumb-md`'s dependency on `@utility thumb` (`:611`) — resolves. **That is a static
-  check, not a build.** Recorded rather than omitted, because "the classes exist" and
+  `.thumb-md`'s dependency on `@utility thumb` (`:611`) — resolves. That was a static
+  check, not a build. Recorded rather than omitted, because "the classes exist" and
   "the bundle compiles" are two different claims.
+  **✅ Settled at item 10:** the build ran on 2026-08-25 and compiled clean, so item 9's two
+  classes are now measured rather than argued (§16.18).
 
 ### 15.15 Deliberately not done in item 9
 
@@ -2659,4 +2889,828 @@ php artisan test    # 150 tests, 787 assertions — all passing
 - **Orphaned layout logos** — §15.9, decided against rather than skipped.
 - **Per-user paper size** — the A4/72 mm split is the tenant's `receipt_printer_type`
   and the layout's `design`; a third axis has no requester.
+
+---
+
+## 16. Offline PWA — the till that keeps selling (item 10)
+
+Every screen in this application can answer "come back in a minute". One cannot. The
+customer is at the counter with cash in their hand, and a point-of-sale terminal that
+says *no connection* has not degraded gracefully — it has stopped being a till.
+
+So item 10 is not "add a service worker". The question it answers is narrower and
+harder: **what is the smallest set of facts the terminal needs on the device to
+complete a sale, and how does that sale reach the server exactly once afterwards?**
+Two answers, and they are the two halves of the item — a **snapshot** it can read and
+a **queue** it can sell into.
+
+The second half is where the real engineering is. A queue that can lose a sale is
+worse than no queue, and a queue that can record one twice is worse still, because
+the shop reconciles it against a drawer that was counted at midnight and never finds
+the difference.
+
+### 16.1 What was actually here, checked before a line was written
+
+The return marker for this item said `public/manifest.json` and `public/sw.js` must be
+**verified to exist** rather than assumed, since §3 names modules the source repo
+referred to and never shipped. The check:
+
+| Assumed | Reality |
+|---|---|
+| `config/pwa.php` | **Existed** — five settings and a manifest block, shipped in `f29ed82` |
+| `$pwa_enabled` view composer | **Existed** — `AppServiceProvider:67-72` |
+| `public/sw.js` | **Did not exist.** Written this item |
+| `public/manifest.json` | **Did not exist, and is not what was built** — see below |
+| `ping_interval` had a consumer | **It did not.** The badge hardcoded 20 seconds |
+
+Two of those matter beyond bookkeeping.
+
+**The manifest is a route, not a file.** `Route::get('/pwa/manifest.json')`
+(`routes/web.php:91`) merges `config('pwa.manifest')` with the tenant's application
+title. A static file cannot know the tenant's name, and a manifest is what the
+installed icon on a cashier's home screen is labelled from — a shop that renamed
+itself in settings and still installs as "Souqly ERP" looks like someone else's
+software.
+
+**`ping_interval` was a promise the code did not keep.** `config/pwa.php` carried it
+from the beginning; `app.js` used a hardcoded `20000`. An operator could set
+`PWA_PING_INTERVAL` and watch it change nothing. **A configuration value with no
+consumer is worse than no value at all**, and this item wired it (`app.js:121`, with
+a `Math.max(5, …)` floor so a typo cannot turn the badge into a request storm).
+
+### 16.2 Three parts and one boundary
+
+| Part | Lives in | Job |
+|---|---|---|
+| Snapshot | `Api\OfflineDataController` → IndexedDB `snapshot` | Products, prices and stock, as of the last time the server was reachable |
+| Queue | `resources/js/offline.js` → IndexedDB `queue` | The sale itself, written before anything is sent |
+| Replay | `Api\OfflineSyncController` | Turns queued sales into real ones, exactly once |
+| Shell | `public/sw.js` | Makes `/pos` load at all with no uplink |
+
+The boundary that matters: **the service worker's job stops at making the page load.**
+It caches the shell and two pages. It never touches a POST, never holds a sale, and
+never answers `/api/ping`.
+
+### 16.3 Why the queue is the page's and not the worker's
+
+The obvious shape is Background Sync: intercept the POST in the worker, stash it,
+replay it when the browser feels like it. It was rejected, and the reason is not
+technical taste.
+
+**A cashier has to be able to answer "did that sale save?" by looking at the screen.**
+A queue held by the service worker is invisible to the page, is not enumerable from
+it, and drains at a time the browser chooses. Held in the page it has a count in the
+header, a list the cashier can read back, and a button that retries now. The shop's
+unsent takings are the last thing that should live somewhere only the browser can see.
+
+Recorded on `offline.js:28-34` and on `sw.js:20-27`, because it is the decision most
+likely to be "corrected" by someone who knows the Background Sync API.
+
+### 16.4 `temp_id` — exactly once, in two layers that are not redundant
+
+The failure mode is **not a lost request, it is a lost reply.** The till POSTs, the
+server commits, the response dies on the way back, and the till cannot tell that from
+"the request never arrived" — so it sends the batch again.
+
+Every sale therefore carries a `temp_id` minted **once**, by `crypto.randomUUID()`, at
+the moment the cashier finalises, and never regenerated on a retry. Two layers act on
+it:
+
+1. **The lookup** (`OfflineSyncController:138-144`) — finds the temp id, answers
+   `duplicate` with the id and invoice number of the sale that already exists. This is
+   the layer that produces a *useful* answer: the till needs to know the sale landed
+   so it can drop it and finish the receipt.
+2. **The unique index** on `(business_id, offline_temp_id)` — is what makes layer 1
+   *true under concurrency*. Two requests carrying the same temp id can both pass the
+   lookup before either commits; only the database can settle which one wins. The
+   loser's insert throws `UniqueConstraintViolationException`, the controller catches
+   it, re-reads, and reports `duplicate` too (`:200-214`).
+
+**`duplicate` is a SUCCESS, not an error.** The client deletes the local entry on
+`accepted` **or** `duplicate`, because both mean "the server has this". Returning an
+error for a replay is how you build a queue that can never be emptied — and a till
+whose badge counts up forever is a till whose cashier stops believing the badge.
+
+### 16.5 Adding a unique index to a live table
+
+`2026_08_25_000100_add_unique_offline_temp_id_to_transactions_table.php`.
+`offline_temp_id` has been on `transactions` since the first migration and has been
+**indexed rather than unique** the whole time. Three decisions:
+
+- **Composite, not on the column alone.** Temp ids are client-generated, so a
+  cross-tenant collision is vanishingly unlikely — but that is the wrong standard for
+  a constraint that would refuse a real sale in shop B because shop A once made one.
+  Scoping it to `business_id` also matches every existing read: `Transaction` uses
+  `BelongsToBusiness`, so layer 1's lookup is already business-scoped.
+- **NULLs are why this is safe on a live table.** MySQL permits any number of rows
+  whose indexed columns include a NULL, so every sale ever entered on the screen is
+  exempt. The index constrains only rows that came from the queue. **No
+  `migrate:fresh`, no data loss** — the standing constraint on the development
+  database.
+- **It refuses to run rather than "fix" data.** `up()` first groups for existing
+  duplicates and throws a `RuntimeException` naming up to five of them, with
+  instructions to delete the replays *through the application* so stock and payments
+  reverse with them. A migration that silently deletes sales is not a migration.
+
+The pre-existing single-column index is left in place: a composite index serves
+lookups on its **leftmost prefix**, which here is `business_id`, not the temp id.
+Dropping it would cost the duplicate check its index.
+
+### 16.6 Write-ahead, then post — and why that order is the whole design
+
+The natural shape is *try the network, queue if it fails*. That loses a sale in the one
+case that matters most: the POST leaves the browser, the uplink dies halfway, and the
+navigation lands on an error page with the basket gone. Shop wifi does exactly that.
+
+So `pos/create.blade.php:1247-1303` writes the sale to the device **first**, while
+nothing can interrupt it, and only then sends it. Which leaves a copy to clean up, and
+the temp id is what makes that possible:
+
+- The temp id rides along on the ordinary online POST
+  (`SellPosController:112-113,123-127`), so the row in the database and the entry on
+  the device are afterwards **the same sale by identity**.
+- The redirect flashes it back as `offline_acknowledged` (`SellPosController:177`) and
+  the page calls `offline.forget()` (`pos/create.blade.php:1205-1207`).
+- **Losing that acknowledgement is harmless**, which is the point of doing it this way:
+  the entry is then synced like any other, the server recognises the temp id it already
+  stored, answers `duplicate`, and the client deletes it. Two paths, one outcome, the
+  unique index behind both. `forget()` only saves the badge from briefly reading
+  "1 pending" after a sale that plainly succeeded.
+
+The terminal refuses a sale in exactly one situation — the device cannot hold it **and**
+the server is unreachable — and it says which of the two reasons it is, because a full
+queue is a shop that has been offline too long and needs a person, while a browser with
+no storage is a different problem entirely (`:1268-1291`). A full queue is **refused
+loudly**, never dropped and never written over the oldest entry: both of those lose a
+real sale silently, which is the single outcome this layer exists to prevent.
+
+### 16.7 The empty-string trap, and the regression it would have caused
+
+`offline_temp_id` is a hidden field on the POS form. On an ordinary counter sale with
+offline mode off, it posts as **`''`** — and an empty string is not NULL. Two empty
+strings in the same business would collide on the new unique index, so **the second
+ordinary sale of the day would have failed**, with a database error, on the busiest
+screen in the product.
+
+`SellPosController:123-127` normalises it: an empty `offline_temp_id` (and
+`offline_device_id`) is `unset()` before the sale is created, so the column stays NULL
+and the index stays exempt. `OfflineSyncTest::two_ordinary_counter_sales_in_a_row_both_succeed`
+exists specifically for this and asserts both rows have NULL — it is the regression
+this file most needs, and it has nothing to do with being offline.
+
+### 16.8 `OfflineSyncController` — a verdict per sale, not per batch
+
+**Batch, but not atomic.** One request carries many sales, each committed on its own
+(`SellService` wraps each in its own transaction). Making the batch atomic would let
+one product deleted during the outage hold up an entire shift's takings with no way for
+the till to make progress. Independent verdicts let the good sales land and leave
+exactly the broken ones for a person.
+
+```
+accepted  → recorded now; here is the id and the invoice number
+duplicate → already recorded; here is the id of the sale that exists
+rejected  → refused on its merits; here is why
+```
+
+Everything that can go wrong with one sale is caught inside `replayOne()` and turned
+into a verdict, because letting it bubble would fail the whole batch and **lose the
+verdicts of the sales that already succeeded** — the till would resend those, and only
+the index would stop them being recorded twice.
+
+`MAX_PER_REQUEST = 25` is a bound on how much work one HTTP request may do, not a
+policy on how many a till may queue (that is `pwa.max_queued_documents`, enforced on
+the device at 500). Each sale writes a document, its lines, the stock cache, the FIFO
+map and its payments; five hundred of those in one request would run past any execution
+limit and fail **after** committing some of them. `CHUNK = 25` in `offline.js:371`
+matches it by construction.
+
+**It authenticates with the session and lives in `web.php`.** The sale is being made by
+a signed-in cashier on the browser that already holds the cookie it took the sale with;
+there is no second credential to issue and no device token to invent. `permit()` gates
+it on `sell.create` / `direct_sell.access`, the same pair the online screen uses.
+
+Four small policies, each with a reason a test asserts:
+
+- **`soldAt()` believes the past and distrusts the future.** A timestamp in the past is
+  the entire point of the feature and is accepted however old it is. A timestamp in the
+  future is a till with a wrong clock, and honouring it would file a sale into a period
+  that has not happened — possibly past the end of a month already reported on. Clamped
+  to `now()`. Garbage falls back to `now()`, because a sale with no date is worse than a
+  sale dated slightly late. Parsed with `Carbon`, **not** `ufDate()`: the value is
+  `Date.toISOString()` output, not the business's display format.
+- **`attribute()` returns `auth()->id()` and never a payload value.** A client-supplied
+  `created_by` would let anyone with a session file a sale under someone else's name,
+  which matters more here than usual — these are the sales nobody watched being
+  entered.
+- **`deviceFor()` prefers the per-sale id** over the batch's, so a queue restored onto a
+  replacement till still carries the id of the machine that made each sale.
+- **`permitsLocation()` is checked per sale**, not once per batch: the sale belongs to
+  the branch it was rung up in, not to whoever is standing at the keyboard when it
+  syncs.
+
+**The device's invoice number is kept beside the real one, never used as it.**
+`offline_invoice_no` holds what the terminal printed on the customer's receipt; the
+server's own sequence stays the shop's book of record, because a device-minted number
+would put a gap or a collision in it. The `duplicate` verdict returns the **real**
+invoice number so a till replaying a sale can still finish the receipt.
+
+### 16.9 `OfflineDataController` — a snapshot, not `getProducts()` with a bigger limit
+
+The row shape is **deliberately identical** to the live product search's — the same
+fourteen keys, so `searchProducts()` in `offline.js` and the online feed are
+interchangeable and the grid does not know which one answered.
+
+It is a separate action rather than a parameter on the existing one because of *how* it
+must load. The live search returns a page of results and resolves stock and price per
+row; five thousand rows through that path is five thousand queries. Here stock and
+group prices are each resolved in **one** query and joined in memory
+(`stockFor()`, `groupPricesFor()`), which is what makes a whole-catalogue snapshot a
+sensible request at all.
+
+`MAX_ROWS = 5000`, fetched as `limit(MAX_ROWS + 1)` so `truncated` in the envelope is a
+**measurement rather than a guess** — the client is told its snapshot is partial instead
+of quietly believing it holds the catalogue. The envelope carries `location_id`,
+`price_group_id`, `taken_at`, `truncated`, `count`, `products`; `taken_at` is what the
+terminal shows the cashier when it says how old the prices are.
+
+**A stale price is a smaller error than a refused sale** — that is the trade this whole
+file accepts, and the terminal makes it visible rather than hiding it.
+
+### 16.10 The service worker: `public/`, versioned by the Vite manifest
+
+**It lives in `public/` and is not bundled**, because a service worker's identity *is*
+its URL: the registration is remembered against that exact path, and its scope is the
+directory it was served from. A fingerprinted `/build/assets/sw-a1b2c3.js` would be a
+new worker every build, scoped to `/build/assets/`, unable to intercept a single page
+request. Serving it from the document root is also the only way it gets scope `/`
+without a `Service-Worker-Allowed` header. The cost — no `import`, and it cannot read
+`config/pwa.php` — is paid by the page, which owns every configuration-dependent
+decision.
+
+**The asset cache is versioned by the real Vite manifest**, read at install
+(`shellAssets()`), so a rebuild rotates the cache on its own and no constant here ever
+needs bumping. The two entry filenames are content hashes, so an unchanged pair is
+genuinely the same bundle. The page cache is *not* versioned that way: it holds
+authenticated HTML and is cleared on sign-out, which is a different lifecycle from "a
+new build shipped".
+
+Strategies, and the reason for each:
+
+| Request | Strategy | Why |
+|---|---|---|
+| Navigation | Network → cache → `/pwa/offline` | A stale terminal is worse than a slow one; prices and stock move during a shift |
+| `/build/*` | Cache first | Content-hashed names: a hit is never stale, a miss is a new build |
+| `/uploads/*`, `/img/*` | Cache first, network fill | The grid looks wrong without product photos, and they change rarely |
+| `/api/ping` | **Never touched** | See §16.12 |
+| Everything else | Network only | Offline reads come from IndexedDB; a second copy in the HTTP cache is a second answer that will disagree |
+| Any non-GET | **Never touched** | The queue is the page's — §16.3 |
+
+Two install details that are the difference between a degraded cache and no cache:
+assets are added **individually rather than with `addAll()`**, because `addAll` rejects
+as a unit and one 404 among thirty font files would abandon the whole install; and only
+`.woff2` is precached, since a browser without woff2 support also lacks service workers,
+so precaching the `.woff` fallbacks would double the install download to serve nobody.
+
+`skipWaiting()` **without** `clients.claim()`: a worker that takes over a tab mid-sale
+changes which cache is answering halfway through a basket. Open terminals keep the
+worker they started with and adopt the new one on their next navigation.
+
+Only `/pos` and `/home` are cacheable pages. The terminal is the point of the exercise;
+the dashboard is there so the shop is not staring at a fallback page the instant it
+loses signal.
+
+### 16.11 A till is a shared machine
+
+The terminal's HTML carries a customer list and the shop's own figures. Leaving it in a
+cache that survives sign-out hands the next person on the keyboard a readable copy of
+the last shift.
+
+So the page cache is dropped on sign-out — and on **two** triggers, because one of them
+is not enough. The page posts `CLEAR_PRIVATE_CACHE` on an explicit logout; and
+`handlePage()` clears it whenever a navigation **lands on `/login`**, which catches
+every case the page's own hook cannot see: an expired session, a sign-out from another
+tab, a browser reopened days later. The empty offline fallback is put straight back,
+because it contains nothing and is what the browser needs if the next request fails.
+
+### 16.12 `/api/ping` — unauthenticated on purpose, and never cached
+
+`navigator.onLine` reports that a cable is plugged in. Behind a captive portal it
+reports `true` while nothing is reachable, and a cashier who trusts it keeps selling
+into a queue they believe is being drained. So the badge probes a real endpoint.
+
+`/api/ping` sits **outside** the auth group and returns only `{ok, time}` — no tenant
+data, no user, nothing that identifies the installation beyond the fact that it is up.
+It has to answer without a session, because the honest answer to "can I reach the
+server" must not depend on being signed in — a probe that 302s to `/login` on an
+expired session would report the network as down.
+
+And the service worker **never caches it**. A cache hit there would make the badge
+report a connection that is not there, which is precisely the lie the probe exists to
+prevent. `sw.js:191` returns early for that path before any strategy runs.
+
+The badge announces the **edge, not the state**: `souqly:online` fires only on the
+false→true transition (`app.js:147`). Firing on every successful probe would restart
+the drain every interval for as long as the shop is online — a request storm rather
+than a sync. The drain listens on both `window.online` (early, and true behind a
+captive portal) and `souqly:online` (right, and up to one interval late), because the
+two are wrong in opposite directions.
+
+### 16.13 The one documented exception to Decision #3
+
+**`resources/views/pwa/offline.blade.php` is bilingual, with literal text in both
+languages rather than `__()` calls.** Decision #3 requires full Arabic on every screen;
+this page cannot honour it in the usual way.
+
+The page is served **from the cache, by the service worker, with no request having
+reached Laravel** — which means no session, no `Language` middleware, and no locale to
+resolve against. Rendering it in whatever locale happened to be active when it was
+precached would show an Arabic-only shop an English page, or the reverse, at the one
+moment nobody can do anything about it. So both languages are on the page, Arabic
+first. It is the only file in the repository with that exemption, and it earns it by
+being the only file that is guaranteed to render without Laravel.
+
+### 16.14 Module and classic script, and the load order between them
+
+`@vite` emits a **deferred `<script type="module">`**. The POS's script is inlined
+Blade — generated from server-side values, not a module, so it cannot `import` — and it
+runs **during parsing**, which is *before* `window.Souqly` exists. This is the only
+reason a global exists at all (`app.js:272-277`).
+
+The POS therefore resolves the bridge inside its own `DOMContentLoaded`, and the
+ordering with `app.js`'s own `DOMContentLoaded` work is not left to luck: the POS's
+listener is registered during parsing and `app.js`'s from inside a module, so **the
+POS's runs first** — which is what it needs, because `initOffline()` announces the queue
+immediately and the `souqly:queue` listener has to already exist to hear the first
+announcement. `app.js:256-270` calls `initQueueBadge()` and `initOffline()` **before**
+`initConnectionStatus()` for the same class of reason: this trio communicates by event,
+and a dispatch before its listener exists is silently lost.
+
+One scenario this ordering exposed and fixed: a till **rebooted during an outage**. The
+first grid load runs during parsing, before the bridge exists, so it has no snapshot to
+fall back on and renders nothing. `pos/create.blade.php:1190-1200` re-asks once the
+bridge is up when `navigator.onLine` is false — otherwise a till restarted mid-outage
+shows an empty catalogue for as long as the outage lasts, which is the exact scenario
+the whole layer is for.
+
+### 16.15 `OfflineSyncTest` — why counts sit beside every verdict
+
+**A controller that answers `duplicate` while also inserting a row would pass a
+verdict-only test perfectly.** Every exactly-once assertion in this file therefore
+checks the verdict **and** the number of `SELL` rows, and `sellCount()` filters on type
+so the fixture purchase is never counted.
+
+The file was an obligation before it was a choice: `ScreensRenderTest`'s SKIP entry for
+`offline.data` reads *JSON only* and names `OfflineSyncTest` as where the snapshot is
+covered — which is why the snapshot's gate, row shape **and** query count are all here.
+
+Groups: the happy path and its provenance columns (3), exactly-once including the index
+asserted directly (4), per-sale rejection while siblings land (6), dates and attribution
+(6), permissions (2), the snapshot's gate/shape/cost (3), the three POS behaviours this
+item added (3), and the ping probe with the session flushed (1).
+
+Three of its assertions are worth naming:
+
+- **The unique index is asserted against the database, not through the controller.** The
+  test copies the committed row, re-mints `invoice_no` and `invoice_token`, and inserts
+  it raw. Copying is what makes it honest: a hand-built row missing a NOT NULL column
+  would raise a *different* `QueryException` and `expectException` would have accepted
+  that as proof. It asserts the message **contains `offline_temp_id`**, so another unique
+  constraint firing cannot pass for the one under test.
+- **`the_snapshot_costs_the_same_number_of_queries_however_many_products_it_holds`** —
+  measured with one product, then with seven, and asserted **equal**. This is the claim
+  §16.9 makes, and it is the only kind of assertion that can catch an N+1 reappearing.
+  A warm-up request runs first so one-time boot queries are not counted, and the
+  listener is registered once in `setUp()` with a `?int $queryTally` switch — Laravel
+  has no way to detach a `DB::listen()` closure, so the on/off has to live inside it.
+- **`two_ordinary_counter_sales_in_a_row_both_succeed`** — §16.7. The regression with
+  the widest blast radius in the item, and it is a test about *not* being offline.
+
+### 16.16 The impossible input, recorded rather than faked
+
+`replayOne()` filters lines through `numUf()` and rejects with `nothing_to_sell` when
+none survive. A test was written for it — and then deleted, because reading
+`FormattingService::numUf()` showed the premise was false: **it returns `(float) $value`
+for int/float input and does not round to the business's quantity precision.** A
+quantity of `0.0001` is therefore *not* filtered, and the test would have failed while
+appearing to document a rule.
+
+The validator's `lines.*.quantity => required|numeric|gt:0` is what actually refuses
+those sales, so `nothing_to_sell` is **unreachable through this endpoint's own
+validator** — defence in depth against a future caller, not the layer that answers. The
+replacement test uses quantity `0` and asserts the sale is refused **without** asserting
+which message came back, because asserting the message would be asserting *which layer
+fired* rather than that the sale was refused.
+
+Same lesson as §15.11, §14.11 and §13.7, now for the fourth time: **a green assertion on
+an impossible input is worse than no assertion, because it reads as coverage.**
+
+### 16.17 Why the date assertions are bracketed and not exact
+
+`config('app.timezone')` is `UTC`, but `businesses.time_zone` defaults to
+`Asia/Riyadh`, `SetSessionData` puts the whole business array in the session, and the
+`Timezone` middleware then calls `date_default_timezone_set()` for the request.
+Laravel's `fromDateTime()` does **not** convert on write — so a UTC Carbon writes a UTC
+wall-clock that is read back as Riyadh, a ±3 h skew.
+
+An exact-instant assertion would therefore be asserting **timezone handling**, not the
+behaviour under test, and would break the moment a tenant changed timezone. So
+`a_sale_taken_days_ago_keeps_the_date_the_money_changed_hands` brackets:
+`lt(now()->subDays(2))` and `gt(now()->subDays(4))` for a sale queued three days ago.
+That fails if the date is silently replaced with `now()` — which is the actual risk —
+and passes regardless of which timezone the business is in. The reasoning is in a
+comment in the test, not only here.
+
+### 16.18 Verified — الغلافُ رُفع، والبند شُغِّل
+
+**تمَّ التشغيل.** ما كان في المسوَّدة الأولى من هذا القسم «مكتوبٌ لا مُثبَت» صار مُثبَتًا،
+والأوامرُ الخمسةُ المطلوبةُ نُفِّذت كلُّها. وهذه نتائجُها كما وردت، لا كما كانت متوقَّعة:
+
+| الأمر | النتيجة |
+|---|---|
+| `php artisan migrate:fresh --seed --env=testing` | ✅ العشرون ترحيلًا، والجديدُ منها في **134.62ms**. `Currencies` ٥٥، `Permissions` ١٨١، `AdminUserSeeder` منشأةٌ رقم ١. قاعدةُ `souqly_test` وحدَها |
+| `php artisan migrate` على قاعدة التطوير `souqly` | ✅ `2026_08_25_000100_add_unique_offline_temp_id_to_transactions_table` في **411.07ms**. `migrate` لا `migrate:fresh` — ولا صفَّ واحدٍ فُقد |
+| `npm run build` | ✅ **أوّلُ بناءٍ ناجحٍ بعد تسعِ جلساتٍ من الرفض** (§15.14، §14.12). vite v8.2.2، ٤ وحدات، 7.78s |
+| `php artisan config:clear` | ✅ |
+| `php artisan test` | ✅ **١٧٨ اختبارًا، ١٧٨ ناجحًا، ٩٣٤ توكيدًا، 47.8s** |
+| `php -l` على ملفّات البند | ✅ ضمنًا وبما هو أقوى — انظر أدناه |
+
+#### البناء: القياسُ هو الذي أثبت التشخيص
+
+§16.20 زعمت أنّ الحزمةَ المنشورةَ أقدمُ من البند، وأنّ البناءَ ليس خطوةَ تحقُّقٍ بل الخطوةَ
+التي تجعل الميزةَ موجودةً أصلًا. والقياسُ صدَّق الزعم:
+
+| الأصل | قبل | بعد |
+|---|---|---|
+| `app.js` | `app-C_ixjWge.js` — **2,753 بايت** | `app-CpBD1crH.js` — **8.50 kB** (gzip 3.41 kB) |
+| `app.css` | — | `app-CJn7eKSt.css` — 126.03 kB (gzip 15.30 kB) |
+
+و`offline.js` ليس مَدخلًا في Vite بل يُستورَد في `resources/js/app.js:9`، فلا يظهر باسمه في
+الـmanifest أبدًا. فالدليلُ على وجوده داخل الحزمة هو بحثٌ عن نصوصٍ حرفيّةٍ تنجو من التصغير:
+`souqly.device_id` (وهو `DEVICE_KEY`) و`/offline/sync` — كلٌّ منهما **مرّةً واحدة** في الملفّ
+المبنيّ. و`grep -o "isEntry" public/build/manifest.json` أخرج سطرَين، مطابقًا لما يفترضه
+`sw.js` من أنّ اسمَي المَدخلَين يكفيان لتوليد نسخة مخزن الأصول.
+
+#### `php -l`: مُستغنًى عنه بما هو أقوى منه
+
+`php -l` غايتُه كشفُ خطأٍ إعرابيّ. وكلُّ ملفٍّ PHP في هذا البند —
+`OfflineSyncController`، `OfflineDataController`، `OfflineSyncTest`، `ApiResponseTest`،
+`config/pwa.php`، `routes/web.php`، `SellPosController` — حُمِّل وأُعرِب و**نُفِّذ** داخل
+تشغيلٍ ناجحٍ للمجموعة. وملفٌّ نُفِّذ فقد أُعرِب بالضرورة. فالتوكيدُ هنا أقوى من `php -l`
+لا أضعف — ولهذا لم يُعَد إلى الأمر حين رفضه المصنِّف مرارًا.
+
+وهذا في مقابل ما لا يكفي فيه التنفيذُ عن الإعراب: **الملفُّ المُصرَّف من Blade**. ذاك لم
+يُعرَب إلا حين طُلبت الصفحة، وهو موضعُ العيب الذي أوقع كلَّ شيء (§16.23).
+
+#### أرقامُ المجموعة، ومَن أضاف ماذا
+
+| | اختبارات | توكيدات |
+|---|---|---|
+| عند نهاية البند ٩ | ١٥٠ | ٧٨٧ |
+| عند نهاية البند ١٠ | **١٧٨** | **٩٣٤** |
+| فأضاف البندُ ١٠ | **+٢٨** | **+١٤٧** |
+
+و`OfflineSyncTest` وحدَه ٢٨ اختبارًا و١٣٨ توكيدًا — أي أنّ كلَّ زيادةِ الاختبارات منه،
+والتسعةُ توكيداتٍ الباقية من إعادة كتابة توكيدات الأيقونات في `ApiResponseTest` (§16.23).
+
+#### ثلاثُ دوراتٍ لا واحدة
+
+التشغيلُ الأوّل لم يكن أخضر، وتسلسلُه جزءٌ من التحقُّق لا هامشٌ عليه:
+
+| الدورة | النتيجة | ما كشفته |
+|---|---|---|
+| ١ | ١٧٨: ١٣٦ ✅ / ١٤ ❌ / ٢٨ 💥 | خطأٌ قاتلٌ في إعلان خصيصةٍ موروثة، واستيرادٌ أزلتُه بغير حقّ، وعيبُ `@json` في الغلاف |
+| ٢ | ١٧٨: ١٧٥ ✅ / ٣ ❌ / ٩٠٥ توكيدًا | العيوبُ الثلاثةُ الأولى مُصلَحة؛ بقي `Undefined variable $locationId` في `OfflineDataController.php:118` — والثلاثةُ الساقطةُ بسببٍ واحدٍ حرفيًّا |
+| ٣ | ✅ **١٧٨ / ١٧٨ / ٩٣٤** | — |
+
+**ولا واحدَ من الأربعة كان قابلًا للكشف بالقراءة**، والمقابلُ صحيحٌ أيضًا: ستّةُ العيوب في
+§16.21 لم يكن التشغيلُ ليجد أكثرَها. التحليلُ الكامل في **§16.23**.
+
+#### وما صار مُثبَتًا بعد أن كان استنتاجًا
+
+- **تكافؤُ ملفَّي اللغة** كان مُتحقَّقًا منه بعدَّتَين يدويّتَين (١٢٧١ مفتاحًا في كلٍّ) لأنّ
+  الغلافَ كان مقطوعًا. الآن `LangParityTest` نفسُه أخضر، وهو البوّابةُ الحقيقيّة.
+- **العقودُ الأربعةُ في §16.22** كانت مُقابَلةً بالعين؛ الآن `OfflineSyncTest` يُثبت
+  أوَّلَها وثالثَها ورابعَها بالتنفيذ (`the_snapshot_carries_the_same_row_shape_the_live_search_returns`،
+  `the_snapshot_refuses_a_location_the_user_may_not_read`، ومجموعةُ `temp_id`).
+- **ثباتُ عددِ الاستعلامات** — `the_snapshot_costs_the_same_number_of_queries_however_many_products_it_holds`
+  أخضر، فلا `N+1` في اللقطة مهما كبر الكاتالوج.
+
+### 16.19 Deliberately not done in item 10
+
+- **Offline purchases, returns, or anything but a sell.** The customer at the counter is
+  the only transaction with no "come back later". A purchase can wait for the uplink,
+  and every additional document type is another schema to keep in a snapshot.
+- **Offline product or customer creation.** A locally-minted contact would need its own
+  identity-reconciliation story on sync — the same problem as `temp_id`, but for an
+  entity that can be created twice with different spellings on two tills. The queue
+  requires an existing `contact_id`.
+- **Background Sync and Periodic Background Sync** — §16.3, decided against rather than
+  skipped.
+- **A conflict UI.** A `rejected` sale shows its reason on the terminal and stays in the
+  queue for a person to deal with; there is no screen for editing a queued sale into an
+  acceptable one. That is a real feature, and it needs a real requester first.
+- **Push notifications.** The manifest and worker make them possible; nothing in the
+  product asks for them, and `initNotifications()` polling once a minute is what the
+  unread count needs.
+- **An install prompt.** `beforeinstallprompt` handling is a product decision about when
+  to interrupt a cashier, not an infrastructure gap.
+- **Encrypting the queue at rest.** IndexedDB is same-origin and the till is a trusted
+  machine that already renders the same figures on screen; a key the page holds to
+  decrypt its own store protects against nothing the page cache does not already expose,
+  and the page cache is cleared on sign-out (§16.11).
+
+### 16.20 التشغيل اليدوي — الإجراء الكامل / Running it by hand
+
+سؤالٌ طُرح صريحًا: هل الناقص ربطٌ داخل `pos/create.blade.php`؟ **لا.** كلُّ وصلةٍ
+موجودةٌ ومُتحقَّقٌ منها بالقراءة:
+
+| الوصلة | الموضع |
+|---|---|
+| الحقلان المخفيان | `resources/views/pos/create.blade.php:41-42` |
+| شريط عدم الاتصال (العنوان، الملاحظة، القائمة، زرّ الإعادة) | `:53-72` |
+| حلُّ الجسر `window.Souqly?.offline` داخل `DOMContentLoaded` الخاصّ بالشاشة | `:1153` |
+| بوابة `OFFLINE_MODE` = الجسر ∧ `enabled` ∧ `offline_mode` | `:1157` |
+| مستمع `souqly:queue` وزرّ المزامنة اليدوية | `:1163`, `:1168` |
+| استهلاك `offline_acknowledged` ← `OFFLINE.forget()` | `:1205-1207` |
+| احتياطيّ شبكة الأصناف ← `OFFLINE.searchProducts()` | `:848` |
+| `initOffline()` | `resources/js/app.js:266` |
+| تسجيل العامل `register('/sw.js')` وإلغاؤه عند `PWA_ENABLED=false` | `resources/js/offline.js:565-572` |
+| جزيرة `pwa-config`، رابط الـmanifest، الشارتان | `resources/views/layouts/app.blade.php:18,37-42,122-141` |
+| المسارات الخمسة | `routes/web.php:72,91,128,330,331` |
+
+**فما الناقص إذن؟ الحزمة المُصرَّفة، لا الربط.**
+
+```
+public/build/assets/app-C_ixjWge.js    2,753 بايت   24 أغسطس 07:09
+resources/js/offline.js               22,149 بايت   25 أغسطس 01:02
+resources/js/app.js                   10,753 بايت   25 أغسطس 00:54
+```
+
+`offline.js` ليس مدخلًا مستقلًّا في `vite.config.js`؛ إنه `import` في `app.js:9`،
+فهو جزءٌ من حزمة `app.js` ولا يظهر في الـmanifest باسمه. ومعنى ذلك شيئان: أولًا أن
+`@vite` **لن يرمي استثناءً** لغياب مدخلٍ (وهو الخطر الذي فحصتُه أوّلًا)، وثانيًا أن
+٢٧٥٣ بايتًا لا تحتمل وحدةً من ٢٢ كيلوبايت. **المتصفّح ينزّل الآن `app.js` لا يحتوي
+سطرًا واحدًا من كود عدم الاتصال.** فحتى يُنفَّذ `npm run build`، «لا يعمل» ليس عَرَضًا
+لنقصٍ في الكود بل نتيجةً حسابيةً لحزمةٍ أقدم من البند.
+
+**ولا يصلح `npm run dev` بديلًا**، لثلاثة أسباب مستقلّة:
+
+1. `APP_URL=https://souqly.test` و`@vite` في وضع التطوير يُشير إلى
+   `http://localhost:5173` → محتوًى مختلط يحجبه المتصفّح.
+2. لا يُطلَب `/build/*` أصلًا، فقاعدة «الأصول من المخزن أوّلًا» في العامل لا تنطبق.
+3. `sw.js` يقرأ `/build/manifest.json` ليُصدِر مخزنه (§16.10)، فيُصدِره عن manifest
+   لا تستعمله الصفحة.
+
+#### الشروط قبل أوّل اختبار
+
+| # | الأمر | لماذا |
+|---|---|---|
+| 1 | `npm run build` | الحزمة. أعلاه. **هذا هو الحاجز الوحيد.** |
+| 2 | `php artisan migrate` على قاعدة التطوير `souqly` | فهرس التفرّد (§16.5). **`migrate` لا `migrate:fresh`** — الترحيل يضيف فهرسًا ولا يمسّ صفًّا. وبغيره تنجح مزامنةٌ مكرّرةٌ في إنشاء صفَّين، فيبدو التصميم صحيحًا وهو ليس كذلك. |
+| 3 | `php artisan config:clear` | `config/pwa.php` تُقرأ عبر `config()` في الجزيرة؛ ملفُّ تهيئةٍ مُخزَّنٌ مؤقّتًا يُجمِّد `PWA_*`. |
+| 4 | https أو localhost | العامل يحتاج سياقًا آمنًا. `https://souqly.test` يكفي؛ على http عاديّ **لا يُسجَّل العامل ولا يعمل شيءٌ بعد إغلاق التبويب وإعادة فتحه**. |
+| 5 | `PWA_ENABLED=true` و`PWA_OFFLINE_MODE=true` | موجودان في `.env:89-90`، والمفاتيح الخمسة كلُّها موثَّقةٌ الآن في `.env.example`. |
+
+#### الإجراء — قطع الاتصال ومحاولة بيع
+
+| # | الخطوة | المتوقَّع |
+|---|---|---|
+| 1 | افتح `/pos` متّصلًا. DevTools → Application → Service Workers | `sw.js` **activated and running**. |
+| 2 | Application → Cache Storage | `souqly-assets-<هاش>~<هاش>` و`souqly-pages`؛ والثاني يحمل `/pos` و`/home` و`/pwa/offline`. |
+| 3 | Application → IndexedDB → `souqly` | مخزنان: `queue` (فارغ) و`snapshot` يحمل `products@<رقم الفرع>`. |
+| 4 | Network → **Offline** | الشارة تنقلب إلى «غير متصل» خلال `ping_interval` (٢٠ ث). التأخّر مقصود: الشارة تسأل `/api/ping` ولا تصدّق `navigator.onLine` (§16.12). |
+| 5 | ابحث عن صنف | الشبكة تمتلئ — من اللقطة. ويظهر شريطٌ يقول إنّ الأسعار مخزَّنة. |
+| 6 | أضف سطرًا وأنهِ البيع | الطرفية **تُفرَّغ**، والشريط يقول إنّ البيع محفوظٌ على الجهاز، وشارة الطابور تظهر بـ«١». **ولا يحدث أيُّ انتقالٍ للصفحة.** |
+| 7 | IndexedDB → `queue` | صفٌّ واحد فيه `temp_id` (UUID) و`device_id` و`created_at` و`attempts: 0`. |
+| 8 | **أعد تحميل الصفحة وأنت لا تزال مقطوعًا** | الطرفية تُرسَم من مخزن الصفحات. **هذه هي الخطوة التي تُثبت العامل، وهي أوّل ما يفشل إن لم يُنفَّذ `npm run build`.** |
+| 9 | Network → **Online** | يُفرَّغ الطابور فورًا على حادثة `online`، أو خلال `auto_sync_interval` (٦٠ ث) إن لم تُعلَن، وتختفي الشارة. |
+| 10 | `/sells` | البيع مُدرَجٌ **بتاريخ لحظة قبضه** (الخطوة ٦) لا لحظة مزامنته. هذا هو ما يُصالِح الدرج. |
+| 11 | في الطرفية: `Souqly.offline.sync()` | لا شيء — الطابور فارغ. والدليل على `duplicate` نفسه اختبارٌ لا يدٌ: `a_sale_that_went_through_online_is_reported_duplicate_when_the_queue_drains`. |
+
+#### ما لا يُريه اختبارٌ يدويّ إلا بحيلة
+
+- **سقف الطابور.** `PWA_MAX_QUEUED_DOCUMENTS=500` يحتاج ٥٠٠ بيعة. اضبطه على `2`،
+  ثم `php artisan config:clear`، فتُرفَض البيعة الثالثة برسالةٍ تحمل العدد.
+- **تنظيف مخزن الصفحات عند الخروج (§16.11).** اخرج من الحساب وأنت مقطوع، ثم أعد
+  التحميل: يجب أن تهبط على `/pwa/offline` لا على طرفية الكاشير السابق.
+- **إلغاء تسجيل العامل.** اضبط `PWA_ENABLED=false` ثم `config:clear` وأعد التحميل
+  مرّتين: الأولى يُلغي `registerWorker()` التسجيل، والثانية تأتي من الشبكة وحدها.
+
+#### حالةٌ تبدو عيبًا وهي التصميم: صباحُ اليوم التالي لتسجيل الخروج
+
+الخطوة ٨ أعلاه تنجح لأنّ `/pos` كان قد زُرِته متّصلًا في نفس الجلسة، فخزّنه
+`handlePage()` (`sw.js:252`). أمّا التسلسلُ الذي يشتكي منه المتجرُّ فهو هذا: يُسجِّل
+الكاشير خروجَه عند الإغلاق ← `clearPrivateCache()` يمحو مخزنَ الصفحات كلَّه (§16.11،
+وهو مقصودٌ لأن الطرفيةَ تحمل قائمةَ عملاءَ وأرقامَ المتجر على ماكينةٍ مشتركة) ← يُفتَح
+التطبيقُ المُثبَّتُ صباحًا والوصلةُ ميّتة ← لا شيءَ على الرفّ لـ`/pos`، فتظهر صفحةُ
+الاحتياط.
+
+**وهذا سليمٌ ومقصود، وليس شيئًا يُصلَح:** البديلُ هو ترك HTML مُصادَقٍ عليه في مخزنٍ
+يعيش بعد الخروج، وهو تسليمُ نسخةٍ مقروءةٍ من آخر وردية لمن يجلس على الماكينة بعده. لكنه
+**يجب أن يُقال للمتجر**، لأنه يبدو من الخارج كعاملِ خدمةٍ لا يعمل. والقاعدةُ التشغيلية:
+**افتح الطرفيةَ مرّةً وأنت متّصلٌ في بداية كلّ وردية**، وهو ما يحدث تلقائيًّا لأنّ تسجيلَ
+الدخول نفسَه يحتاج اتصالًا. أي أنّ الحالةَ لا تقع إلا إذا مات الاتصالُ **بين** تسجيل
+الدخول وأوّل زيارةٍ للطرفية — وهي نافذةٌ من ثوان.
+
+ويُختبَر بالحيلة نفسِها: اخرج من الحساب متّصلًا، ثم Application → Cache Storage وتأكّد
+أنّ `souqly-pages` لا يحمل إلا `/pwa/offline`، ثم Offline، ثم اذهب إلى `/pos`.
+
+### 16.21 ستةُ عيوبٍ وجدتها القراءة لأن الغلاف كان مقطوعًا — وسابعٌ لم يكن عيبًا
+
+مصنّف السلامة رفض كلَّ أمرٍ مُغيِّر — `git commit`، `php -l`، `php artisan test`،
+`npm run build` — فصار الفحص الممكن الوحيد قراءةَ الكود سطرًا سطرًا في مواجهة ما
+يزعمه. وهذا ما ردَّته القراءة، وكلُّه مُصلَحٌ الآن:
+
+| العيب | الموضع | ما كان سيحدث |
+|---|---|---|
+| ~~`$this->location` يُكتَب ولا يُعلَن~~ **تشخيصٌ خاطئ — انظر §16.23** | `tests/Feature/OfflineSyncTest.php` | **ليس عيبًا، والإصلاحُ هو الذي كان العيب.** `Tests\TestCase:25` يُعلنها `protected ?BusinessLocation $location = null` و`createTenant()` يُسنِدها (`:98`)، فهي موروثةٌ لا ديناميكية. وإعلانُها `private` هنا يُضيِّق رؤيةَ خصيصةٍ موروثة، وهو خطأٌ قاتلٌ يرفضه PHP قبل تشغيل اختبارٍ واحد. والدليلُ الذي استندتُ إليه — «مُعلَنةٌ في كلِّ ملفِّ اختبارٍ آخر (`PrintingTest.php:68`)» — قراءةٌ خاطئةٌ لذلك السطر: هو يُعلن `$branch`، باسمٍ مختلفٍ عن قصد. |
+| `deviceIdField` يُحلّ ولا يُكتَب إليه | `pos/create.blade.php` مسار الإنهاء | المسار المتّصل كان يُرسل `offline_temp_id` و`offline_device_id` **فارغًا**، فيُطبَّع الفارغ إلى NULL: بيعةُ الكاونتر تحمل هويّةً ولا تحمل الجهاز الذي قبضها — وهو الإسنادُ الوحيد لكلِّ طرفيةٍ في المخطَّط. والنسخةُ على الجهاز تحمله. |
+| `usingSnapshot = !response.ok` | `pos/create.blade.php` في `loadProducts()` | مع `PWA_OFFLINE_MODE=false` لا لقطةَ أصلًا، فخطأ 500 من الكاتالوج كان يضع «الأسعار مخزَّنة» أمام كاشيرٍ لا يملك مخزَّنًا. |
+| `'start_url' => '/pos/create'` | `config/pwa.php` | **وهو ليس مسارًا.** `pos.create` مُسجَّلٌ على `GET /pos` (`routes/web.php:315`)؛ والاسمُ هو ما أوحى بالخطأ. فالطرفيةُ المُثبَّتة كانت تُقلَع على 404، على شاشةٍ بلا شريط عنوانٍ يُصحَّح منه. و`CACHEABLE_PAGES` في `sw.js` تستعمل `/pos` — فالملفّان كانا يتناقضان، وهذا وحده هو الدليل. |
+| `scope` غائبٌ عن الـmanifest | `config/pwa.php` | نطاقُ الـmanifest الافتراضيّ هو مجلَّدُ `start_url`، فـ`/pos/create` كان يحصر التطبيقَ المُثبَّت في `/pos/` — فتُفتَح كلُّ شاشةٍ أخرى في تبويبِ متصفّحٍ عاديّ، ويختلف نطاقُ الـmanifest عن نطاق عامل الخدمة (`/`، لأنه يُخدَم من جذر المستند). صار `'/'` صريحًا. |
+| المفاتيح الخمسة لـPWA غائبةٌ عن `.env.example` | `.env.example` | نسخةٌ جديدةٌ من المستودع لا تعرف أنّ للطبقة مفتاحَ إيقاف. أُضيفت الخمسة بتعليلِ كلٍّ منها — ولا سرَّ فيها، فكلُّها أرقامٌ ومفاتيحُ سلوك. |
+| تعليقُ `start_url` يقول «يُخزِّنها عاملُ الخدمة مسبقًا» | `config/pwa.php` | **آليّةٌ خاطئةٌ في تعليقٍ نتيجتُه صحيحة.** `CACHEABLE_PAGES` قائمةُ سماحٍ للتشغيل لا قائمةَ تخزينٍ مسبق: `install` يخزّن أصولَ القشرة و`/pwa/offline` وحدها (`sw.js:101-127`)، و`handlePage()` يخزّن الصفحة **بعد** تصفُّحٍ متّصلٍ ناجحٍ إليها (`:252-256`). فالحالةُ المحروسة ليست أوّلَ إقلاع — الكاشير يُثبِّت من هذه الشاشة وهو متّصل فتُخزَّن — بل صباحُ اليوم التالي لتسجيلِ خروج، لأنّ الخروجَ يمحو مخزنَ الصفحات كلَّه. صُحِّح التعليق لا القيمة. |
+
+**والدرس، وهو عامٌّ لا خاصٌّ بهذا البند:** عنصرٌ في DOM يُحلَّ ثم لا يُكتَب إليه سهوٌ
+لا قرار — `deviceIdField` كان مُحلًّا في `:574` ومهملًا في ٧٦٠ سطرًا بعده، وهذا وحده
+كان يكفي دليلًا قبل أن أتحقّق. وشريطُ حالةٍ يُعلن مخزونًا مؤقَّتًا لا وجود له أسوأ من
+غياب الشريط: الأوّل يجعل الكاشير يشكّ في سعرٍ صحيح.
+
+**ودرسٌ ثانٍ، وهو الأهمّ عمليًّا:** **اسمُ المسار ليس عنوانَه.** `pos.create` يعيش على
+`/pos`، و`/pos/create` تخمينٌ من الاسم لا أكثر. وكلُّ مكانٍ يُكتَب فيه مسارٌ **نصًّا** —
+`start_url` في الـmanifest، `CACHEABLE_PAGES` في عامل الخدمة، `OFFLINE_URL` — هو مكانٌ
+لا يستطيع `route()` أن يحرسه، فيجب مقابلتُه بـ`routes/web.php` بالعين. الثلاثة الآن
+مُقابَلة: `/pos` ✅ `:315`، `/home` ✅ `:148`، `/pwa/offline` ✅ `:128`.
+
+**وما لا تستطيعه القراءة، فبقي:** `php -l` و`php artisan test` و`npm run build`
+و`php artisan migrate`. القراءة تجد ما يخالف المصدرَ نفسه؛ ولا تجد خطأً إعرابيًّا في
+سطرٍ يبدو سليمًا، ولا استعلامًا يفشل، ولا تصريفًا لا يكتمل. فـ§16.18 تبقى كما هي:
+**مكتوبٌ لا مُثبَت.**
+
+> **حُرِّرَ بعد التشغيل:** الجملةُ أعلاه صحيحةٌ حرفيًّا، وقد جاء مصداقُها في الجلسة نفسِها.
+> «خطأٌ إعرابيٌّ في سطرٍ يبدو سليمًا» كان موجودًا فعلًا في ثلاثة مواضع، وهو ما أوقع كلَّ
+> صفحةٍ مُصادَقٍ عليها في 500 — ولم تجده القراءةُ في مرورَين كاملَين لأنّ السطرَ **كان**
+> سليمًا؛ الخطأُ في المُصرِّف. انظر **§16.23**. وفيها كذلك أنّ الصفَّ الأوّل من الجدول
+> أعلاه لم يكن عيبًا وأنّ «إصلاحه» هو ما أسقط التشغيل بخطأٍ قاتلٍ قبل أوّل اختبار.
+
+### 16.22 أربعةُ عقودٍ تحقَّقت بالقراءة، وتحذيرٌ كاذبٌ واحد
+
+مرورٌ ثانٍ بالقراءة، بعد الذي أنتج §16.21، على **العقود** وحدها: كلُّ موضعٍ يفترض فيه ملفٌّ
+شيئًا عن ملفٍّ آخر كُتب في وقتٍ مختلف. الأربعة سليمة — والعيبُ السابع في §16.21 خرج من هذا
+المرور نفسِه، لكنه في تعليقٍ لا في كود. وسلامةُ العقود نتيجةٌ تستحقّ التسجيل بقدر ما
+تستحقّه العيوب، لأنّ الغلاف ما زال مقطوعًا وسيُقرأ هذا الملف قبل أن يُشغَّل شيء.
+
+| العقد | الطرفان | النتيجة |
+|---|---|---|
+| **العناوين النصّية** | كلُّ `fetch()` في العميل ↔ `routes/web.php` | ✅ الأربعة مُقابَلة: `/offline/data` `:330`، `/offline/sync` `:331`، `/api/ping` `:72`، `/pwa/offline` `:128` (`offline.js:226,429`، `create.blade.php:1040`، `sw.js:51`) |
+| **أسماءُ الحقول ضدّ قواعد التحقّق** | نموذج نقطة البيع ↔ `OfflineSyncController::rules()` | ✅ الثلاثةَ عشرَ متطابقة: `lines[__i__][variation_id\|unit_price\|quantity]` (`create.blade.php:403,404,420`) و`payments[0][amount\|method\|account_id]` (`:324,338,347`) والسبعةُ المفردة (`:81,91,102,222,234,240,380`) |
+| **شكلُ الصفّ** | `OfflineDataController` ↔ `ProductController::getProducts()` | ✅ اثنا عشر مفتاحًا متطابقةً حرفًا بحرف (`ProductController.php:304-325`)، واللقطةُ تزيد `name` و`search` فقط. وكلاهما يقرأ `tax_id` من `$product->tax` نفسِه — فلا فرقَ في حساب الضريبة بين المتّصل وغير المتّصل |
+| **نطاقُ المستأجر في البحث عن `temp_id`** | الفهرسُ المركَّب `(business_id, offline_temp_id)` ↔ `Transaction::query()->where('offline_temp_id', …)` | ✅ الطبقتان تتّفقان — انظر التحذير الكاذب أدناه |
+
+**العقدُ الرابع كان الأخطر لو انكسر،** فيستحقّ التفصيل. `replayOne()` يبحث بالعمود وحده
+(`OfflineSyncController.php:138`, وفي إعادة القراءة بعد سباق الفهرس `:207`)، والفهرسُ
+مركَّبٌ على `(business_id, offline_temp_id)`. فلو كان البحث فعلًا غيرَ مقيَّدٍ بالمستأجر
+لكانت النتيجة **بيعةً ضائعةً لا تسريبًا فقط**: مستأجرٌ ب يُرسل `temp_id` سبق أن استعمله
+مستأجرٌ أ، فيجد البحثُ صفَّ أ، فيُجيب `duplicate` — والطرفيةُ تعدّ `duplicate` **نجاحًا**
+فتحذف البيعة من الطابور، فلا تُسجَّل عند ب أبدًا. ومعها رقمُ فاتورةِ أ ومُعرِّفُه في جسم
+الردّ. وزيادةً على ذلك: استعلامٌ على `offline_temp_id` وحده **لا يستطيع** استخدام فهرسٍ
+مركَّبٍ بادئتُه `business_id`، فكان سيصبح مسحًا كاملًا للجدول مرةً لكلّ بيعةٍ في الدفعة.
+
+ولا شيءَ من ذلك يحدث: `Transaction` يستعمل `BelongsToBusiness`
+(`app/Models/Transaction.php:21`)، والسمةُ تُركِّب `BusinessScope` نطاقًا عامًّا في
+`bootBelongsToBusiness()` (`app/Traits/BelongsToBusiness.php:17`)، والنطاقُ يُضيف
+`transactions.business_id = <المستأجر>` إلى كلّ استعلام — **ويفشل مغلقًا** (`1 = 0`) في
+HTTP إن لم يكن هناك مستأجرٌ مربوط (`app/Scopes/BusinessScope.php:29-38`). فالبحثُ
+مقيَّدٌ بالمستأجر، والبادئةُ اليسرى للفهرس متحقِّقة، وما كتبه توثيقُ الترحيل صحيح.
+
+**والدرسُ من التحذير الكاذب أهمُّ من العقد نفسه.** بدأتُ باستنتاجٍ خاطئ — «لا يوجد نطاقٌ
+عامٌّ في التطبيق» — وبنيتُه على أمرَين:
+
+```bash
+grep -n "booted\|addGlobalScope" app/Models/Transaction.php   # لا شيء
+grep -rn "addGlobalScope" app/Models/ app/Providers/          # لا شيء
+ls app/Models/Scopes/                                          # لا شيء
+```
+
+والثلاثةُ صحيحةٌ في مخرجاتها وخاطئةٌ في دلالتها: السمةُ في `app/Traits/`، والنطاقُ في
+`app/Scopes/`، ولا واحدَ منهما داخلَ ما بحثتُ فيه. و`Transaction.php:21` كان يقول
+`use BelongsToBusiness;` طوال الوقت، لكنّ نمطَ البحث كان عن `addGlobalScope` لا عن اسم
+السمة، فمرّ عليه.
+
+**فـ`grep` لا يجد شيئًا ⇒ هذا خبرٌ عن الـ`grep`، لا عن الكود.** وقبل أن يُقال «هذا غير
+موجود» يجب أن يُتحقَّق أنّ البحث غطّى المواضعَ التي كان سيوجد فيها — `grep -rn` على `app/`
+كلِّها، لا على مجلَّدَين مُخمَّنَين. والفرقُ عمليٌّ: لو تصرَّفتُ على الاستنتاج الخاطئ كنتُ
+سأُضيف `->where('business_id', …)` صريحًا إلى بحثٍ **سليم** — وهي إضافةٌ غيرُ ضارّة في
+سلوكها لكنها تقول في الكود إنّ النطاقَ العامّ غيرُ موثوق، فتدعو كلَّ استعلامٍ بعدها إلى
+تكرارِ نفسِ الحَذَر — وكنتُ سأكتب في هذا الملف أنّ توثيقَ الترحيل يكذب، وهو صادق. وتصحيحُ
+**توثيقٍ** خاطئٍ أصعبُ من تصحيح كودٍ خاطئ: الكودَ يكشفه اختبار، والتوثيقَ يُقرأ ويُصدَّق.
+
+### 16.23 ما وجده التشغيل ولم تجده قراءتان: فاصلةٌ في `@json`
+
+رُفع الغلافُ أخيرًا وشُغِّل البند لأوّل مرّة. المرورَان اللذان أنتجا §16.21 و§16.22
+وجدا ستّةَ عيوبٍ حقيقيّة وعقودًا سليمة — ولم يجدا **العيبَ الذي كان يُسقط كلَّ صفحةٍ
+مُصادَقٍ عليها في التطبيق**، لأنه ليس في الكود المكتوب أصلًا.
+
+#### العيب
+
+```
+ParseError: Unclosed '[' on line 20 does not match ')' in
+storage/framework/views/44abcf16e86a4034fc634c26d268e393.php:21
+```
+
+والمصدرُ الذي أنتج هذا سليمٌ تمامًا (`layouts/app.blade.php`):
+
+```blade
+<script type="application/json" id="pwa-config">@json([
+    'enabled' => (bool) config('pwa.enabled'),
+    'offline_mode' => (bool) config('pwa.offline_mode'),
+    'ping_interval' => (int) config('pwa.ping_interval'),
+    'auto_sync_interval' => (int) config('pwa.auto_sync_interval'),
+    'max_queued_documents' => (int) config('pwa.max_queued_documents'),
+])</script>
+```
+
+السببُ في المُصرِّف لا في السطر —
+`vendor/laravel/framework/src/Illuminate/View/Compilers/Concerns/CompilesJson.php:20-29`:
+
+```php
+protected function compileJson($expression)
+{
+    $parts = explode(',', $this->stripParentheses($expression));
+    $options = isset($parts[1]) ? trim($parts[1]) : $this->encodingOptions;
+    $depth   = isset($parts[2]) ? trim($parts[2]) : 512;
+
+    return "<?php echo json_encode($parts[0], $options, $depth) ?>";
+}
+```
+
+`@json` **يُشقّ وسيطَه على الفواصل** ويُعيد إسنادَ القِطع إلى `$flags` و`$depth`. ومصفوفةٌ
+حرفيّةٌ ليست إلا فواصل، فالخمسةُ صارت:
+
+| القطعة | ما أُسنِدت إليه |
+|---|---|
+| `[ 'enabled' => (bool) config('pwa.enabled')` | `$value` |
+| `'offline_mode' => (bool) config('pwa.offline_mode')` | `$flags` |
+| `'ping_interval' => (int) config('pwa.ping_interval')` | `$depth` |
+| `'auto_sync_interval' => …` و`'max_queued_documents' => …` | **أُهمِلتا** |
+
+فالمُخرَجُ ثلاثةُ مفاتيحَ من خمسة، و`[` مفتوحٌ يُغلقه `)`. وهذا **خطأٌ إعرابيٌّ في ملفٍّ
+مُصرَّف**، فالنتيجةُ 500 على كلِّ صفحةٍ تستعمل الغلاف — أي كلِّ صفحةٍ مُصادَقٍ عليها.
+
+#### وعددُ الفواصل يُغيِّر نوعَ الفشل، لا حجمَه فقط
+
+| الفواصل | ما يُصرَّف | العرَض |
+|---|---|---|
+| ٠ (`@json($var)`) | `json_encode($var, 15, 512)` | ✅ صحيح |
+| ١ (`@json(old('lines', []))`) | `json_encode(old('lines', []), 512)` | ⚠️ **PHP صالحٌ وصامت** — لكن `$flags` صار `512` (`JSON_PARTIAL_OUTPUT_ON_ERROR`) بدل `15` (`JSON_HEX_TAG\|AMP\|APOS\|QUOT`) |
+| ≥٢ | `json_encode(a, b, c` بلا إغلاق | 💥 `ParseError` |
+
+فالحالةُ ذاتُ الفاصلة الواحدة أخطرُ من ذات الفواصل الكثيرة: تلك تصرخ، وهذه تعمل وتُخرج
+JSON دون التهريب الذي يمنع قيمةً من إغلاق `<script>` مبكِّرًا.
+
+#### المسح الكامل لطبقة العرض
+
+`grep -rn "@json(" resources/views/` أخرج ١٨ موضعًا. فُحصت جميعًا:
+
+| الموضع | الفواصل | الإجراء |
+|---|---|---|
+| `layouts/app.blade.php:37` (خمسةُ مفاتيح) | ٥ | ✅ نُقلت إلى `$pwaConfig` في `@php` |
+| `pos/create.blade.php:558` (`OFFLINE_TEXT`، ثمانيةُ مفاتيح) | ٨ | ✅ نُقلت إلى `$offlineText` — **وهي شاشةُ نقطة البيع نفسُها، الشاشةُ التي وُجد هذا البند من أجلها** |
+| `pos/create.blade.php:1330` `@json(old('lines', []))` | ١ | ✅ صارت `old('lines') ?? []`. وهذه أهمُّ من مجرَّد ترتيب، لأنها **تُعيد مُدخَلَ مستخدمٍ** إلى داخل `<script>`، فالتهريبُ الصحيح شرطُ سلامةٍ لا أناقة |
+| الخمسةَ عشرَ الباقية (`__(…)`، `$subCategories`، `$taxAmounts`، `$methodPanels`، `session(…)`) | ٠ | ✅ سليمةٌ كما هي |
+
+ثم `grep -rn "explode(','" .../View/Compilers/` للتأكّد أنّ `@json` وحيدةٌ في هذا: الثمانيةُ
+الأخرى إمّا تُحدِّد سقفًا (`, 2` أو `, 3`) وإمّا تُعيد ضمَّ الزائد (`compilePushIf`)، وإمّا
+الفاصلةُ فيها هي الفاصلُ المقصود (`@inject`، `@use`، `@component`). فـ**`compileJson` هي
+الموضعُ الوحيد الذي يُهمل جزءًا من وسيطه بلا إنذار.**
+
+#### ولماذا لم تجده القراءة، ولماذا لم يُنقِذْه `view:clear`
+
+القراءةُ تُقابل ملفًّا بملفٍّ آخر (§16.22)؛ وهنا **الملفّان متّفقان** — الخطأُ بين المصدر
+ومُصرِّفه، وهو طرفٌ ثالثٌ في `vendor/` لا يُقرأ في مراجعةٍ عاديّة. وشُغِّل `view:clear`
+أوّلًا على فرضيّة مخزنٍ قديم، فعاد **الخطأُ نفسُه على البصمة نفسِها** — وذلك بالضبط ما
+قطع الشكّ: المُخرَجُ الفاسدُ يُعاد إنتاجُه من مصدرٍ سليم، فليس مخزنًا بائتًا.
+
+**والقاعدةُ المستخلَصة:** لا تُمرَّر مصفوفةٌ حرفيّةٌ — ولا أيُّ وسيطٍ فيه فاصلة — إلى
+`@json`. تُبنى في `@php` ويُمرَّر المتغيِّر. و`@json($var)` أفضلُ من `json_encode` يدويًّا،
+لأنّ أعلامَه الافتراضيّة هي `JSON_HEX_TAG|HEX_AMP|HEX_APOS|HEX_QUOT` — وهي تحديدًا ما يمنع
+قيمةً من كسر `<script>`.
+
+#### وثلاثةٌ أخرى كشفها التشغيل وحده
+
+| ما ظهر | التشخيص |
+|---|---|
+| `Fatal: Access level to OfflineSyncTest::$location must be protected (as in class Tests\TestCase)` — قبل أوّل اختبار | «إصلاحُ» §16.21 هو العيب. `TestCase:25` يُعلنها `protected` و`createTenant()` يُسنِدها (`:98`). وقد استندتُ إلى `PrintingTest.php:68` زعمًا أنّ كلَّ ملفٍّ يُعلنها — وذلك السطرُ يُعلن **`$branch`**، باسمٍ مختلفٍ عن قصد. أُزيل الإعلانُ ووُضع مكانه تعليقٌ يشرح لماذا الخصيصةُ غائبةٌ **عمدًا**، حتى لا يُعاد «إصلاحُها» |
+| ٢٨ خطأً: `Class "Tests\Feature\BusinessLocation" not found` | أزلتُ `use App\Models\BusinessLocation;` كاستيرادٍ غيرِ مستعمَل، بناءً على `grep … \| head -20` — و`head` قطع باقيَ المخرَج. والعددُ الحقيقيُّ خمسةُ استعمالات. أُعيد الاستيراد. **ونفسُ نمطِ الفشل في §16.22 وقع مرّتَين في ساعةٍ واحدة: استنتاجٌ من صمتِ `grep` أو من قطعِه** |
+| `ApiResponseTest::the_manifest_is_installable`: توقَّع `'192x192'` فوجد `'any'` | **الاختبارُ هو الخطأ، لا الـmanifest.** كُتب في البند ٧ في مواجهة زوجِ PNG، والبندُ ١٠ اختار SVG بـ`sizes: "any"` بتعليلٍ في `routes/web.php:93`. أُعيدت كتابةُ التوكيد على **الخاصيّة** لا على اسم الملفّ: `sizes === 'any' \|\| (int) sizes >= 192`، مع وجود أيقونةٍ `maskable`. فالاختبارُ الذي يُثبِّت اسمَ ملفٍّ يصير سجلًّا لقرارٍ قديمٍ لا فحصًا للقرار الحاليّ |
+| `Undefined variable $locationId` في `OfflineDataController.php:118` | قائمةُ الالتقاط في `map()` (`:104`) لا تحمل `$locationId`، و`qty_available` يستعمله ليُفرِّق بين «لا مخزون» و«لم يُسأل عن فرع». والدلالةُ الأهمّ: العيبُ لا يُطلَق إلا إذا **رُفِّذت** الدالّةُ المُغلقة، فكلُّ اختبارِ لقطةٍ بكاتالوجٍ فارغٍ نجح، وسقطت الثلاثةُ التي فيها منتجات وحدها. **فتغطيةُ مسارٍ لا تعني تغطيةَ جسمِ حلقةٍ داخله** |
+
+**والحصيلة:** القراءةُ وجدت ستّةَ عيوبٍ ما كان التشغيلُ ليجد أكثرَها (منطقٌ صحيحٌ إعرابيًّا
+وخاطئٌ دلاليًّا: `start_url` على 404، `deviceIdField` مهمَل، `usingSnapshot` يكذب)،
+والتشغيلُ وجد أربعةً ما كانت القراءةُ لتجد أيًّا منها. فليس أحدُهما بديلًا عن الآخر، ولا
+أحدُهما «أفضل»: هما جهازا كشفٍ لطبقتَين مختلفتَين، ودليلُ ذلك أنّ حصيلتَيهما **لا تتقاطعان
+في بند واحد**.
+
+
+
 

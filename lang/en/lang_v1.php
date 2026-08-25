@@ -208,6 +208,19 @@ return [
     'online' => 'Online',
     'offline' => 'Offline',
 
+    // Offline POS (PWA)
+    'sync_now' => 'Sync now',
+    'pending_sync_count' => ':count unsent',
+    'pending_sync_hint' => 'Sales saved on this device that the server has not received yet. They will be sent automatically.',
+    'offline_sale_saved' => 'Saved on this device. It will be sent when the connection returns.',
+    'offline_pending_title' => ':count sale(s) not yet sent',
+    'offline_pending_note' => 'Recorded on this device. Do not clear the browser data until they have been sent.',
+    'offline_snapshot_note' => 'Showing saved prices and stock. You can keep selling.',
+    'offline_queued_sale' => ':time · :count line(s)',
+    'offline_queue_full' => 'This device is holding :count unsent sales and cannot hold more. Restore the connection before selling again.',
+    'offline_unavailable' => 'This device cannot save the sale offline. Restore the connection and try again.',
+    'offline_sale_missing_id' => 'The queued sale has no identifier and cannot be synced.',
+
     // Misc
     'and' => 'and',
     'record' => 'Record',
