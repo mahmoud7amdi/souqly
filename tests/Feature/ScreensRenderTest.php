@@ -186,6 +186,10 @@ class ScreensRenderTest extends TestCase
         $this->seedSettingsFixtures();
 
         $this->seedListingDuplicates();
+
+        // Last, and independent of everything above: the ledger's rows need only a
+        // location and a signed-in user, and both exist by now.
+        $this->seedAccountingFixtures();
     }
 
     /**
@@ -777,6 +781,135 @@ class ScreensRenderTest extends TestCase
         $this->fixtureMaintenanceId = $maintenance->id;
     }
 
+    /**
+     * The accounting module's own rows — the sixteen screens of item 11's ledger.
+     *
+     * Runs last and needs nothing the other seeders leave behind, so the placement
+     * is free; it is last only because it is newest.
+     *
+     * `actingAs` here rather than in the walk, because two of these writes read the
+     * authenticated user directly: `postJournal()` stamps `created_by_id` from
+     * `auth()->id()` and `transfer()` stamps `transfer_by_id` the same way. Seeded
+     * unauthenticated they would both store 0, and the "posted by" and
+     * "transferred by" cells would render their em-dash fallback — passing the walk
+     * while covering the wrong branch of exactly the markup this seeder exists to
+     * reach.
+     */
+    private function seedAccountingFixtures(): void
+    {
+        $this->actingAs($this->admin);
+
+        $accounting = app(\App\Services\AccountingService::class);
+        $locationId = \App\Models\BusinessLocation::first()->id;
+
+        /*
+         * Five accounts, each earning its place on a screen rather than padding the
+         * chart:
+         *
+         * - `cash` and `bank` are both debit-natured with an opening balance, which
+         *   is what gives the trial balance a non-zero opening column and the
+         *   transfer two ends;
+         * - `sales` is credit-natured, so the opening column has to net the two
+         *   signs against each other — the bug `openingAsDebit()` exists to prevent
+         *   would show up here as an opening total equal to the sum of the three;
+         * - `petty` is a child of `cash`, so the chart's parent meta and the
+         *   `wouldCycle` guard both have a tree to walk;
+         * - `old` is archived, which is the only way the index's archived badge and
+         *   its `state` filter get exercised at all.
+         */
+        $cash = $accounting->createAccount([
+            'name' => 'Fixture cash', 'gl_code' => 1000, 'account_type' => 'asset',
+            'opening_balance' => '5000', 'allow_manual' => true,
+        ]);
+
+        $bank = $accounting->createAccount([
+            'name' => 'Fixture bank', 'gl_code' => 1010, 'account_type' => 'asset',
+            'opening_balance' => '20000', 'allow_manual' => true,
+        ]);
+
+        $sales = $accounting->createAccount([
+            'name' => 'Fixture sales', 'gl_code' => 4000, 'account_type' => 'income',
+            'opening_balance' => '25000', 'allow_manual' => true,
+        ]);
+
+        $accounting->createAccount([
+            'name' => 'Fixture petty cash', 'gl_code' => 1001, 'account_type' => 'asset',
+            'parent_id' => $cash->id, 'allow_manual' => true,
+            'notes' => 'A child, so the chart has a tree to render.',
+        ]);
+
+        $accounting->createAccount([
+            'name' => 'Fixture closed account', 'gl_code' => 1099,
+            'account_type' => 'asset', 'active' => false,
+        ]);
+
+        /*
+         * Two cost centres, and the difference between them is the point. The first
+         * carries a journal line, so the listing renders its entries link and hides
+         * its delete button. The second carries none and is inactive with a parent,
+         * a manager and a budget — so the archived badge, the parent meta, the
+         * manager cell and the delete form all render on the same walk.
+         */
+        $operations = $accounting->createCostCenter([
+            'code' => 'CC-100', 'name' => 'Fixture operations', 'type' => 'cost',
+            'manager_id' => $this->admin->id, 'location_id' => $locationId,
+            'budget_amount' => '15000', 'budget_period' => 'monthly', 'sort_order' => 1,
+        ]);
+
+        $accounting->createCostCenter([
+            'code' => 'CC-200', 'name' => 'Fixture marketing', 'type' => 'profit',
+            'parent_id' => $operations->id, 'manager_id' => $this->admin->id,
+            'budget_amount' => '2500', 'budget_period' => 'yearly',
+            'is_active' => false, 'sort_order' => 2,
+        ]);
+
+        /*
+         * The document the `{number}` routes bind to. Deliberately the *live* one:
+         * `showJournal()` builds `canReverse` from the permission and the two
+         * conditions the service refuses on, so binding the walk to a reversed
+         * document would render the screen with its reverse button suppressed and
+         * never touch that markup.
+         */
+        $this->fixtureJournalNumber = $accounting->postJournal([
+            'date' => now()->toDateString(),
+            'name' => 'Fixture journal',
+            'reference' => 'FIX-001',
+            'notes' => 'Seeded so the journal has a document to show.',
+            'location_id' => $locationId,
+            'lines' => [
+                ['chart_of_account_id' => $cash->id, 'debit' => 750, 'credit' => 0,
+                    'cost_center_id' => $operations->id, 'notes' => 'Cash in'],
+                ['chart_of_account_id' => $sales->id, 'debit' => 0, 'credit' => 750,
+                    'cost_center_id' => $operations->id],
+            ],
+        ]);
+
+        // A second document, then reversed — which is what puts a reversed row and
+        // its mirror on the listing, and the only way the reversed badge is seen.
+        $accounting->reverse($accounting->postJournal([
+            'date' => now()->toDateString(),
+            'name' => 'Fixture journal to reverse',
+            'lines' => [
+                ['chart_of_account_id' => $cash->id, 'debit' => 120, 'credit' => 0],
+                ['chart_of_account_id' => $sales->id, 'debit' => 0, 'credit' => 120],
+            ],
+        ]));
+
+        // Posts a third document of its own, sub-typed `transfer`, so both the
+        // transfers listing and the journal's transfer badge have a row.
+        $accounting->transfer([
+            'transfer_from_id' => $cash->id,
+            'transfer_to_id' => $bank->id,
+            'amount' => '400',
+            'date' => now()->toDateString(),
+            'location_id' => $locationId,
+            'notes' => 'Seeded transfer.',
+        ]);
+
+        $this->fixtureChartAccountId = $cash->id;
+        $this->fixtureCostCenterId = $operations->id;
+    }
+
     private int $fixtureProductId;
 
     private int $fixtureVariationId;
@@ -824,6 +957,16 @@ class ScreensRenderTest extends TestCase
     private int $fixtureRoleId;
 
     private int $fixtureStaffId;
+
+    private int $fixtureChartAccountId;
+
+    private int $fixtureCostCenterId;
+
+    /* A string, not an int, unlike every other fixture here: the journal's document
+       routes bind a `{number}` — the reference the service generates — because a
+       document is the set of rows sharing a `transaction_number`, and there is no
+       single key to bind to. */
+    private string $fixtureJournalNumber;
 
     private function createProductFor(): \App\Models\Product
     {
@@ -892,6 +1035,18 @@ class ScreensRenderTest extends TestCase
             'assets.show' => $this->fixtureAssetId,
             'assets.edit' => $this->fixtureAssetId,
             'asset-maintenance.edit' => $this->fixtureMaintenanceId,
+            /*
+             * The accounting chart and its cost centres. All three resolve the row
+             * through a `forBusiness()` `findOrFail()`, so the default
+             * fixture-product id would 404 them rather than render them.
+             *
+             * `accounts.show` / `accounts.edit` above belong to the cash-and-bank
+             * module — a different screen on a different table. The two pairs do not
+             * collide because these carry the `accounting.` prefix.
+             */
+            'accounting.accounts.show' => $this->fixtureChartAccountId,
+            'accounting.accounts.edit' => $this->fixtureChartAccountId,
+            'accounting.cost-centers.edit' => $this->fixtureCostCenterId,
             /*
              * The three GET print routes. Walked rather than skipped, exactly as
              * `purchase-order.pdf` is: they are the whole point of item 9, they
@@ -962,6 +1117,14 @@ class ScreensRenderTest extends TestCase
                 'role' => $this->fixtureRoleId,
                 'user' => $this->fixtureStaffId,
                 'template' => 'new_sale',
+
+                /*
+                 * The journal's document routes take a `{number}`, not an id, for the
+                 * reason recorded on the property: there is no header row to key off.
+                 * Left to the default below, `showJournal()` would be handed a
+                 * product id as a transaction reference and answer 404.
+                 */
+                'number' => $this->fixtureJournalNumber,
 
                 default => $this->fixtureProductId,
             };

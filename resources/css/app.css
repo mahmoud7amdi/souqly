@@ -1069,8 +1069,14 @@
        input on a tinted ground looks disabled.
        ------------------------------------------------------------------ */
     .variation-group {
-        @apply overflow-hidden rounded-xl bg-white ring-1 ring-slate-200/80;
-        box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+        /* `shadow-card`, not a raw `box-shadow:` — this element carries a ring,
+           and a plain declaration beside `@apply ring-1` is emitted as a later
+           rule of equal specificity that overwrites `--tw-ring-shadow` and
+           erases the ring outright. That is trap 1 in §11.7, re-introduced here
+           by the item-1 retrofit and caught by the §11.8 audit. As a utility it
+           composes into the *same* box-shadow as the ring, and it is the layered
+           resting-surface token rather than a single 2011-style blur. */
+        @apply overflow-hidden rounded-xl bg-white ring-1 ring-slate-200/80 shadow-card;
     }
 
     .variation-group-head {
@@ -1808,10 +1814,17 @@
 
        `ring-1` rather than a border, for the same reason `.card` uses one: the
        ring composes into the same box-shadow as the lift instead of adding a
-       hairline the rest of the system does not draw. --------------------- */
+       hairline the rest of the system does not draw.
+
+       And for that sentence to be true the elevation has to come through the
+       `inset-shadow-highlight` / `shadow-raised` **utilities**. This rule shipped
+       with a raw `box-shadow:` beside the `ring-1` — trap 1 in §11.7, which
+       overwrites `--tw-ring-shadow` and erases the very ring the comment above
+       is explaining. Found by the §11.8 audit reading the compiled bundle back,
+       exactly as §11.7.1 said it would have to be. --------------------- */
     .pos-offline {
-        @apply mb-4 rounded-xl bg-amber-50 p-3 ring-1 ring-amber-600/15;
-        box-shadow: var(--inset-shadow-highlight), var(--shadow-raised);
+        @apply mb-4 rounded-xl bg-amber-50 p-3 ring-1 ring-amber-600/15
+               inset-shadow-highlight shadow-raised;
     }
 
     .pos-offline-head {

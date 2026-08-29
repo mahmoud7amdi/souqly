@@ -507,6 +507,7 @@ Large',
     'read' => 'Read',
     'unread' => 'Unread',
     'no_notifications_hint' => 'Alerts appear here when stock runs low or a payment falls due.',
+    'low_stock_alert_body' => '{1} 1 product is at or below its alert quantity|[2,*] :count products are at or below their alert quantity',
     'language_change_hint' => 'Saving reloads the app in the chosen language.',
 
     // Labels

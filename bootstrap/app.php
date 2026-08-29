@@ -13,6 +13,19 @@ return Application::configure(basePath: dirname(__DIR__))
         channels: __DIR__.'/../routes/channels.php',
         health: '/up',
     )
+    /*
+     * Registers `app/Console/Commands` as a discovery path.
+     *
+     * Needed explicitly, and that is easy to get wrong: passing
+     * `commands: routes/console.php` to withRouting() above registers only that
+     * *file* — the framework partitions files into command *route* paths and
+     * leaves `$commandPaths` empty (see Foundation\Console\Kernel::discoverCommands).
+     * So the class-based commands in app/Console/Commands are not found unless
+     * this line exists, and the failure is silent: the schedule in
+     * routes/console.php would still parse, then fail at run time with
+     * "command not defined".
+     */
+    ->withCommands()
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'SetSessionData' => \App\Http\Middleware\SetSessionData::class,

@@ -3,11 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\BusinessLocation;
-use App\Models\Contact;
 use App\Models\User;
 use App\Modules\Accounting\Models\ChartOfAccount;
 use App\Modules\Accounting\Models\CostCenter;
-use App\Modules\Accounting\Models\JournalEntry;
 use App\Modules\Accounting\Models\Transfer;
 use App\Services\AccountingService;
 use App\Services\ReportService;
@@ -206,7 +204,7 @@ class AccountingController extends Controller
 
         return $request->ajax()
             ? response()->json($output)
-            : $this->backToIndex('accounting.accounts', $output);
+            : $this->backToIndex('accounting.accounts.index', $output);
     }
 
     /* ================================================================
@@ -244,6 +242,24 @@ class AccountingController extends Controller
             'reference' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:1000',
             'location_id' => ['nullable', 'integer', TenantRules::location()],
+            /*
+             * Validated but not rendered.
+             *
+             * `journal_entries.contact_id` is real and {@see AccountingService::postJournal()}
+             * accepts it, so a programmatic caller — an auto-posting listener that
+             * ties a receivable line to the customer it belongs to — can set it. The
+             * manual form deliberately does not offer the field: there is no bounded
+             * contact dropdown in this codebase (the POS uses an AJAX search,
+             * because a tenant can hold thousands), and a manual entry that needs to
+             * name a customer is a receivable adjustment that belongs on the
+             * contact's own ledger screen where the contact is already known. Adding
+             * a search field here would mean new JavaScript, which the design
+             * directive rules out. Recorded in NOTES §18.
+             *
+             * The rule stays because the day the field *is* rendered, the tenancy
+             * clause must already be here — §12.6 exists because fourteen call sites
+             * each had to remember it.
+             */
             'contact_id' => ['nullable', 'integer', Rule::exists('contacts', 'id')
                 ->where('business_id', Tenancy::id())->whereNull('deleted_at')],
             'lines' => 'required|array|min:2',
@@ -429,7 +445,7 @@ class AccountingController extends Controller
             return back()->withInput()->with('status', $this->failed($e));
         }
 
-        return $this->backToIndex('accounting.cost-centers', $output);
+        return $this->backToIndex('accounting.cost-centers.index', $output);
     }
 
     public function editCostCenter(int $id)
@@ -458,7 +474,7 @@ class AccountingController extends Controller
             return back()->withInput()->with('status', $this->failed($e));
         }
 
-        return $this->backToIndex('accounting.cost-centers', $output);
+        return $this->backToIndex('accounting.cost-centers.index', $output);
     }
 
     public function destroyCostCenter(Request $request, int $id)
@@ -474,7 +490,7 @@ class AccountingController extends Controller
 
         return $request->ajax()
             ? response()->json($output)
-            : $this->backToIndex('accounting.cost-centers', $output);
+            : $this->backToIndex('accounting.cost-centers.index', $output);
     }
 
     /* ================================================================
@@ -525,6 +541,13 @@ class AccountingController extends Controller
      * `SUM(debit)` is the document's value, and taking the debit side rather than
      * both is not arbitrary — the two sides are equal by construction, so summing
      * both would state every document at twice its worth.
+     *
+     * The total is aliased `document_total` and **not** `amount`, which is the
+     * obvious name and would have been silently wrong: `JournalEntry` defines
+     * `getAmountAttribute()`, and an Eloquent accessor takes precedence over a
+     * selected column of the same name. `$record->amount` would therefore have run
+     * the accessor, read `debit`/`credit` — neither of which this grouped select
+     * returns — and shown every document as zero, on a screen with no error on it.
      */
     protected function documentList(Request $request): \Illuminate\Database\Eloquent\Builder
     {
@@ -552,7 +575,7 @@ class AccountingController extends Controller
                  MIN(transaction_sub_type) AS transaction_sub_type,
                  MAX(reversed) AS reversed,
                  COUNT(*) AS line_count,
-                 SUM(debit) AS amount'
+                 SUM(debit) AS document_total'
             )
             ->groupBy('transaction_number')
             ->orderByDesc('date')
@@ -628,8 +651,7 @@ class AccountingController extends Controller
         return [
             'accounts' => ChartOfAccount::forDropdown(),
             'costCenters' => ['' => __('lang_v1.none')] + CostCenter::forDropdown(),
-            'locations' => BusinessLocation::forDropdown(),
-            'contacts' => ['' => __('lang_v1.none')] + Contact::forDropdown(),
+            'locations' => ['' => __('lang_v1.none')] + BusinessLocation::forDropdown(),
         ];
     }
 

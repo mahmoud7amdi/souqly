@@ -607,6 +607,63 @@ class ProductsTest extends TestCase
     }
 
     /* ================================================================
+     | "Save & add opening stock"
+     ================================================================ */
+
+    /**
+     * The second submit button, which had no test and did not work.
+     *
+     * `products.store` redirected to `route('opening-stock.add', ...)`. No such
+     * route is registered — the opening-stock routes are `index`, `edit`, `update`
+     * and `destroy` — so the button threw `RouteNotFoundException` *after* the
+     * product had already been committed. The save succeeded and the user saw a
+     * stack trace.
+     *
+     * This is the same lesson as the class docblock above, one branch further in:
+     * the suite posted to `products.store` plenty by then, but only ever with the
+     * default `submit_type`, so the whole second exit from the action was
+     * unexercised. A route-name typo is invisible to every render test, because
+     * `ScreensRenderTest` walks GET routes and this path is only reachable through
+     * a POST redirect.
+     */
+    #[Test]
+    public function saving_a_stocked_product_with_the_second_button_lands_on_the_opening_stock_screen(): void
+    {
+        $payload = $this->payload(['name' => 'Stocked item', 'submit_type' => 'submit_n_add_opening_stock']);
+
+        $response = $this->post(route('products.store'), $payload);
+
+        $product = Product::where('name', 'Stocked item')->latest('id')->firstOrFail();
+
+        $response->assertRedirect(route('opening-stock.edit', $product->id))
+            ->assertSessionHas('status.success', 1);
+    }
+
+    /**
+     * The same button on a product that does not track stock.
+     *
+     * The button is rendered unconditionally, because `enable_stock` is chosen in
+     * the same form and cannot be known before the form is submitted. Since
+     * `OpeningStockController::edit()` filters on `where('enable_stock', 1)`,
+     * following the redirect blindly would turn a successful save into a 404 —
+     * so the product index, with the success message intact, is where this has to
+     * land.
+     */
+    #[Test]
+    public function saving_an_unstocked_product_with_the_second_button_falls_back_to_the_index(): void
+    {
+        $payload = $this->payload([
+            'name' => 'Service item',
+            'enable_stock' => 0,
+            'submit_type' => 'submit_n_add_opening_stock',
+        ]);
+
+        $this->post(route('products.store'), $payload)
+            ->assertRedirect(route('products.index'))
+            ->assertSessionHas('status.success', 1);
+    }
+
+    /* ================================================================
      | Helpers
      ================================================================ */
 

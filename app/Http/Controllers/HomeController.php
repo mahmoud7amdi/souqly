@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Transaction;
-use App\Models\VariationLocationDetails;
 use App\Services\ReportService;
+use App\Services\StockService;
 use App\Support\TransactionTypes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
  */
 class HomeController extends Controller
 {
-    public function __construct(private ReportService $reports) {}
+    public function __construct(private ReportService $reports, private StockService $stock) {}
 
     public function index(Request $request)
     {
@@ -74,28 +74,14 @@ class HomeController extends Controller
 
     /**
      * Products at or below their alert quantity.
+     *
+     * The query itself lives in {@see StockService::lowStock()}, shared with the
+     * nightly alert command so the panel and the notification can never
+     * disagree about what "low" means.
      */
     public function stockAlerts()
     {
-        return VariationLocationDetails::query()
-            ->join('products as p', 'p.id', '=', 'variation_location_details.product_id')
-            ->join('variations as v', 'v.id', '=', 'variation_location_details.variation_id')
-            ->join('business_locations as bl', 'bl.id', '=', 'variation_location_details.location_id')
-            ->where('p.enable_stock', 1)
-            ->where('p.is_inactive', 0)
-            ->where('p.alert_quantity', '>', 0)
-            ->whereColumn('variation_location_details.qty_available', '<=', 'p.alert_quantity')
-            ->where('bl.business_id', \App\Support\Tenancy::id())
-            ->select([
-                'p.name as product',
-                'v.name as variation',
-                'p.sku',
-                'bl.name as location',
-                'variation_location_details.qty_available',
-                'p.alert_quantity',
-            ])
-            ->orderBy('variation_location_details.qty_available')
-            ->get();
+        return $this->stock->lowStock();
     }
 
     /**

@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\OfflineDataController;
 use App\Http\Controllers\Api\OfflineSyncController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\AssetMaintenanceController;
 use App\Http\Controllers\BarcodeController;
@@ -585,4 +586,70 @@ Route::middleware(['auth', 'tenant.ui'])->group(function () {
         Route::get('/expenses', 'expenses')->name('expenses');
         Route::get('/{report}/export', 'export')->name('export');
     });
+
+    /* --- Double-entry accounting --- *
+     |
+     | Five areas under one prefix, and the prefix is what makes the grouping
+     | honest: an account, a journal document, a transfer, a cost centre and the
+     | trial balance are five different screens reading one ledger, not five
+     | modules. `sidebar.blade.php:116` already declares `accounting.dashboard`
+     | behind a `Route::has()` guard, so the group appears in the navigation the
+     | moment these routes are registered — no sidebar edit is part of this work.
+     |
+     | **The journal is keyed on `{number}`, not on an id, and that is a design
+     | statement rather than a convenience.** There is no journal *document* table
+     | in this schema: a document is the set of `journal_entries` rows sharing a
+     | `transaction_number`. Routing on a row id would name one leg of a two-leg
+     | posting and quietly imply the leg is the thing — and it would break the
+     | moment a document's first line were deleted. `{number}` names the document
+     | itself, which is also what is printed on the paper the clerk is holding.
+     |
+     | There is deliberately **no journal `edit`/`update`/`destroy`**. A posted
+     | entry is corrected by reversing it and posting again; an editable ledger
+     | cannot be audited, because the audit question is not "what does it say now"
+     | but "what did it say, and who changed it". `reverse` is a POST for the same
+     | reason: it writes a new document.
+     |
+     | `create` before `{id}` throughout, so `/accounting/accounts/create` is not
+     | swallowed by the id pattern. Laravel matches in registration order, and the
+     | resulting 404 on a working form is one of the harder route bugs to read.
+     */
+    Route::controller(AccountingController::class)->prefix('accounting')
+        ->name('accounting.')->group(function () {
+            Route::get('/', 'dashboard')->name('dashboard');
+            Route::get('/trial-balance', 'trialBalance')->name('trial-balance');
+
+            Route::prefix('accounts')->name('accounts.')->group(function () {
+                Route::get('/', 'accounts')->name('index');
+                Route::get('/create', 'createAccount')->name('create');
+                Route::post('/', 'storeAccount')->name('store');
+                Route::get('/{id}', 'showAccount')->name('show');
+                Route::get('/{id}/edit', 'editAccount')->name('edit');
+                Route::put('/{id}', 'updateAccount')->name('update');
+                Route::delete('/{id}', 'destroyAccount')->name('destroy');
+            });
+
+            Route::prefix('journal')->name('journal.')->group(function () {
+                Route::get('/', 'journal')->name('index');
+                Route::get('/create', 'createJournal')->name('create');
+                Route::post('/', 'storeJournal')->name('store');
+                Route::get('/{number}', 'showJournal')->name('show');
+                Route::post('/{number}/reverse', 'reverse')->name('reverse');
+            });
+
+            Route::prefix('transfers')->name('transfers.')->group(function () {
+                Route::get('/', 'transfers')->name('index');
+                Route::get('/create', 'createTransfer')->name('create');
+                Route::post('/', 'storeTransfer')->name('store');
+            });
+
+            Route::prefix('cost-centers')->name('cost-centers.')->group(function () {
+                Route::get('/', 'costCenters')->name('index');
+                Route::get('/create', 'createCostCenter')->name('create');
+                Route::post('/', 'storeCostCenter')->name('store');
+                Route::get('/{id}/edit', 'editCostCenter')->name('edit');
+                Route::put('/{id}', 'updateCostCenter')->name('update');
+                Route::delete('/{id}', 'destroyCostCenter')->name('destroy');
+            });
+        });
 });

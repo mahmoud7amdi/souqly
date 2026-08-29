@@ -64,6 +64,11 @@ the source documentation is recorded with its reason. Nothing here is a silent a
 |---|---|---|---|---|
 | **9 — الطباعة** | ✅ | ✅ ١٥٠ اختبارًا / ٧٨٧ تأكيدًا | ✅ §15 | ✅ **`ad81c43`** — ٢٩ ملفًا، +3740/−100، بدون push |
 | **10 — Offline PWA** | ✅ | ✅ **١٧٨ اختبارًا / ٩٣٤ تأكيدًا، كلُّها خضراء** (§16.18) | ✅ §16 (٢٣ قسمًا) | ✅ **`821aa36`** — ٢٣ ملفًا، +4857/−85، بدون push |
+| **12 — الأوامرُ المجدولة** | ✅ ثلاثةُ أوامرَ + جدول | ✅ **١٤ اختبارًا** في `ScheduledCommandsTest`، كلُّها خضراء | ✅ §20 (١٢ قسمًا) | ✅ هذه الدفعة |
+
+> **الرقمُ الحاليُّ للمجموعةِ كلِّها: `246 / 243 ✅ / 1339 توكيدًا / 3 ❌`** (٢٩ أغسطس ٢٠٢٦).
+> والثلاثةُ كلُّها في `AssetsTest` وحدَها، سابقةٌ لهذا العملِ وقائمةٌ على `main`، في
+> الوحدةِ المؤجَّلةِ بقرارِ #9 والمُطفأةِ افتراضيًّا — **§19.4** و**§19.5**.
 
 `OfflineSyncTest` وحدَه ٢٨ اختبارًا و١٣٨ توكيدًا. والزيادةُ على البند ٩: **+٢٨ اختبارًا،
 +١٤٧ توكيدًا**.
@@ -75,7 +80,7 @@ npm run build                                    # ✅ 4 modules، 7.78s — أ�
 php artisan migrate                              # ✅ souqly (التطوير): الترحيل المعلَّق DONE في 411ms
 php artisan migrate:fresh --seed --env=testing    # ✅ souqly_test وحدها: 20 ترحيلًا، Permissions 181
 php artisan config:clear && php artisan view:clear # ✅
-php artisan test                                 # ✅ 178 / 178 / 934 توكيدًا في 47.8s
+php artisan test                                 # 🟡 178 / 178 / 934 عند البند ١٠ — والرقمُ النهائيُّ 246 / 243 / 1339 / ٣ حمراء، انظر §19.4 و§19.5
 php -l <ملفّات البند>                             # ✅ ضمنًا: كلُّها حُمِّلت ونُفِّذت في المجموعة (§16.18)
 ```
 
@@ -320,8 +325,10 @@ git commit                    # إيداعٌ واحدٌ نظيف. **بدون pus
 
 ##### ٥) البند 12 — أوامرُ الجدولة
 
-فواتيرُ ومصروفاتٌ متكرِّرة، انتهاءُ نقاط المكافآت، تذكيراتُ الدفع، تنبيهاتُ نقص المخزون، النسخُ
-الاحتياطي. ثم إيداع. **بدون push في أيّ مرحلة.**
+✅ **مُنجَزٌ بالنطاقِ المُقلَّص (٢٩ أغسطس ٢٠٢٦).** ثلاثةُ أوامرَ فقط: تنبيهاتُ نقصِ
+المخزون، والنسخُ الاحتياطي، والمصروفاتُ المتكرِّرة. أمّا الفواتيرُ المتكرِّرةُ وانتهاءُ
+نقاطِ المكافآتِ وتذكيراتُ الدفعِ فمؤجَّلةٌ بقرارِ #10 لأنَّ مزاياها غيرُ مبنيّةٍ هنا.
+التفصيلُ في **§20**.
 
 ##### ٦) تنظيفٌ صغير
 
@@ -519,6 +526,12 @@ git commit                    # إيداعٌ واحدٌ نظيف. **بدون pus
 
 ### 5. حالة التحقق — الصادقة، بلا أرقام من الذاكرة
 
+> **الرقمُ النهائيُّ (٢٩ أغسطس ٢٠٢٦): `246 tests, 243 passed, 1339 assertions, 3 failed`.**
+> والثلاثةُ الحمراءُ كلُّها في `AssetsTest` — الوحدةُ المؤجَّلةُ بقرارِ #9 — وكلُّها سابقةٌ لهذا
+> العملِ وقائمةٌ على `main` المُودَع. والرابعةُ التي كانت في `TenantScopeTest` أُصلحت. التفصيلُ
+> الكاملُ في **§19.4**، وتشريحُ الثلاثةِ في **§19.5**. وما دونَ هذا السطرِ يعودُ إلى نهايةِ البندِ ١٠
+> ويُقرأُ كتاريخٍ لا كحالةٍ راهنة.
+
 **نُفِّذ فعليًا ونجح — وكلُّ رقمٍ هنا يعود إلى نهاية البند 10، وهو أوّلُ تشغيلٍ بعد جلستَين من الرفض:**
 
 - `php artisan test` → **١٧٨ اختبارًا / ٩٣٤ تأكيدًا، كلها خضراء** (كانت ١٥٠/٧٨٧ عند البند 9).
@@ -605,6 +618,8 @@ git commit                    # إيداعٌ واحدٌ نظيف. **بدون pus
 | 6 | **`transactions.exchange_rate` → `decimal(22,4)`** | Applied and verified in the live schema. |
 | 7 | **Manufacturing + Breakdown removed** | See §2. |
 | 8 | **Full autonomy on all other technical decisions** | Every such decision is logged in §8. |
+| 9 | **Item 11 (module screens) deferred in full** — Accounting, AssetManagement, Essentials/HRM, Superadmin, Cms, InventoryManagement | None of the six is needed by a working POS. The accounting tranche that was already written is parked on the branch `deferred/item-11-accounting`; `main` carries no `accounting.` routes, so the sidebar group stays hidden behind its own `Route::has()` guard and the module is dormant rather than half-present. **§19.** |
+| 10 | **Item 12 reduced to two scheduled commands** — low-stock alerts and automatic backup | Reward-point expiry and payment reminders are dropped; recurring *expenses* are kept, because that engine already ships and lacks only its cron. The three-way reasoning, verified against the code rather than assumed, is in **§19.2**. |
 
 ---
 
@@ -961,10 +976,18 @@ and the decisions are almost all about what **not** to do. Full write-up in §16
 
 ## 9. Verification — what is actually proven
 
+> **Current, 2026-08-29: `246 tests, 243 passed, 1339 assertions, 3 failed`** — the suite *as it
+> now stands* rather than as it stood at item 10. All three failures are in the `AssetsTest` of the
+> module deferred by Decision #9, all three pre-exist on committed `main`, and none is caused by
+> the scheduled-commands work; a fourth, a census gap in `TenantScopeTest`, is fixed. The three-run
+> progression that got here is in **§19.4** and the triage of the three in **§19.5**. The figures
+> below are item 10's and are kept as history.
+
 ```bash
 php artisan migrate:fresh --seed   # 20 migrations as of item 10 — re-run 2026-08-25 against
                                    # souqly_test: 55 currencies, 181 permissions ✅
 php artisan test                   # 178 tests, 934 assertions — all 178 passing (2026-08-25)
+                                   # superseded: 246/243/1339/3 on 2026-08-29 (§19.4)
 php scripts/verify-models.php      # 109 models, 323 relations, 460 casts — clean
 php artisan test --filter=LangParityTest   # parity is a test now, not a number (§14.10)
 npm run build                      # ✅ RUN 2026-08-25, first success in nine sessions.
@@ -977,7 +1000,13 @@ php artisan db:seed --class=DemoDataSeeder   # demo catalogue, idempotent — se
 ```
 
 The test count has moved with each item: **71** (item 6) → **129** (item 8) → **150** (item 9) →
-**178** (item 10, green). The per-suite table below is the authoritative breakdown;
+**178** (item 10, green) → **230** (2026-08-29, first run of this session, 226 green) → **246**
+(final, 243 green). The 52 between 178 and 230 were written across items 11 and 18 and had **never
+been executed** until this run, which is the whole lesson: a written-but-unrun test is not coverage,
+it is the intention of coverage. The 16 after that are this tranche's own — 14 in
+`ScheduledCommandsTest` and 2 in `ProductsTest` — and the 14 were invisible to the first run
+because a fatal error stopped the class loading at all (§20.11). The per-suite
+table below is the authoritative breakdown;
 `php scripts/add-lang-keys.php`'s
 "906 ar / 906 en" line was dropped from this block because parity became an assertion rather than a
 number a human reads (§14.10) — the count is now 1,404 leaf keys per locale and is recorded in
@@ -994,10 +1023,18 @@ cost to every fourth single product, so the costing code has more than one lot t
 from. Combos carry `enable_stock = 0` on purpose: their availability derives from their
 components. It is idempotent — a second run reports "already seeded" and inserts nothing.
 
-**The suite is fully green as of 2026-08-25, and that now includes item 10** — 178 tests, 934
+**The suite was fully green as of 2026-08-25, and that included item 10** — 178 tests, 934
 assertions, no failures and no errors. It took three runs to get there; the two red ones and
 the four defects they exposed are in §16.23, because a green figure that hides how it was
-reached is the kind of record §12.4 warns about. The
+reached is the kind of record §12.4 warns about.
+
+**That sentence is no longer the current state, and it is left standing rather than rewritten.**
+The suite as it stands on 2026-08-29 is **243 of 246 green**, because item 10's green run covered
+only the tests that existed then — items 11 and 18 added 52 more that had never been executed, and
+this tranche added 16. Three are red, all three in `AssetsTest`, all pre-existing on committed
+`main`; see §19.4 and §19.5. Saying "fully green" here while
+three tests fail would be the same class of stale-figure claim this file keeps warning about, so
+the claim is dated and superseded instead of quietly updated. The
 failure recorded here previously —
 `ScreensRenderTest` reporting 19 screens as HTTP 500/404 because item 5's routes were
 registered before its views existed — is resolved: those views were written, and the walk now
@@ -1034,6 +1071,10 @@ which is why none of item 10's three runs (§16.23) wasted a cycle on that parti
 | `SettingsTest` (26) | What only a **save** can expose. Business settings' owned-vs-forbidden columns, the logo column's two refusals and the full upload round trip (§15.4), flat permission arrays, notification templates, the cross-tenant barcode table, invoice schemes, locations, roles, users. It is what found the `SetSessionData` re-hydration bug (§14.5) |
 | `LangParityTest` (3) | The two lang files as a pair: tree-equal keys in both directions, no key defined twice in one file, no value equal to its own key. All three mutation-proven (§14.10) |
 | `PrintingTest` (19) | **Obedience to `invoice_layouts`** — ninety columns nothing read before item 9. A label override replacing rather than appending, an empty label falling back to Arabic, `show_*` toggles adding and removing whole blocks, `design` picking a structurally different template, a hand-typed `highlight_color` unable to break the sheet, a location's own layout preferred, a return printing as a credit note. Plus 404-not-403 on another branch's invoice, `sell.view` vs `access_printers`, the PDF's content type and slash-free filename, `size: 72mm auto` on the receipt, opt-in auto-print, and a self-contained `PrintJob` for the agent (§15) |
+| `AssetsTest` (18) | The asset register of the module deferred by Decision #9 — hand-out and return, the availability guard, tenant isolation, the job link. **Three of its cases are red** and stay red by an explicit user decision; they are the only red left in the suite and are triaged one by one in §19.5 |
+| `TenantScopeTest` (6) | The census, not the behaviour: every model that carries a `business_id` either uses `BelongsToBusiness` or is listed as a documented exception, so a new model cannot be added without a deliberate answer to "which tenant owns this row" (§18) |
+| `ProductsTest` (24) | The catalogue editor, including the variable-product branch item 1 retrofitted, and — added this tranche — **both** exits from `products.store`: "save & add opening stock" landing on the opening-stock screen for a stocked product, and falling back to the index for one that does not track stock (§21) |
+| `ScheduledCommandsTest` (14) | The three commands of item 12 and the schedule itself: low-stock alerts scoped per tenant with the owner always a recipient and once-a-day suppression, the backup writing and pruning, `--dry-run`, and the registration of all three in `routes/console.php`. It is what the `alert()` collision (§20.11) and the `forBusiness()`-on-`User` bug (§20.12) were found by |
 | `OfflineSyncTest` (28) | **Exactly-once delivery**, and every verdict asserted **beside a row count** — a controller answering `duplicate` while also inserting would pass a verdict-only test perfectly. The same temp id replayed, twice in one batch, and raced against the index directly at the database (asserting the message names `offline_temp_id`, so another constraint cannot pass for it). Per-sale rejection while siblings land, and a rejected sale never half-recorded. A sale dated days ago keeping its date, a future date clamped, garbage falling back to now. Attribution to the signed-in user and never the payload; a per-sale device id surviving a queue restored onto another till. The snapshot's gate, its fourteen-key row shape, and **the same query count for one product as for seven**. Plus the three POS behaviours item 10 added — including **two ordinary counter sales in a row**, which is the regression with the widest blast radius in the item and has nothing to do with being offline (§16.7) — and `/api/ping` answering with the session flushed (§16.15) |
 
 ### 9.1 Why the 100-screen walk let a 500 through, and what changed
@@ -1361,8 +1402,11 @@ valid.
     against (§16.13).
 11. **Modules' controllers/views** — Accounting, Essentials/HRM, Superadmin,
     AssetManagement, Cms, InventoryManagement, ProductCatalogue (models + schema done).
-12. **Scheduled commands** — recurring invoices/expenses, reward-point expiry, payment
-    reminders, low-stock alerts, backup.
+12. **Scheduled commands** — ✅ **DONE 2026-08-29, at the reduced scope of Decision #10:** low-stock
+    alerts, database backup, and recurring *expenses* (kept because the engine was already built
+    and merely uncalled). Recurring invoices, reward-point expiry and payment reminders are
+    deferred — the features behind them are not built here. Three commands, one schedule,
+    14 tests. **§20.**
 
 **Queued fixes, in the order you set for them:**
 
@@ -1902,6 +1946,89 @@ flag invisible on the busiest screen in the shop. Fixed to `bg-rose-50 ring-rose
 same shape — a `background-color` tint over an opaque `background-image` — and this was the only
 instance: `.badge-*`, `.alert-*` and `.btn-icon-*` carry no gradient, and `.btn-danger`'s sheen
 is alpha.
+
+### 11.8 هل وصل التصميمُ إلى الشاشاتِ المتأخّرة؟ — تدقيقٌ بالقياسِ لا بالثقة (٢٩ أغسطس ٢٠٢٦)
+
+سؤالُك: هل نُفِّذ التوجيهُ (الظلالُ، التدرّجاتُ، الحركةُ والتفاعل، التسلسلُ الهرميُّ البصري)
+**بالكامل**، وهل يشملُ الشاشاتِ المتأخّرة — البندَ 11 المؤجَّلَ والبندَ 12 الأخير؟
+
+والجوابُ قِيسَ ولم يُستنتَج. الفرقُ مهمٌّ لأن §11.7 تدَّعي أن الأثرَ وصلَ «≈٥٣ شاشة» عبرَ
+الأساسيّات، وادّعاءٌ كهذا يُصدَّقُ بالعدِّ لا بالنيّة.
+
+**١. البندُ ١٢ لا شاشاتَ له إطلاقًا.** ثلاثةُ أوامرِ كونسول وجدولٌ واحد؛ و`git diff -- resources/`
+على هذه الدفعةِ يُخرِجُ ملفَّي `asset/` فقط، وهما تعديلانِ مؤجَّلانِ عن قصد (أدناه). فالسؤالُ
+«هل شمِلَ التصميمُ البندَ ١٢» لا موضوعَ له — إلّا في **سطحٍ واحد**: جرسُ الإشعارات، وهو مصمَّمٌ
+بالكامل (`notification/index.blade.php`: `<x-page-head>`، `.card`، `<x-empty-state>`، ودليلانِ
+للغيرِ المقروءِ لا دليلٌ واحد). فتنبيهُ المخزونِ المنخفضِ يَرِثُ التصميمَ ولا يحتاجُ شيئًا.
+
+**٢. شاشاتُ البندِ ١١ ورِثَت كلَّ شيءٍ، والدليلُ صفرٌ في مكانَين.** الخمسُ والعشرون شاشةً
+(`asset/`، `asset_maintenance/`، `inventory/`، `accounting/`) تستخدمُ المفرداتَ كلَّها:
+
+| الأساسيّة | التغطية |
+|---|---|
+| `.rise` (دخولُ الصفحة) | **مجّانيّة** — مكتوبةٌ في `layouts/app.blade.php:188` وحدَه، فكلُّ صفحةٍ تأخذُها بلا سطر |
+| `.rise-group` (التتابُع) | **٣٠ من ٣٠** — كلُّ ملفٍّ فيه `<x-stat>` فيه `rise-group`، بلا استثناءٍ واحد، زائدُ `report/index` |
+| `<x-stat>` + `.stat-icon` | ١٤ من شاشاتِ البندِ ١١ (لوحةُ المحاسبة، الميزانُ، اليوميّة، الأصول، الجرد…) |
+| `<x-empty-state>` / `<x-table-empty>` | ١٢ ملفًّا، ٢٣ موضعًا |
+| `.section` / `.card` / `.filter-bar` / `.btn-*` | ١١٤ موضعًا في ٢٥ ملفًّا |
+
+**والرقمُ الحاسمُ: `resources/css/app.css` لم يُلمَسْ في `ffa201c`.** آخرُ إيداعٍ مسَّها هو
+`e88d373`، وعدَدُ المُحدِّداتِ الخاصَّةِ بوحدةٍ (`asset`, `inventory`, `accounting`, `journal`,
+`trial-balance`) في الملفِّ كلِّه = **صفر**. وعدَدُ الأنماطِ المُضمَّنةِ البصريَّةِ في العروضِ كلِّها
+(`style="…box-shadow|linear-gradient|transition|animation"`) = **صفر** أيضًا. فالشاشاتُ
+المتأخّرةُ لم تحتَجْ سطرَ CSS واحدًا، وهذا هو الاختبارُ الحقيقيُّ لِما إذا كانت الدفعةُ قد نجحت.
+
+#### والناقصُ فعلًا — ثلاثةُ أشياء، ولا واحدٌ منها على شاشاتِ البندِ ١١
+
+**أ. الحزمةُ المبنيَّةُ كانت قديمةً بساعتَين وعشرينَ دقيقة، فخمسُ قواعدَ لم تكن تصلُ المتصفِّحَ أصلًا.**
+`resources/css/app.css` مُعدَّلٌ في ٢٥ أغسطس **٠٥:٠٣**، و`public/build/assets/app-*.css` مبنيٌّ
+في ٢٥ أغسطس **٠٢:٤٣**. وبينهما الـ٨٣ سطرًا التي أضافها `e88d373` — أصنافُ
+`.variation-group*` الخمسة. و`grep -c 'variation-group'` على الحزمةِ المشمولة = **صفر**، وعلى
+`product/_variation_group.blade.php` = **خمسةُ مواضع**. فمحرِّرُ المنتجِ المتغيِّرِ يُرسَمُ اليومَ
+**بلا تصميمٍ في المتصفِّح**: لا إطارَ محدَّدًا، ولا رأسًا مُلوَّنًا، ولا حلقة. صنفٌ غيرُ مُصرَّحٍ
+عنه لا يُخطِئُ، بل لا يفعلُ شيئًا — وهذا أسوأُ أشكالِ العيبِ لأنه لا يظهرُ في أيِّ سجلّ.
+وهذا هو **الناقصُ الوحيدُ الحقيقيّ**، وسببُه إغفالُ `npm run build` بعدَ استرجاعِ البندِ ١
+لا نقصٌ في التصميم.
+
+**ب. المصيدةُ الأولى في §11.7 عادت — مرَّتَين، وإحداهما في POS.** القاعدةُ المكتوبةُ هي «لا
+`box-shadow` خامٌّ على عنصرٍ يحملُ حلقة»، لأن Tailwind يُخرِجُ التصريحَ العاديَّ كقاعدةٍ لاحقةٍ
+بالنوعيَّةِ نفسِها فيمسحُ `--tw-ring-shadow`. وقد خُرِقَت في:
+
+* `.variation-group` — `@apply … ring-1 ring-slate-200/80;` ثم `box-shadow: 0 1px 2px …;`
+  (وكان ظِلًّا مفردًا أيضًا، وهو ما تسمِّيه §11.7 «ظِلَّ ٢٠١١»).
+* `.pos-offline` — شريطُ عدمِ الاتصالِ في نقطةِ البيع، وهذه أسوأُ: **تعليقُها نفسُه** يشرحُ أنَّ
+  `ring-1` «تندمجُ في نفسِ box-shadow مع الرفع»، والسطرُ الذي تحتَه هو بالضبطِ ما يمنعُ ذلك.
+  تعليقٌ يقولُ الصوابَ وكودٌ يفعلُ نقيضَه.
+
+كِلتاهما أُصلِحَت إلى الأدواتِ (`inset-shadow-highlight shadow-card` / `shadow-raised`) على
+نفسِ صيغةِ `.empty-state-icon` و`.stat-icon`. والمسحُ الكاملُ لكلِّ `box-shadow` خامٍّ في الملفِّ
+أثبتَ أنّ الباقيَ صحيحٌ: الأزرارُ لا تحملُ حلقةً (§11.7 تقولُ ذلك)، وظِلالُ هيكلِ التطبيقِ
+(`.app-sidebar`, `.app-brand`, `.app-header`, `.app-footer`, `.app-brand-mark`) كذلك.
+
+**ج. `input-amount` في موضعَين لا يخصّانِه.** وهو الحقلُ الرقميُّ الكبيرُ (`text-2xl font-bold`،
+`--size-control-lg`) المصمَّمُ لِلوحةِ الدفعِ في POS وحدَها. كان مستعملًا في
+`asset/_form.blade.php` (سعرُ الوحدة) و`asset/show.blade.php` (كُلفةُ الضمان) — أي حقلٌ بحجمِ
+٢٤px وسطَ نموذجٍ من حقولٍ عاديّة، وهو خطأُ تسلسلٍ هرميٍّ بصريٍّ لا مسألةُ ذوق. وكان مكتوبًا
+`['input', 'input-amount']` وفي ذلك تكرارٌ أيضًا: `.input-amount` تُطبِّقُ `input` بنفسِها.
+صُحِّح إلى `.input-numeric`، وبعدَه صارَ `input-amount` محصورًا في `pos/create.blade.php:322`
+وحدَه — الشاشةُ التي وُضِعَ لها.
+
+#### وما لم يُستعملْ على تلكَ الشاشاتِ عن حقٍّ لا عن سهو
+
+`<x-product-thumb>`, `.skeleton*`, `.is-busy`, `.card-interactive` لا تظهرُ في شاشاتِ البندِ ١١
+(إلّا صورةٌ واحدةٌ في `inventory/show`), وهذا صحيحٌ لا ناقص:
+
+* **الهياكلُ العظميّةُ (`skeleton`) و`.is-busy`** تعنيانِ منطقةً تُحمَّلُ لاحقًا. والتوجيهُ نفسُه
+  يقولُ «CSS فقط، بلا JavaScript تطبيقيّ»، فلا شاشةَ في النظامِ تُحمِّلُ محتواها بعدَ الرسمِ
+  إلّا POS. هيكلٌ عظميٌّ على شاشةٍ مرسومةٍ من الخادمِ يُغطّي محتوًى موجودًا بالفعل.
+* **`.card-interactive`** لبطاقةٍ قابلةٍ للنقرِ فعلًا. و§11.7 صريحةٌ في أن `.card` **لا** تُرفَعُ
+  عندَ المرور، لأن حاويةً ترتفعُ تحتَ المؤشِّرِ تكذبُ وتقولُ إنها زِرّ.
+* **الصورُ المصغَّرة** لأنَّ صفَّ الأصلِ أو مركزِ التكلفةِ ليس بطاقةَ منتج. والقرارُ نفسُه
+  مكتوبٌ في «Deliberately not done» أعلاه لِـ`sell/_line` و`purchase/_line`.
+
+> **الخلاصةُ في سطر:** التوجيهُ مُنفَّذٌ بالكامل، وشاشاتُ البندِ ١١ تحملُه بصفرِ CSS إضافيّ،
+> والبندُ ١٢ لا شاشاتَ له. والناقصُ الحقيقيُّ الوحيدُ كان **بناءُ الحزمة**، ومعه مصيدتانِ
+> عادَتا وخطأُ تسلسلٍ هرميٍّ في موضعَين — أربعةُ إصلاحاتٍ كلُّها في هذه الدفعة.
 
 ---
 
@@ -4264,7 +4391,23 @@ JSON دون التهريب الذي يمنع قيمةً من إغلاق `<script
 
 **والدرسُ هو الدرسُ نفسُه، ثالثةً:** لا واحدٌ من هذه التسعةِ كان يُظهِرُ نفسَه لقارئٍ للملفِّ
 وحدَه — كلُّها ظهرت من قراءةِ **ما يُنادي**. والتشغيلُ سيجدُ صنفًا آخرَ، ولذلك يبقى واجبًا لا
-تُغني عنه هذه القراءة: **الملفُّ لم يُشغَّلْ بعد، وهذا القسمُ لا يزعمُ غيرَ ذلك.**
+تُغني عنه هذه القراءة.
+
+> **تحديثٌ (٢٩ أغسطس ٢٠٢٦): شُغِّل المِلَفُّ، ووجدَ التشغيلُ صنفًا آخرَ فعلًا.** كان هذا
+> القسمُ يقولُ «الملفُّ لم يُشغَّلْ بعد» — ولم يعد ذلك صحيحًا. تسعةَ عشرَ من اثنتين
+> وعشرين حالةً خضراء، و**ثلاثٌ حمراء**:
+>
+> | الحالة | ما حدث |
+> |---|---|
+> | `handing_out_cannot_be_switched_off_while_something_is_out` | توقَّعت رفضًا فجاءَ `'Updated successfully.'` — **فجوةٌ حقيقيّة**: الحارسُ في مسارٍ واحدٍ لا في `AssetService::update()` |
+> | `another_tenants_asset_is_not_readable_editable_or_deletable` | ٣٠٢ بدلَ ٤٠٤ — **ليس تسريبًا**: `findAsset()` هي `forBusiness()->permitted()->findOrFail()`، لكنَّ `catch (\Throwable)` في `AssetController.php:184` يبتلعُ `ModelNotFoundException` |
+> | `a_job_keeps_its_asset_across_an_edit` | ٤٠٤ بدلَ ٣٠٢ — لم يُفحَص |
+>
+> والثلاثةُ في الوحدةِ المؤجَّلةِ بقرارِ #9، فتُترَكُ حمراءَ معلومةً لا مطويّةً. التفصيلُ
+> والقرارُ في **§19.4**. والدرسُ الأصليُّ أعلاه صار مُبرهَنًا لا مُتوقَّعًا: قراءةُ عشرةِ
+> ملفّاتٍ أمسكت تسعةَ عيوب، ثمَّ أمسكَ التشغيلُ ثلاثةً لم تكن القراءةُ لتراها — **فأيُّهما
+> بدلًا عن الآخرِ كان سيَمُرّ.**
+
 
 ---
 
@@ -4460,4 +4603,453 @@ Rule::exists('variations', 'id')->where(fn ($q) => $q
 ولهذا صار للثقب اختبارٌ يبلغه بما لا تبلغه أيُّ واجهة: يُنشئ نشاطًا ثانيًا حقيقيًّا (لأنّ
 `products.business_id` مفتاحٌ أجنبيّ)، **ينقل المنتجَ إليه** — فمستأجرُ المتغيّر هو مستأجرُ منتجِه،
 وهذا نفسُه سببُ وجوب العبور عبر `products` — ثم يُرسِل المُعرِّفَ ويتوقّع `combo.0.variation_id`.
+
+---
+
+## 19. قرارُ نطاقٍ نهائيّ: تقليصُ المدى إلى نظامِ نقاطِ بيعٍ عامل (٢٦ أغسطس ٢٠٢٦)
+
+طلبُك، حرفيًّا: **«أريد تأجيل البند 11 بالكامل … لا أحتاج أيًا منها حاليًا في نظام POS الأساسي»**،
+و**«بالنسبة للبند 12 … أريد فقط: تنبيهات المخزون المنخفض والنسخ الاحتياطي التلقائي. أجّل الباقي …
+إن لم تكن هذه الميزات مستخدمة فعليًا في نظامي»**.
+
+وهذان القراران مُقفَلان في §1 بالرقمين **٩** و**١٠**، بمنزلةِ القرارات ١ و٢ و٣ — لا يُعاد فتحُهما
+باستنتاجٍ من جلسةٍ تالية.
+
+### 19.1 البند 11 — مؤجَّلٌ بكامله، ومحفوظٌ لا مهدور
+
+الوحداتُ الستّ خارج المدى: **Accounting، AssetManagement، Essentials/HRM، Superadmin، Cms،
+InventoryManagement**.
+
+والشرطُ الذي في طلبك — «مؤقتًا» — يُترجَم إلى فعلٍ محدَّد: **لا حذف.** فما كُتب من شُعبة المحاسبة
+أُودِع على فرعٍ اسمُه `deferred/item-11-accounting`، و`main` رجعت إلى حالتها قبله. وهذه هي الحصيلةُ
+المحفوظة هناك:
+
+| ما هو | الحجم |
+|---|---|
+| `resources/views/accounting/` | ١٦ شاشة (لوحة، دليلُ الحسابات CRUD، اليوميّة قائمة/إنشاء/عرض، التحويلات، مراكزُ التكلفة CRUD، ميزانُ المراجعة) |
+| `routes/web.php` | مجموعةُ `accounting.` — ٢٥ مسارًا |
+| `lang/{ar,en}/accounting.php` | ١٦٥ / ١٦٥ مفتاحًا، التكافؤُ محقَّقٌ بالعدّ |
+| `tests/Feature/ScreensRenderTest.php` | `seedAccountingFixtures()` ومدخلاتُ الوسائط الثلاثة، ومنها `{number}` |
+
+**ولا يُدَّعى عليها الخضرة.** `php artisan test` لم يُنفَّذ على هذه الشُّعبة قطُّ — الغلافُ الأمنيُّ
+منع الصدفةَ في معظم الجلسات التي كتبتها — ورسالةُ الإيداع تقول ذلك بنصِّها. فمن يستأنف الفرعَ يبدأ
+بالمجموعة، لا بالكود.
+
+**وثلاثُ عِلَلٍ حقيقيةٍ وُجدت وأُصلحت أثناء كتابتها، وهي وحدَها سببُ الحفظِ بدل الشطب:**
+
+1. **`transaction_sub_type === 'fund_transfer'` في ثلاث شاشات.** والخدمةُ تكتب `'transfer'`. فالشارةُ
+   لم يكن لها أن تظهر أبدًا — بصمتٍ، على ثلاثِ شاشات، إحداها كُتبت في جلسةٍ سابقة.
+2. **`__('accounting.type_'.$account->account_type)`** في ميزانِ المراجعة. وأنواعُ الحسابات مُفتَّحةٌ
+   **مجرَّدةً** (`asset`, `liability`)، ولا يحمل بادئةَ `type_` إلا أنواعُ مراكزِ التكلفة — فالمفتاحُ
+   كان سيطبع نفسَه. والغريبُ أنّ ترويسةَ ملفِّ اللغة **تسجِّل حدوثَ هذا الخطأِ عينِه مرّةً قبل**.
+3. **`.input-amount` مُستخدَمةً كصنفِ حقلٍ** في ثلاث شاشات. وهي لوحةُ دفعِ نقطةِ البيع — `text-2xl`
+   وارتفاعٌ كبير — لا حقلُ استمارة. والصوابُ `.input-numeric`.
+
+والثلاثةُ وُجدت بقراءةِ الملفِّ الذي يُعرِّف الحقيقة لا بالثقةِ في الذاكرة: ملفُّ اللغةِ لشكلِ
+المفاتيح، والخدمةُ لقيمةِ النوعِ الفرعيّ، والنموذجُ للـ`casts`. **ولا واحدةٌ منها كانت تُنتِج خطأً
+من أيِّ نوع** — ولهذا لم يكن اختبارُ العرضِ ليصطادَها.
+
+**وأثرُ التأجيل على `main` صِفر، وهذا مقصود:** `AccountingController` مُودَعٌ فيها من قبل، لكنّ
+مجموعةَ مساراته ليست — و`sidebar.blade.php:116` يحجب المجموعةَ كلَّها خلف `Route::has('accounting.dashboard')`.
+فالوحدةُ **ساكنةٌ لا نصفُ حاضرة**: لا رابطٌ في التصفّح، ولا مسارٌ يُطرَق، ولا شاشةٌ تُعرَض.
+
+واستُثنيَ من الفرعِ إصلاحان سطريّان رجعا إلى `main` وحدَهما، لأنّهما إصلاحُ علّةٍ في شاشتَين
+**مُودَعتَين أصلًا** لا شيءٌ من البند ١١: `.input-amount` → `.input-numeric` في
+`asset/_form.blade.php:100` و`asset/show.blade.php:349`.
+
+### 19.2 البند 12 — الشرطُ الذي وضعتَه، مُطبَّقًا على الكود لا على الحدس
+
+قلتَ: أجِّل الباقيَ **«إن لم تكن هذه الميزات مستخدمة فعليًا»**. وهذا شرطٌ يُتحقَّق منه، لا يُفترَض.
+فتحقَّقتُ من الثلاثةِ في المستودع، والنتيجةُ ليست ثلاثةَ تأجيلات:
+
+| الميزة | ما وجدتُه فعلًا | القرار |
+|---|---|---|
+| **انتهاءُ نقاطِ المكافآت** | ذِكرٌ واحدٌ في المستودعِ كلِّه: خيارُ `show_reward_point` في `InvoiceLayoutController:291` — لافتةُ طباعةٍ. **لا كسبٌ، ولا استبدال، ولا رصيد.** | ❌ **مؤجَّل.** أمرٌ ينهي صلاحيةَ رصيدٍ لا وجودَ له |
+| **تذكيراتُ الدفعات** | البنيةُ موجودة: `PaymentTerm`، و`Transaction::overDue()`، وقوالبُ `NotificationTemplate` — **والإرسالُ غيرُ مُهيَّأ**: `MAIL_MAILER=log` | ❌ **مؤجَّل** — لا لأنّها غيرُ مستخدمة بل لأنّها تحتاج بريدًا صادرًا/رسائلَ لم تُهيَّأ. تُفتَح بسطرٍ في `.env` ويومِ عمل |
+| **الفواتيرُ المتكرِّرة (بيعًا)** | لا محرِّكَ إطلاقًا: `SellService` و`PosService` بلا ذِكرٍ واحدٍ لـ`recur` | ❌ **مؤجَّل** |
+| **المصروفاتُ المتكرِّرة** | **`ExpenseService::generateDueRecurring(): int` مكتوبةٌ بكاملها** (`:117-180`): `is_recurring`، `recur_interval`، `recur_interval_type`، `recur_repetitions`، `recur_stopped_on`، `recur_parent_id`، وتوليدُ الأبناء. والاستمارةُ تعرضها (`expense/_form:161`)، والقائمةُ تُشيرُها (`expense/index:164`)، وشاشةُ العرضِ تُظهِرها مرّتين. **ولها صِفرُ مُنادين** | ✅ **مُضافةٌ إلى المدى** |
+
+**والسطرُ الأخير هو الاستثناءُ الذي شرطُك نفسُه يوجبه.** المصروفاتُ المتكرِّرة **مستخدَمةٌ فعلًا**:
+المستخدمُ يؤشِّر «متكرِّر» في الاستمارةِ اليوم، والقائمةُ تُشيرُه، ولا يحدث شيءٌ أبدًا — لأنّ
+الميزةَ كاملةٌ إلا من الجرس الذي يقرعها. فتأجيلُها لا يُوفِّر عملًا بل يُبقي وعدًا مكسورًا مرئيًّا
+في وحدةٍ من صميمِ نقطةِ البيع. وثمنُها اثنا عشرَ سطرًا: أمرٌ ينادي دالّةً موجودة.
+
+**فمدى البند 12 صار ثلاثةَ أوامر:**
+
+| الأمر | ما يستند إليه | ملاحظةُ التنفيذ |
+|---|---|---|
+| تنبيهاتُ المخزونِ المنخفض | استعلامُ `HomeController::stockAlerts():78-95` موجودٌ بحرفه: `alert_quantity > 0` و`qty_available <= alert_quantity` | الاستعلامُ يُرفَع من المُتحكِّم إلى طبقةٍ يُشارِكها الأمر، فنسخُه نسختان تختلفان في اليومِ الذي يتغيّر فيه |
+| النسخُ الاحتياطيُّ التلقائيّ | **لا حزمةَ نسخٍ في `composer.json`** — لا `spatie/laravel-backup` | يُكتَب بـ`mysqldump` بلا اعتماديّةٍ جديدة. إضافةُ حزمةٍ قرارٌ يخصُّك، وهذا الطريقُ لا يطلبه |
+| المصروفاتُ المتكرِّرة | `ExpenseService::generateDueRecurring()` | مُنادٍ فقط |
+
+**و`app/Console/Commands/` غيرُ موجودٍ بعد، ولا جدولَ في `bootstrap/app.php` ولا `routes/console.php`.**
+فالبند 12 صِفرُ تنفيذٍ لا جزءُ تنفيذ — والتقليصُ يجعله يومًا واحدًا بدل أسبوع.
+
+### 19.3 ما بقي فعلًا بعد التقليص
+
+| # | ما هو | الحالة |
+|---|---|---|
+| ١ | **الأوامرُ الثلاثة + الجدول + اختبارُها** | ✅ **مُنجَزة** — انظر §20 |
+| ٢ | **`php artisan test` على المجموعةِ كما هي** | ✅ **شُغِّلت فعلًا** — انظر §19.4؛ الرقمُ الحقيقيُّ **٢٣٠ اختبارًا / ٢٢٦ ناجحًا / ١٢٧٨ توكيدًا / ٤ ساقطة** |
+| ٣ | التقاريرُ السبعةُ المؤجَّلة (البند ٧) | 🟡 مؤجَّلةٌ من قبل، والخمسةُ الأساسيّة تعمل |
+
+وما عدا ذلك: **البنودُ ١–٦ و٨ و٩ و١٠ مكتملةٌ ومُختبَرةٌ ومُودَعة.**
+
+
+### 19.4 التشغيلُ الحقيقيُّ للمجموعة — والرقمُ الذي حلَّ محلَّ ١٧٨/٩٣٤
+
+كلُّ رقمٍ سابقٍ في هذا الملفِّ عن حجمِ المجموعةِ كان يعودُ إلى نهايةِ البندِ ١٠. وقد
+شُغِّلت المجموعةُ أخيرًا كما هي، ثلاثَ مرَّاتٍ لا مرَّةً — وكلُّ تشغيلٍ كشفَ ما حجبَه
+الذي قبله:
+
+```
+230 / 226 ✅ / 1278 توكيدًا / 4 ❌     التشغيلُ الأوّل — قبلَ أوامرِ البندِ ١٢
+                                       (وقبلَ أن يُحمَّلَ ScheduledCommandsTest أصلًا)
+246 / 239 ✅ / 1324 توكيدًا / 7 ❌     بعدَ إصلاحِ تصادُمِ alert() — §20.11
+246 / 243 ✅ / 1339 توكيدًا / 3 ❌     ✅ النهائيُّ، بعدَ إصلاحِ recipients() — §20.12
+```
+
+**ومطابقةُ العدد:** ٢٤٦ = ٢٣٠ + ١٤ (`ScheduledCommandsTest`، ولم تكن تُحمَّلُ في
+التشغيلِ الأوّلِ بسببِ الخطأِ الفادحِ في §20.11) + ٢ (اختبارا `opening-stock` في §21).
+والتوكيداتُ ارتفعت من ١٣٢٤ إلى ١٣٣٩ بلا اختباراتٍ جديدةٍ لسببٍ واحد: الاختبارُ الفاشلُ
+يتوقَّفُ عندَ أوَّلِ توكيدٍ ساقطٍ، فسبعُ فاشلاتٍ تُخفي خمسةَ عشرَ توكيدًا لم تُنفَّذ.
+فرقمُ التوكيداتِ في تشغيلٍ أحمرَ **ليس رقمًا يُقتبَس**.
+
+فالفارقُ بين ١٧٨ و٢٣٠ هو اختباراتُ البندَين ١١ و١٨ التي كُتبت ولم تُشغَّل قطُّ حتى
+الآن. وهذا في ذاتِه هو الدرس: **اختبارٌ مكتوبٌ غيرُ مُشغَّلٍ ليس تغطيةً، بل نيّةُ
+تغطية** — و§17.10 كانت تقولُ صراحةً إنَّ `AssetsTest` لم يُشغَّل بعد، وقد شُغِّل الآن
+فأسقط ثلاثةً.
+
+**والأربعةُ الساقطةُ كلُّها سابقةٌ لهذا العمل**، أي أنَّها قائمةٌ على `main` المُودَع
+ولم يُحدِثها هذا الفرع. تحقَّقتُ من ذلك بـ `git show HEAD:` لا بالحدس:
+
+| الاختبار | ما حدث | التشخيص |
+|---|---|---|
+| `AssetsTest::handing_out_cannot_be_switched_off_while_something_is_out` | توقَّع رفضًا، فجاء `'Updated successfully.'` | **فجوةٌ حقيقيّة**: `AssetService::update()` لا يحملُ الحارسَ الذي يحملُه المسارُ الآخر |
+| `AssetsTest::another_tenants_asset_is_not_readable_editable_or_deletable` | توقَّع ٤٠٤ فجاء ٣٠٢ | **ليس تسريبًا.** `findAsset()` هي `forBusiness()->permitted()->findOrFail()`، فأصلُ المستأجرِ الآخرِ لا يُوجَدُ ولا يُحذَف؛ لكن `catch (\Throwable)` في `AssetController.php:184` يبتلعُ `ModelNotFoundException` فيصيرُ تحويلًا. **رمزُ حالةٍ خاطئٌ لا أكثر** |
+| `AssetsTest::a_job_keeps_its_asset_across_an_edit` | توقَّع ٣٠٢ فجاء ٤٠٤ | لم يُفحَص بعد |
+| `TenantScopeTest::every_site_that_validates_a_branch_is_covered_by_this_test` | `AccountingController.php:location_id` غيرُ مُغطّى | **مُصلَح في هذه الدفعة** بمدخلٍ في `COVERED_ELSEWHERE` يقولُ الحقيقةَ: الوحدةُ مؤجَّلةٌ وبلا مساراتٍ على `main`، فلا عنوانَ يُرسَلُ إليه |
+
+الثلاثةُ الأُوَلُ **في الوحدةِ المؤجَّلةِ بقرارِ #9**، فإصلاحُها يعني إعادةَ افتتاحِ
+نطاقٍ أُغلق عن قصد. تُترَكُ موصوفةً هنا حمراءَ معلومةً — لا مطويّةً — والقرارُ لك:
+الأولُ يحتاجُ حارسًا في `AssetService::update()`، والثاني سطرًا واحدًا في `catch`،
+والثالثُ فحصًا لم يُجرَ.
+
+**وما لا يُصلحه التأجيلُ:** الرابعُ لا يُصلحُه، لأنَّ `AccountingController` يبقى
+مُودَعًا على `main` بينما `main` لا يحملُ **أيَّ** مسارِ محاسبةٍ
+(`git show HEAD:routes/web.php | grep -c accounting` = ٠) — فالمِلَفُّ ماسحٌ ولا
+مقصَد. ولهذا كان الحلُّ مدخلَ إعفاءٍ صريحًا لا حذفَ وحدةٍ مكتملة.
+
+### 19.5 الثلاثةُ الحمراءُ الباقيةُ — فشلٌ معلومٌ في وحدةٍ مؤجَّلة (قرارُ المستخدم، ٢٩ أغسطس ٢٠٢٦)
+
+قرَّرتَ صراحةً عدمَ الاهتمامِ بها الآن: الوحدةُ مؤجَّلةٌ بكاملها بقرارِ #9، وليست
+جزءًا من نظامِ نقاطِ البيع. القرارُ مُثبَتٌ ومُحترَم، والثلاثةُ تبقى **حمراءَ معلومةً
+موصوفةً** لا مطويّةً ولا مُعلَّمةً `skip` — لأنَّ `skip` على عيبٍ حقيقيٍّ يُحوِّلُه من
+«معلومٍ» إلى «منسيٍّ»، وهذا ما لا يُقايَضُ.
+
+**لكنَّ سببَ عدمِ الخطورةِ يجبُ أن يُقالَ بدقَّةٍ، لأنَّ الصيغةَ الشائعةَ خاطئة.**
+لا يوجدُ `route guard` على هذه الشاشات، والمساراتُ **ليست** غائبةً عن `main`:
+
+- مساراتُ الأصولِ مُسجَّلةٌ في `routes/web.php:540-563` بلا أيِّ وسيطٍ خاصٍّ بالوحدة.
+- الحَجبُ يقعُ داخلَ المُتحكِّمِ عبرَ `Controller::requireModule()`
+  (`Controller.php:68`)، وهو يقرأُ `session('business.enabled_modules')` ويُسقِطُ
+  `abort(403)` إن لم تكن الوحدةُ مُفعَّلة.
+- والعملُ الجديدُ يبدأُ بـ `['purchase_order', 'account']` فقط
+  (`BusinessService.php:53`) — فـ `assetmanagement` **مُطفأةٌ افتراضيًّا**، وهذا هو
+  الحاجزُ الفعليّ.
+- **لكنَّها مفتاحٌ قابلٌ للتفعيل**: `assetmanagement` مُدرَجةٌ في
+  `availableModules()` (`BusinessController.php:205`)، أي أنَّها مُربَّعُ اختيارٍ في
+  إعداداتِ العملِ. فمَن فعَّلها وصلَ إلى الشاشات، وصارتِ العيوبُ الثلاثةُ حيّةً عنده.
+
+فالتوصيفُ الصحيحُ: **مُطفأةٌ افتراضيًّا، لا مُتعذِّرةُ الوصول**. والتعرُّضُ منخفضٌ
+لأنَّه خلفَ فعلٍ إداريٍّ صريحٍ، لا معدومٌ. وكتابةُ «غيرُ قابلةٍ للوصول» هنا كانت
+ستُخفي هذا الفرقَ في القسمِ الذي عنوانُه «ما هو مُثبَتٌ فعلًا».
+
+| الاختبار | ما يعنيه لو فُعِّلت الوحدة | الإصلاحُ حين يُفتَحُ النطاق |
+|---|---|---|
+| `handing_out_cannot_be_switched_off_while_something_is_out` | **فجوةُ سلامةِ بيانات**: يمكنُ إطفاءُ «قابلٌ للتسليم» ووحداتٌ ما زالت خارجًا، فتبقى تسليماتٌ مفتوحةٌ بلا طريقٍ لإغلاقِها | حارسٌ في `AssetService::update()` بنظيرِ ما يحملُه مسارُ تعديلِ الكمِّيَّة |
+| `another_tenants_asset_is_not_readable_editable_or_deletable` | **ليس تسريبًا، ولا يقربُ منه.** `findAsset()` هي `forBusiness()->permitted()->findOrFail()`، فأصلُ الآخرِ لا يُقرَأُ ولا يُحذَف. العيبُ أنَّ `catch (\Throwable)` في `AssetController.php:184` يبتلعُ `ModelNotFoundException` فيردُّ ٣٠٢ بدلَ ٤٠٤ | استثناءُ `ModelNotFoundException` من المَسْكِ — سطرٌ واحد |
+| `a_job_keeps_its_asset_across_an_edit` | ٤٠٤ بدلَ ٣٠٢ عندَ تعديلِ مهمَّةِ صيانة. **لم يُفحَص**، ولا يُدَّعى عنه أكثرُ من ذلك | فحصٌ لم يُجرَ بعد |
+
+وسطرُ التنبيهِ الذي يستحقُّ البقاء: الثاني يبدو أخطرَ ما في القائمةِ وهو أخفُّها
+(رمزُ حالةٍ)، والأوَّلُ يبدو أخفَّها وهو الحقيقيُّ الوحيدُ (سلامةُ بيانات). فترتيبُ
+الخطورةِ بحسبِ نصِّ رسالةِ الفشلِ يُضلِّل، ولا بديلَ عن قراءةِ ما تحتَها.
+
+---
+
+## 20. الأوامرُ المجدولةُ الثلاثة (البند ١٢، بعد التقليص)
+
+ثلاثةُ أوامرَ، وهي كلُّ ما بقي من البندِ ١٢ بعد قرارِ #10. وما يميّزُها عن كلِّ ما
+سبقَها في هذا المستودعِ أنَّه **لا أحدَ أمامها**: الشاشةُ التي تنكسرُ يُبلِّغُ عنها من كان
+ينظرُ إليها، والأمرُ الليليُّ الذي ينكسرُ لا يُبلِّغُ عن شيء، و«لم يأتِ تنبيه» لا
+يُفرَّقُ عن «لا شيءَ يستحقُّ التنبيه». فالتصميمُ كلُّه دارَ حولَ أوضاعِ الفشلِ التي
+تُشبِهُ النجاح.
+
+### 20.1 الملفُّ الذي كانت الدفعةُ تسقطُ بدونِه صامتةً
+
+الأوامرُ لا تُكتشَفُ تلقائيًّا في هذا التطبيق، خلافًا لما توحي به الوثائق:
+
+- `ApplicationBuilder::withCommands()` (`:334`) يجعلُ `app/Console/Commands` مسارَ
+  اكتشافٍ افتراضيًّا، لكنّه لا يُنادى إلّا من `:180` داخلَ `withRouting()` حين يكونُ
+  `commands:` نصًّا — وحينها يُسجَّلُ المِلَفُّ نفسُه كمسارِ **موجِّهِ** أوامرَ لا كمجلَّدِ
+  أصناف.
+- `Foundation\Console\Kernel` يحملُ `protected $commandPaths = []` (`:78`)،
+  و`discoverCommands()` (`:514`) يمرُّ على `$commandPaths` ثمَّ على
+  `$commandRoutePaths`.
+
+فالنتيجةُ أنَّ `routes/console.php` كان سيُحلَّلُ بنجاحٍ، ويُسجِّلُ الجدولَ، ثمَّ يسقطُ
+عندَ التنفيذِ بـ «command not defined». ولذلك أُضيف `->withCommands()` صريحًا في
+`bootstrap/app.php` مع تعليقٍ يشرحُ لماذا لا يجوزُ حذفُه.
+
+### 20.2 الرَّبطُ لكلِّ مستأجِرٍ ليس أسلوبًا بل عقد
+
+`BusinessScope` تنصُّ في توثيقِها على أنَّ **الاستثناءَ هو الطرفيّة**: مستأجِرٌ غيرُ
+مربوطٍ في الطرفيّةِ يعني «اعملْ على كلِّ الأعمال»، والمُنادي هو المسؤولُ عن التحديد.
+فالأمرُ الذي يتجاهلُ الربطَ يعملُ تمامًا، ويخرجُ بصفر، ويُسرِّب.
+
+وللمصروفاتِ المتكرِّرةِ ثمنٌ ثانٍ ملموس: `ReferenceService::nextCount()` يستنبطُ
+`business_id` من `Tenancy::id()`، فالتشغيلُ بلا ربطٍ يكتبُ عدّادَ المراجعِ **على عملٍ
+معدوم** — فيفسدُ ترقيمُ كلِّ المستأجِرين معًا في صمت. ولهذا يلفُّ كلُّ أمرٍ عملَه في
+`Tenancy::for($business->id, ...)` داخلَ حلقةٍ صريحة، ويمسكُ `\Throwable` **لكلِّ
+مستأجِرٍ على حِدَة**: بياناتُ مستأجِرٍ فاسدةٌ لا يجوزُ أن تُكلِّفَ الباقين ليلتَهم.
+
+### 20.3 قناةُ التسليم: `database` لا `mail` — وهذا قرار
+
+للتطبيقِ مركزُ تنبيهاتٍ يقرأُ هذا الجدولَ أصلًا (الجرسُ في
+`layouts/partials/notifications.blade.php`، و`NotificationController`)، فالتنبيهُ يهبطُ
+حيثُ ينظرُ المستخدمُ فعلًا. والبريدُ كان البديلَ ورُفض: هذا التركيبُ يشحنُ
+`MAIL_MAILER=log`، فتنبيهٌ بالبريدِ يُكتَبُ في سِجِلٍّ لا يقرأُه أحدٌ **ويُبلِّغُ عن نفسِه
+أنَّه سُلِّم** — قناةُ إنذارٍ لا تُنذِر.
+
+ومفاتيحُ `data` ليست حرّة: القائمةُ تعرضُ `title` و`body`، و`show()` يُحوِّلُ إلى `url`.
+و`items` مقصوصةٌ عند عشرةٍ لأنَّ `notifications.data` عمودُ `TEXT`: متجرٌ بألفِ منتجٍ
+تحتَ حدِّ التنبيهِ كان سيكتبُ صفًّا أكبرَ من العمودِ فيفقدُ التنبيهَ **في اللحظةِ التي
+كان فيها أهمَّ ما يكون**. فالعددُ هو الحِمْلُ الحقيقيُّ، والتقريرُ خلفَ `url` هو القائمةُ
+الكاملة.
+
+### 20.4 كلمةُ المرورِ لا تمرُّ في `argv` أبدًا
+
+`mysqldump` يقبلُ `--password=` على سطرِ الأوامر، وهذا هو الخطأُ الشائع: قائمةُ
+الوسائطِ مقروءةٌ لأيِّ حسابٍ آخرَ على الجهازِ (`ps aux`،
+`Get-CimInstance Win32_Process`) طولَ مدَّةِ التفريغ. فالبديلُ المُطبَّقُ هو
+`--defaults-extra-file` قصيرُ العمر:
+
+- يُكتَبُ بـ `0600` (وهو لا يفعلُ شيئًا على Windows؛ ما يحميه هناك أنَّه خارجَ جذرِ
+  المستنداتِ ويُحذَفُ بعدَ ثوانٍ).
+- **يجبُ أن يكونَ أوَّلَ وسيطٍ**، وإلّا تجاهلَه `mysqldump` **في صمت** — فالموضعُ
+  سلوكٌ لا أناقة.
+- يُحذَفُ في `finally` سواءَ نجحَ التفريغُ أو فشل.
+- والقيمُ مُهرَّبةٌ لـ `\` و`"` لأنَّ كليهما مشروعٌ في كلمةِ مرورٍ وفي `my.cnf`.
+
+وباقي القرارات: `--single-transaction --quick` لأنَّ المتجرَ لا يُغلَقُ للنسخِ؛
+`--no-tablespaces` لأنَّ مستخدمًا مُقلَّلَ الصلاحياتِ لا يحملُ `PROCESS`؛
+`setTimeout(null)` لأنَّ المهلةَ تُخرِجُ ملفًّا مقطوعًا **يُشبِهُ نسخةً احتياطيّةً وليس
+كذلك**، وهو أسوأُ من ليلةٍ بطيئة؛ والمُخرَجُ **يُبَثُّ** إلى مِقبَضِ ملفٍّ داخلَ
+`Process::run` لا يُجمَعُ بـ `getOutput()` — الحجمُ الوحيدُ المضمونُ أن يكونَ أكبرَ من
+الذاكرةِ هو حجمُ قاعدةِ البيانات.
+
+**و`prune($keep < 1)` لا يحذفُ شيئًا.** القراءةُ الأخرى — «احفظْ صفرًا، فامحُ الكلَّ» —
+هي التي تُحوِّلُ خيارًا مكتوبًا بالخطأِ إلى فقدانِ بيانات، فلم تُنفَّذ.
+
+### 20.5 العيبُ الذي وجدَه كتابةُ الاختبارِ لا تشغيلُه
+
+اختبارُ «تفريغٌ فاشلٌ لا يتركُ ملفَّ اعتمادٍ ولا نسخةً نصفَ مكتوبة» أظهرَ أنَّ تنظيفَ
+ملفِّ `.sql` كان في فرعِ «شُغِّلَ وخرجَ بغيرِ صفر» فقط. لكنَّ ثنائيًّا مفقودًا يجعلُ
+`Process` يرمي **قبلَ أن يعملَ أصلًا**، فيهربُ الاستثناءُ وتبقى نسخةٌ بصفرِ بايت في
+مجلَّدِ النسخِ تُشبِهُ نسخةَ الليلة — و`backups()` لا تُفرِّقُ، و`prune()` تحفظُها بسرورٍ
+وتحذفُ نسخةً حقيقيّةً مكانَها. فنُقل التنظيفُ إلى `finally` بعَلَمِ `$succeeded`
+يُرفَعُ على مسارِ النجاحِ وحدَه، فيُغطّي **كلَّ** طرقِ الخروجِ لا واحدةً منها.
+
+### 20.6 الجدول
+
+| الأمر | الوقت | لماذا هذا الوقتُ بالضبط |
+|---|---|---|
+| `souqly:recurring-expenses` | `00:20` | بعدَ منتصفِ الليلِ بقليلٍ ليكونَ «المستحقُّ اليوم» محسوبًا على تاريخٍ دار فعلًا |
+| `souqly:backup` | `02:40` | أهدأُ ساعةٍ لمتجر، وبعدَ فراغِ كتاباتِ الإغلاقِ بوقتٍ كافٍ |
+| `souqly:stock-alerts` | `07:10` | **قبلَ** فتحِ المتجر، فيجدُه الطاقمُ في الجرسِ عندَ الدخول؛ تنبيهٌ يصلُ بعدَ الظهرِ فوَّتَ طلبيّةَ الصباح |
+
+ولا شيءَ منها على رأسِ الساعة، ولا اثنانِ في اللحظةِ نفسِها: `00:00` هو حيثُ كلُّ
+`cron` آخرَ على جهازٍ مشترَك.
+
+**والشرطُ الوحيدُ لتشغيلِ هذا كلِّه مُدخَلُ `cron` واحدٌ في النظام:**
+
+```
+* * * * * cd /path-to-souqly && php artisan schedule:run >> /dev/null 2>&1
+```
+
+وبدونَه هذه التعريفاتُ خاملةٌ تمامًا — وهذا مذكورٌ صراحةً في رأسِ
+`routes/console.php` لأنَّ «لا شيءَ يبدأُ من تلقاءِ نفسِه» هو النوعُ الذي يُكتشَفُ
+بعدَ شهر.
+
+والجدولُ يُحسَبُ على `config('app.timezone')` لا على منطقةِ العملِ التي يُطبِّقُها
+`Timezone` على الطلبات. وهما شيءٌ واحدٌ اليومَ بحكمِ القرارِ #2 (مصر)، ويتوقّفانِ عن
+ذلك يومَ يتاجرُ مستأجِرٌ في منطقةٍ أخرى — والتعليقُ الذي سيقولُ ذلك موجودٌ في مكانِه.
+
+### 20.7 `lowStock()` انتقلت إلى `StockService`
+
+كان الاستعلامُ داخلَ `HomeController::stockAlerts()`، ولو نُسِخ في الأمرِ لصار
+للوحةِ القيادةِ تعريفٌ لـ «منخفض» وللتنبيهِ الليليِّ تعريفٌ آخر، فيَفترقانِ عندَ أوّلِ
+تعديل. فرُفِع إلى `StockService::lowStock(?int $businessId, ?int $locationId)`،
+والمُتحكِّمُ صارَ سطرًا واحدًا.
+
+**وهي ترمي `InvalidArgumentException` بدلَ أن تُرجِعَ مجموعةً فارغةً** إذا لم يكن ثمَّ
+مستأجِرٌ مربوطٌ ولا مُمرَّر: في استعلامِ إنذارٍ يكونُ «لا مستأجِرَ» و«لا شيءَ منخفضٌ»
+القيمةَ نفسَها، وذلك بالضبطِ الخطأُ الذي يُفترضُ أن يكشفَه هذا كلُّه.
+
+### 20.8 `tests/Feature/ScheduledCommandsTest.php` — ١٤ اختبارًا
+
+وأهمُّها ثلاثة، وكلُّها تُثبِتُ عيبًا **لا يُرى في تشغيلٍ أخضر**:
+
+1. `one_tenants_low_stock_never_reaches_another_tenants_staff` — مستأجِرانِ حقيقيّان،
+   ولكلٍّ عددُه الخاصُّ في `data['count']`. و`variation_location_details` لا تحملُ
+   `business_id` أصلًا، فالمستأجِرُ يُبلَغُ عبرَ وصلةِ الفروع — وهذا هو الاختبارُ الذي
+   يسقطُ لو حُذف `Tenancy::for`.
+2. `the_generated_expense_numbers_against_its_own_business` — لا صفَّ في
+   `reference_counts` بـ `business_id` معدوم، وعدَّادُ `expense` على العملِ الصحيح.
+3. `the_password_never_appears_in_the_argument_list` — مع تثبيتِ موضعِ
+   `--defaults-extra-file` أوَّلًا.
+
+وكلمةُ المرورِ في الاختبارِ تحملُ `"` و`\` عن قصدٍ، لأنَّ كليهما مشروعٌ ويحتاجُ
+تهريبًا. والاتّصالُ مُزَيَّفٌ يُمرَّرُ إلى المُنشِئ، فلا حاجةَ إلى `mysqldump` حقيقيٍّ ولا
+خادمٍ حيٍّ لفحصِ ما يهمُّ. ومجلَّدُ النسخِ في الاختبارِ **مؤقَّتٌ دائمًا** ويُحذَفُ في
+`tearDown`: هذه الاختباراتُ تحذفُ ملفّاتٍ بنمطٍ، وتوجيهُ ذلك إلى مجلَّدِ نسخٍ حقيقيٍّ
+طريقةٌ مؤلمةٌ لتعلُّمِ الفرق.
+
+### 20.9 دقَّةٌ في رسالةِ تحذيرٍ — والسببُ أنَّ للأمرِ جمهورًا واحدًا
+
+في التشغيلِ اليدويِّ الثاني في اليومِ نفسِه كانت الرسالةُ تقولُ «لا أحدَ يحملُ
+الصلاحيةَ ولا مالكَ للعملِ» — وهو كلامٌ **غيرُ صحيحٍ** في تلك الحالة: المالكُ موجودٌ
+وأُبلِغَ صباحًا فحسب. فنُقل مُرشِّحُ «مرَّةً في اليوم» إلى خارجِ `recipients()` كي
+تبقى الحالتانِ الفارغتانِ مُتمايزتَين. وهذه سطرُ طرفيّةٍ لا سلوك، لكنَّ الطرفيّةَ هي
+جمهورُ الأمرِ الوحيد، ورسالةٌ كاذبةٌ فيها تُرسِلُ أحدَهم يبحثُ عن خللِ صلاحيّاتٍ لا
+وجودَ له.
+
+### 20.10 ما لم يُعمَل عن قصد
+
+- **لا `spatie/laravel-backup`**: كان سيجلبَ تبعيّةً كاملةً بمُخرِجاتٍ وأقراصٍ
+  ومُنبِّهاتٍ لأجلِ `mysqldump` واحدٍ، والمخاطرةُ الأمنيّةُ الوحيدةُ هنا (الاعتمادُ في
+  `argv`) تُحَلُّ في عشرةِ أسطر.
+- **لا نسخَ إلى تخزينٍ خارجيٍّ**: النسخةُ في `storage/app/private/backups` على
+  الجهازِ نفسِه ليست خطّةَ استعادةٍ من كارثة، وهذا يُقال بوضوحٍ ولا يُغطّى بميزةٍ
+  نصفَ عاملة.
+- **لا استعادةٌ آليّة**: الاستعادةُ قرارٌ بشريٌّ، وأمرٌ يستعيدُ فوقَ قاعدةٍ عاملةٍ هو
+  أداةُ حذفٍ في ثوبِ أداةِ إنقاذ.
+- **لا تنبيهاتُ بريدٍ عندَ فشلِ النسخ**: `report($e)` يكتبُ في السِّجِلّ،
+  و`appendOutputTo(storage_path('logs/backup.log'))` يحفظُ المُخرَج. والبريدُ يعودُ
+  ذا معنًى يومَ يُضبَطُ ناقلٌ حقيقيٌّ — انظر §20.3.
+- **الفواتيرُ المتكرِّرةُ، وانتهاءُ نقاطِ المكافآت، وتذكيرُ الدفعات**: مؤجَّلةٌ بقرارِ
+  #10، لأنَّ المزايا خلفَها غيرُ مبنيّةٍ هنا — وجدولةُ ميزةٍ غيرِ موجودةٍ ليست ميزةً
+  بل لا-عملٍ ليليٌّ يُشبِهُ التغطية.
+
+### 20.11 خطأٌ فادحٌ لا يراه `php -l`: دالَّةٌ خاصَّةٌ تُضيِّقُ موروثةً عامَّة
+
+أوّلُ تشغيلٍ حقيقيٍّ للمجموعةِ بعدَ كتابةِ الأوامرِ لم يُعطِ أرقامًا بل سقوطًا فادحًا:
+
+```
+Access level to App\Console\Commands\SendLowStockAlerts::alert()
+must be public (as in class Illuminate\Console\Command)
+```
+
+`Illuminate\Console\Command` يرثُ من `Concerns/InteractsWithIO` دالَّةَ إخراجٍ عامَّةً
+اسمُها `alert()`، وكانت في الأمرِ دالَّةٌ خاصَّةٌ بالاسمِ نفسِه. وPHP لا تسمحُ بتضييقِ
+مدى ظهورِ دالَّةٍ موروثةٍ عامَّةٍ: ترفضُه **عندَ تحميلِ الصنفِ** بخطأٍ فادحٍ لا بتنبيه.
+فأُعيدَ تسميتُها إلى `sendAlertsFor()`، وبقيَ التعليقُ فوقَها يقولُ لماذا لا يجوزُ
+إرجاعُ الاسمِ القديم.
+
+**وهذا هو الدرسُ الذي يستحقُّ البقاء:** `php -l` نجحَ على الملفَّاتِ العشرةِ كلِّها قبلَ
+هذا السقوط، ونجاحُه كان صحيحًا لا كاذبًا — الملفُّ يُحلَّلُ نحويًّا بلا عيب، والذي
+ينكسرُ هو الوراثة، و`php -l` لا يُحلِّلُ صنفًا أبًا ولا يبني شجرةَ وراثة. ففحصُ
+الصياغةِ ليس فحصَ تحميل، ولا يُغني عنه. وهو أخو الدرسِ في §19.4: اختبارٌ مكتوبٌ لم
+يُشغَّلْ ليس تغطيةً، ومِلَفٌّ صحيحُ الصياغةِ ليس مِلَفًّا يُحمَّل.
+
+ثمَّ جُرِدَ السطحُ الموروثُ كلُّه بحثًا عن تصادُمٍ ثانٍ — لا استنتاجًا بل قراءةً في
+`Concerns/InteractsWithIO.php` و`Illuminate\Console\Command.php` و
+`Symfony\Component\Console\Command\Command.php`. والنتيجةُ أنَّ `alert()` كان **التصادمَ
+الوحيدَ** في الأوامرِ الثلاثة: `recipients` و`alreadyToldToday` و`businesses` و
+`humanise` لا وجودَ لها في أيٍّ من الثلاثة.
+
+والقاعدةُ المستخلصةُ لأيِّ أمرٍ يُكتَبُ بعدَ هذا: **الأسماءُ الخَطِرةُ هي بالضبطِ تلك
+التي تقرأُ كأفعالِ مجالٍ طبيعيّة** — `alert`, `info`, `line`, `comment`, `question`,
+`error`, `warn`, `table`, `choice`, `ask`, `confirm`, `secret`, `option`, `options`,
+`argument`, `arguments`, `call`, `fail`, `run`. فدالَّةٌ خاصَّةٌ في أمرٍ لا تأخذُ اسمَ
+مُساعِدِ إخراج، وإنِ انطبقَ على معناها تمامًا.
+
+### 20.12 `User` لا يستخدمُ `BelongsToBusiness` — والمَسْكُ لكلِّ مستأجِرٍ أخفى السبب
+
+بعدَ إصلاحِ §20.11 أعطى التشغيلُ أرقامًا، وفيها **أربعةُ سقوطاتٍ جديدةٍ كلُّها في أمرِ
+تنبيهِ المخزون**، وكلُّها بالشكلِ نفسِه: `Expected status code 0 but received 1`. لا
+أثرَ استدعاءٍ، ولا رسالةَ استثناء، ورقمٌ واحدٌ فقط.
+
+**التشخيصُ جاءَ من الاختبارِ الناجحِ لا من الفاشلة.** الوحيدُ الذي نجحَ من الخمسةِ هو
+`nothing_is_sent_when_no_product_is_below_its_alert_level`، وهو **الوحيدُ الذي يرجعُ قبلَ
+نداءِ `recipients()`** (لأنَّ `$rows->isEmpty()`). فالدالَّةُ المُعطِبةُ تحدَّدتْ بدقَّةٍ بلا
+قراءةِ سطرٍ واحدٍ من أثرِ استدعاء.
+
+**والعيب:** `recipients()` كان يُنادي `User::query()->forBusiness(...)` و
+`->withoutBusinessScope()`، وكِلاهما **غيرُ موجودٍ على `User`**. والسببُ منصوصٌ عليه في
+توثيقِ الطُّرازِ نفسِه (`User.php:74`): «`User` لا يستخدمُ `BelongsToBusiness` قصدًا،
+لأنَّ الاستيثاقَ يجبُ أن يجدَ مستخدمًا **قبلَ** وجودِ مستأجِرٍ، فنطاقٌ شامِلٌ كان
+سيكسِرُ الدخول». فالحيلتانِ لا وجودَ لهما هنا، والمُرشِّحُ الصحيحُ هو
+`where('business_id', ...)` صريحًا — وهو ما تفعلُه `dropdownQuery()` أصلًا. أمَّا مالكُ
+العملِ فلا نطاقَ شامِلًا يُتَجاوَزُ من أجلِه من الأساس، فصارَ `find($business->owner_id)`
+مجرَّدًا. أي أنَّ الإصلاحَ **أبسطُ** من العيب: كان الكودُ يحملُ احتياطًا ضدَّ نطاقٍ لا
+وجودَ له.
+
+**والدرسُ الأهمُّ هو كيف اختفى:** `handle()` يمسكُ `\Throwable` **لكلِّ مستأجِرٍ على
+حِدَة**، وهذا صحيحٌ ومقصودٌ (§20.2: بياناتُ مستأجِرٍ فاسدةٌ لا تُكلِّفُ الباقين ليلتَهم).
+لكنَّ المَسْكَ نفسَه حوَّلَ `BadMethodCallException` إلى **رقمِ خروجٍ عارٍ**: الرسالةُ
+ذهبتْ إلى `$this->components->error()`، ومُخرَجُ الأمرِ في `PendingCommand` مُحتجَزٌ ولا
+يُطبَعُ في تقريرِ الفشل. فالحاجزُ الذي يحمي المستأجِرين هو نفسُه الذي يحجبُ السبب.
+
+وهذه مقايضةٌ مقبولةٌ لا عيبٌ يُصلَح — ولهذا بالضبط يُنادى `report($e)` بجانبِ
+`components->error()`: السِّجِلُّ هو المكانُ الذي كانت الرسالةُ فيه فعلًا. ومَن يرى
+«`exit 1` بلا سبب» من أمرٍ مجدولٍ يقرأُ `storage/logs` قبلَ أن يقرأَ الكود.
+
+وجُرِدَ المستودعُ كلُّه بعدَ الإصلاح: `forBusiness` و`withoutBusinessScope` **لا تُناديانِ
+على `User` في أيِّ موضعٍ آخرَ** في `app/`، فالعيبُ كان مُفرَدًا لا نمطًا.
+
+## 21. `opening-stock.add` — مسارٌ غيرُ موجودٍ في زرٍّ لم يختبرْه أحد
+
+بلَّغَ المستخدمُ عن سقوطٍ عندَ الضغطِ على «حفظ وإضافة رصيدٍ افتتاحيّ»:
+
+```
+Symfony\Component\Routing\Exception\RouteNotFoundException
+Route [opening-stock.add] not defined.        UrlGenerator.php:542
+```
+
+**السبب:** `ProductController::store()` كان يُحوِّلُ إلى
+`route('opening-stock.add', $product->id)`، والأسماءُ المسجَّلةُ فعلًا في
+`routes/web.php:453-460` هي `opening-stock.index` و`.edit` و`.update` و`.destroy`.
+لا `.add`، ولم يُسجَّلْ يومًا.
+
+**وما يجعلُه أسوأَ من صفحةِ خطأ:** المنتجُ كان قد كُتِبَ بالفعل. `DB::transaction`
+أُغلِقَتْ بنجاحٍ، و`$output` صارَ «أُضيفَ بنجاحٍ»، **ثمَّ** سقطَ التحويل. فالحفظُ نجحَ
+والمستخدمُ رأى أثرَ استدعاءٍ — وهذا أكثرُ اقترانٍ مُضلِّلٍ يمكنُ تسليمُه: نجاحٌ يبدو
+فشلًا، فيُعيدُ المستخدمُ الإدخالَ ويُنشِئُ منتجًا مكرَّرًا.
+
+**ولماذا لم يُكشَفْ:** `ScreensRenderTest` يمرُّ على مسارات `GET` ويرسمُها، وهذا
+الطريقُ لا يُبلَغُ إلّا عبرَ تحويلٍ بعدَ `POST`. و`ProductsTest` كان يُرسِلُ إلى
+`products.store` مرَّاتٍ كثيرةً — لكن **بلا `submit_type` قطُّ**، فالمخرجُ الثاني كلُّه
+من الدالَّةِ لم يُنفَّذْ في المجموعةِ ولا مرَّة. وهو الدرسُ نفسُه الذي وُلِدَ منه
+§18، فرعًا واحدًا أبعد: لا يكفي أن يُرسَلَ إلى الدالَّة، بل أن يُرسَلَ إلى **كلِّ
+مخارجِها**.
+
+**الإصلاح:** `opening-stock.edit` هو نفسُه شاشةُ الإضافة —
+`OpeningStockService::forProduct()` يُرجِعُ `null` حين لا وثيقة، والقالبُ يرسمُ حقولَ
+دفعاتٍ فارغة. فلا شاشةَ إضافةٍ منفصلةٌ ولا حاجةَ إليها.
+
+**وعيبٌ ثانٍ ظهرَ أثناءَ إصلاحِ الأوّل:** الزرُّ يُرسَمُ بلا شرطٍ في
+`product/create.blade.php:22`، ولا يمكنُ غيرُ ذلك: `enable_stock` يُختارُ في الاستمارةِ
+نفسِها ولا يُعرَفُ قبلَ إرسالِها (والإخفاءُ بجافاسكربت ممنوعٌ بالتوجيهِ التصميميّ).
+و`OpeningStockController::edit()` يُرشِّحُ `where('enable_stock', 1)`، فمنتجُ خدمةٍ كان
+سيحوِّلُ `RouteNotFoundException` إلى `404` — أي أثرَ استدعاءٍ آخرَ على حفظٍ ناجح.
+فصارَ التحويلُ مشروطًا بـ `$product->enable_stock`، ويهبطُ ما دونَه على فهرسِ
+المنتجاتِ **ورسالةُ النجاحِ سليمةٌ**: المنتجُ أُنشِئَ فعلًا، وإنَّما لا رصيدَ افتتاحيًّا
+له يُدخَل.
+
+**والتغطية:** اختبارانِ في `ProductsTest` — واحدٌ يُثبِتُ التحويلَ إلى
+`opening-stock.edit` لمنتجٍ يتتبَّعُ المخزون، وآخرُ يُثبِتُ الرجوعَ إلى الفهرسِ
+لمنتجٍ لا يتتبَّعُه. وكِلاهما يفحصُ اسمَ مسارٍ، وهو ما لا يراه أيُّ اختبارِ رسمٍ.
+
+
 

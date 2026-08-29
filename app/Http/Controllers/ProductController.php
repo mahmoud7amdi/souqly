@@ -103,9 +103,22 @@ class ProductController extends Controller
             return back()->withInput()->with('status', $this->failed($e));
         }
 
-        // "Save & add opening stock" jumps straight to the stock screen.
-        if ($request->input('submit_type') === 'submit_n_add_opening_stock') {
-            return redirect()->route('opening-stock.add', $product->id)->with('status', $output);
+        /*
+         * "Save & add opening stock" jumps straight to the stock screen. The route
+         * is `opening-stock.edit`, which doubles as the add screen —
+         * `OpeningStockService::forProduct()` returns null when no document exists
+         * and the view renders empty lot inputs. There is no `opening-stock.add`.
+         *
+         * The enable_stock guard is not defensive padding. The button is offered
+         * unconditionally on the create form, because whether the product tracks
+         * stock is decided in that same form and cannot be known before it is
+         * submitted — and `edit()` filters on `where('enable_stock', 1)`, so a
+         * service product would 404 here on an otherwise successful save. Landing
+         * on the index with the success message is the honest outcome: the product
+         * was created, it simply has no opening stock to enter.
+         */
+        if ($request->input('submit_type') === 'submit_n_add_opening_stock' && $product->enable_stock) {
+            return redirect()->route('opening-stock.edit', $product->id)->with('status', $output);
         }
 
         return $this->backToIndex('products.index', $output);

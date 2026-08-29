@@ -77,6 +77,22 @@ class TenantScopeTest extends TestCase
         // 422 this test looks for could never arrive.
         'AssetController.php:location_id'
             => 'AssetsTest::an_asset_cannot_be_parked_at_another_tenants_branch',
+
+        /*
+         * Deferred in full by Decision #9 (NOTES §1): the accounting module's
+         * routes are not registered on `main`, so there is no URL to submit and a
+         * sites() entry is impossible rather than merely inconvenient. The
+         * controller itself stays in the tree — deleting a finished module to
+         * satisfy a census would be the wrong trade — and its `location_id`
+         * declarations are the reason this entry exists at all.
+         *
+         * Stated plainly so the exemption is not mistaken for coverage: while the
+         * module is unrouted, nothing exercises these declarations. They come back
+         * under this test the moment the routes are restored, which is exactly what
+         * the census is for.
+         */
+        'AccountingController.php:location_id'
+            => 'unreachable on main — module deferred, no routes registered (NOTES §1 #9)',
     ];
 
     private User $owner;

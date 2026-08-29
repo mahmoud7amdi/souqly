@@ -317,6 +317,63 @@ class StockService
     }
 
     /* ====================================================================
+     | Alerting
+     ==================================================================== */
+
+    /**
+     * Products at or below their alert quantity.
+     *
+     * Lives here rather than in the dashboard controller because it now has two
+     * callers that must agree: the dashboard panel and the nightly alert
+     * command. Two copies of this query would drift, and the shape of the drift
+     * would be the worst kind — a product that alerts on one screen and not the
+     * other, with no way to tell which is lying.
+     *
+     * `variation_location_details` carries no `business_id`, so the tenant comes
+     * through the location join. It is passed rather than resolved because the
+     * command runs in the console with no session: {@see \App\Scopes\BusinessScope}
+     * treats an unbound tenant there as "all businesses", which for an *alert*
+     * would mean quietly mailing one shop another shop's stock.
+     *
+     * @return \Illuminate\Support\Collection<int, object>
+     */
+    public function lowStock(?int $businessId = null, ?int $locationId = null): \Illuminate\Support\Collection
+    {
+        $businessId ??= \App\Support\Tenancy::id();
+
+        if (is_null($businessId)) {
+            /*
+             * Loudly, rather than returning an empty collection: "no tenant" and
+             * "nothing is low" are the same value here, and an alerting query
+             * that reports the first as the second is worse than one that fails.
+             */
+            throw new \InvalidArgumentException('lowStock() needs a business id; none was passed and none is bound.');
+        }
+
+        return \App\Models\VariationLocationDetails::query()
+            ->join('products as p', 'p.id', '=', 'variation_location_details.product_id')
+            ->join('variations as v', 'v.id', '=', 'variation_location_details.variation_id')
+            ->join('business_locations as bl', 'bl.id', '=', 'variation_location_details.location_id')
+            ->where('p.enable_stock', 1)
+            ->where('p.is_inactive', 0)
+            ->where('p.alert_quantity', '>', 0)
+            ->whereColumn('variation_location_details.qty_available', '<=', 'p.alert_quantity')
+            ->where('bl.business_id', $businessId)
+            ->when($locationId, fn ($q) => $q->where('variation_location_details.location_id', $locationId))
+            ->select([
+                'p.name as product',
+                'v.name as variation',
+                'p.sku',
+                'bl.name as location',
+                'bl.id as location_id',
+                'variation_location_details.qty_available',
+                'p.alert_quantity',
+            ])
+            ->orderBy('variation_location_details.qty_available')
+            ->get();
+    }
+
+    /* ====================================================================
      | Internals
      ==================================================================== */
 

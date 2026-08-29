@@ -346,7 +346,7 @@
                         <div class="field">
                             <label for="w_cost" class="label">{{ __('assetmanagement.warranty_cost') }}</label>
                             <input type="number" step="0.0001" min="0" id="w_cost" name="additional_cost"
-                                   @class(['input', 'input-amount', 'input-invalid' => $errors->has('additional_cost')])
+                                   @class(['input-numeric', 'input-invalid' => $errors->has('additional_cost')])
                                    value="{{ old('additional_cost') }}">
                             <p class="hint">{{ __('assetmanagement.warranty_cost_hint') }}</p>
                             @error('additional_cost')<p class="field-error">{{ $message }}</p>@enderror

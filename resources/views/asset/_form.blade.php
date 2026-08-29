@@ -97,7 +97,7 @@
             <div class="field">
                 <label for="unit_price" class="label">{{ __('assetmanagement.unit_price') }}</label>
                 <input type="number" step="0.0001" min="0" id="unit_price" name="unit_price"
-                       @class(['input', 'input-amount', 'input-invalid' => $errors->has('unit_price')])
+                       @class(['input-numeric', 'input-invalid' => $errors->has('unit_price')])
                        value="{{ old('unit_price', $record->unit_price ?? 0) }}">
                 <p class="hint">{{ __('assetmanagement.unit_price_hint') }}</p>
                 @error('unit_price')<p class="field-error">{{ $message }}</p>@enderror
