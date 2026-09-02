@@ -58,6 +58,20 @@ abstract class TestCase extends BaseTestCase
             'password' => 'secret',
             'language' => 'ar',
             'status' => 'active',
+            /*
+             * Stated rather than left to the column default, which is 1: the
+             * default is applied by MySQL, so the in-memory instance this method
+             * returns carries null for it until something reloads the row. That
+             * instance is what tests hand to `actingAs()`, and `CheckUserLogin`
+             * reads the attribute off it — so an unstated default meant every
+             * HTTP request in a `createTenant()` test bounced to /home with
+             * "login not allowed", turning what should have been a 200 into a
+             * 302 with no sale, no error bag and nothing pointing at auth.
+             *
+             * BusinessService::register() sets it explicitly for the same reason;
+             * this keeps the fixture owner and the real one alike.
+             */
+            'allow_login' => 1,
         ]);
 
         $this->business = Business::create(array_merge([

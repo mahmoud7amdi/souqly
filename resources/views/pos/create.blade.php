@@ -97,6 +97,25 @@
             </select>
         </div>
 
+        {{-- Credit the selected customer has already left with the shop.
+
+             Here, on the register bar, and not only inside the tender dialog: a
+             cashier decides whether to ask for money at all *before* opening
+             that dialog, and the answer changes when the customer is already in
+             funds. It is the same figure the dialog then spends, fetched by the
+             same request.
+
+             `shrink-0` and outside the select's own flex box so a long customer
+             name cannot squeeze it to nothing, and `aria-live` because it
+             appears without anything on screen having been clicked. Absent, not
+             zeroed, when there is no credit — a chip reading 0.00 on every
+             walk-in sale is noise the eye learns to skip past. --}}
+        <span id="customer-credit" class="pos-credit hidden" role="status" aria-live="polite">
+            <x-nav-icon name="coins" :size="4"/>
+            <span>{{ __('lang_v1.customer_credit') }}</span>
+            <span class="pos-credit-value force-ltr" id="customer-credit-value">0</span>
+        </span>
+
         <div class="flex min-w-44 flex-1 items-center gap-2">
             <span class="text-slate-400"><x-nav-icon name="tag" :size="5"/></span>
             <select id="selling_price_group_id" name="selling_price_group_id" class="select"
@@ -333,6 +352,86 @@
                                   id="change-due">0</span>
                         </div>
 
+                        {{--
+                            Stored credit about to pay for what the tender did
+                            not cover — the mirror of the block below, which
+                            handles a tender that went the other way.
+
+                            A statement and never a question, because there is
+                            nothing to decide: money the customer already handed
+                            over is what a prepayment is *for*, and asking
+                            permission to spend it would be asking whether they
+                            would rather owe the shop instead. What matters is
+                            that it is said out loud before the sale is
+                            finalised, since the cashier is about to take less
+                            cash than the total and the customer's balance is
+                            about to fall — neither of which is visible anywhere
+                            else on this screen.
+                        --}}
+                        <div id="advance"
+                             class="mt-3 hidden rounded-lg border border-brand-200 bg-brand-50 px-3 py-2">
+                            <p class="text-sm font-semibold text-brand-900" id="advance-text"></p>
+                            <p class="mt-0.5 text-xs text-brand-800" id="advance-note"></p>
+                        </div>
+
+                        {{--
+                            What happens to the excess.
+
+                            Hidden until there is an excess, and then it is not
+                            always a question. When the customer already owes
+                            money the terminal states what it is about to do and
+                            asks nothing: taking an overpayment off a standing
+                            debt is the only sensible reading of the gesture, and
+                            a prompt there would be a prompt with one right
+                            answer. When they owe nothing the two outcomes are
+                            genuinely different — money out of the drawer now, or
+                            a balance the shop carries — so the cashier chooses,
+                            and `refund` is preselected because it is what
+                            happens at a counter by default.
+                        --}}
+                        <div id="overpay" class="mt-3 hidden">
+                            <input type="hidden" name="overpay_amount" id="overpay-amount" value="0">
+
+                            {{-- Debt case: a statement, not a control. --}}
+                            <div id="overpay-debt"
+                                 class="hidden rounded-lg border border-sky-200 bg-sky-50 px-3 py-2">
+                                <p class="text-sm font-semibold text-sky-900" id="overpay-debt-text"></p>
+                                <p class="mt-0.5 text-xs text-sky-800" id="overpay-debt-note"></p>
+                            </div>
+
+                            {{-- No-debt case: the choice. Radios rather than a
+                                 select — two options that change what the cashier
+                                 does with their hands in the next second should
+                                 both be readable without opening anything. --}}
+                            <fieldset id="overpay-choice" class="hidden">
+                                <legend class="label">{{ __('lang_v1.excess_amount') }}</legend>
+
+                                <label class="pos-choice">
+                                    <input type="radio" name="overpay_action" value="refund"
+                                           class="radio" checked>
+                                    <span>
+                                        <span class="pos-choice-title">{{ __('lang_v1.refund_change_cash') }}</span>
+                                        <span class="pos-choice-note">{{ __('lang_v1.refund_change_cash_note') }}</span>
+                                    </span>
+                                </label>
+
+                                <label class="pos-choice" id="overpay-credit-option">
+                                    <input type="radio" name="overpay_action" value="credit" class="radio">
+                                    <span>
+                                        <span class="pos-choice-title">{{ __('lang_v1.keep_as_customer_credit') }}</span>
+                                        <span class="pos-choice-note">{{ __('lang_v1.keep_as_customer_credit_note') }}</span>
+                                    </span>
+                                </label>
+
+                                {{-- Why the second option is missing, when it is.
+                                     An option that silently disappears reads as a
+                                     bug; one that explains itself reads as a rule. --}}
+                                <p class="hint hidden" id="overpay-anonymous">
+                                    {{ __('lang_v1.walk_in_cannot_hold_credit') }}
+                                </p>
+                            </fieldset>
+                        </div>
+
                         <div class="field mt-3">
                             <label for="payment-method" class="label">{{ __('lang_v1.payment_method') }}</label>
                             <select id="payment-method" name="payments[0][method]" class="select">
@@ -488,6 +587,36 @@
     const tendered = document.getElementById('amount-tendered');
     const paidField = document.getElementById('payment-amount');
 
+    /* --- Overpayment -----------------------------------------------------
+       The elements and the one piece of state the tender dialog needs beyond the
+       basket: what this customer already owes. Held here rather than read from
+       the DOM because it is fetched per customer and the dialog consults it on
+       every keystroke. */
+    const customerSelect = document.getElementById('contact_id');
+    const overpay = document.getElementById('overpay');
+    const overpayAmount = document.getElementById('overpay-amount');
+    const overpayDebt = document.getElementById('overpay-debt');
+    const overpayChoice = document.getElementById('overpay-choice');
+    const creditOption = document.getElementById('overpay-credit-option');
+    const anonymousNote = document.getElementById('overpay-anonymous');
+
+    /* --- Stored credit ---------------------------------------------------
+       The other half of the same fetch: what the customer has already paid in
+       advance, which the server spends automatically against whatever this sale
+       is left owing. Two places show it — the chip on the register bar, which
+       answers "should I even ask for money?", and the panel in the tender
+       dialog, which answers "how much of this is coming out of their balance?" */
+    const creditChip = document.getElementById('customer-credit');
+    const creditValue = document.getElementById('customer-credit-value');
+    const advance = document.getElementById('advance');
+
+    /* Contacts that cannot hold credit — the shared walk-in row. Numbers, so a
+       string option value compares correctly after the Number() below. */
+    const SHARED_CUSTOMERS = @json($sharedCustomers);
+
+    let customerDue = 0;
+    let customerCredit = 0;
+
     /* --- Fitting the terminal to the window ------------------------------
        The shell is pinned to the viewport height so that the cart, the total
        and the pay button cannot be pushed below the fold by a long list of
@@ -601,10 +730,172 @@
        back changes the moment the basket does. */
     const updateChange = function () {
         const paid = parseFloat(tendered.value) || 0;
+        const excess = Math.max(0, paid - total);
 
         // Never post more than the sale is worth: the rest is change, not credit.
         paidField.value = money(Math.min(paid, total));
-        document.getElementById('change-due').textContent = money(Math.max(0, paid - total));
+        document.getElementById('change-due').textContent = money(excess);
+
+        updateOverpay(excess);
+
+        /* The shortfall and the excess cannot both be positive, so the two panels
+           are never on screen together — but each is told its own figure rather
+           than one being derived from the other's absence. */
+        updateAdvance(Math.max(0, total - paid));
+    };
+
+    /* --- What the stored credit will pay for -----------------------------
+       The server spends credit against whatever the sale is still owed after the
+       tender, up to the balance and no further — PaymentService::
+       applyAdvanceBalance(). This states that outcome before the sale is
+       finalised; it does not decide it, and it posts no field. Nothing here is
+       sent to the server, which is why a stale balance can only mislead the
+       cashier for a moment rather than mis-record the sale.
+
+       The walk-in row is excluded for the same reason it cannot be credited: its
+       balance is not attributable to the person at the counter, so the server
+       refuses to spend it and the terminal must not promise otherwise. */
+    const spendableCredit = function () {
+        return SHARED_CUSTOMERS.includes(Number(customerSelect.value)) ? 0 : customerCredit;
+    };
+
+    /* --- The chip on the register bar ------------------------------------
+       Absent rather than zeroed when there is nothing to spend, for the reason
+       given at the markup: a chip reading 0.00 on every walk-in sale is noise the
+       eye learns to skip, and this figure has to be noticed on the sales where it
+       exists. Driven from the same fetch as the panel below and through the same
+       spendableCredit(), so the two cannot disagree about whether the customer is
+       in funds. */
+    const showCredit = function () {
+        const spendable = spendableCredit();
+
+        creditChip.classList.toggle('hidden', spendable <= 0.0001);
+        creditValue.textContent = money(spendable);
+    };
+
+    const updateAdvance = function (shortfall) {
+        const spendable = spendableCredit();
+        const applied = Math.min(spendable, shortfall);
+
+        advance.classList.toggle('hidden', applied <= 0.0001);
+
+        if (applied <= 0.0001) return;
+
+        document.getElementById('advance-text').textContent =
+            @json(__('lang_v1.advance_will_cover')).replace(':amount', money(applied));
+
+        /* One or the other, never both: the balance is spent as far as the sale
+           needs it, so a remainder still due means the credit is now empty, and
+           credit left over means the sale is covered. */
+        const stillDue = shortfall - applied;
+
+        document.getElementById('advance-note').textContent = stillDue > 0.0001
+            ? @json(__('lang_v1.advance_remainder_due')).replace(':amount', money(stillDue))
+            : @json(__('lang_v1.advance_left_after')).replace(':amount', money(spendable - applied));
+    };
+
+    /* --- Where the excess goes -------------------------------------------
+       Three outcomes, and only one of them is a question.
+
+       With a standing debt the excess comes off it and the panel says so — the
+       cashier is told, not asked, because an overpayment from someone who owes
+       money has one sensible reading. `overpay_action` is still sent as `credit`:
+       that is the flag that means "do not just hand it back", and the server's
+       payContactDue() decides the split between debt and credit itself. Doing
+       that arithmetic here as well would give the terminal a second opinion about
+       what is owed, computed from a figure that was already stale when it
+       arrived.
+
+       With no debt the two outcomes really do differ and the cashier picks. And
+       for the shared walk-in customer there is only one honest answer, so the
+       credit option is removed rather than shown and refused. */
+    const updateOverpay = function (excess) {
+        const isAnonymous = SHARED_CUSTOMERS.includes(Number(customerSelect.value));
+        const show = excess > 0.0001;
+
+        overpay.classList.toggle('hidden', !show);
+        overpayAmount.value = money(excess);
+
+        if (!show) return;
+
+        const hasDebt = customerDue > 0.0001 && !isAnonymous;
+
+        overpayDebt.classList.toggle('hidden', !hasDebt);
+        overpayChoice.classList.toggle('hidden', hasDebt);
+
+        if (hasDebt) {
+            const applied = Math.min(excess, customerDue);
+
+            document.getElementById('overpay-debt-text').textContent =
+                @json(__('lang_v1.overpay_will_reduce_due')).replace(':amount', money(applied));
+
+            // Said only when there is a remainder, because otherwise it is not true.
+            const left = excess - applied;
+            document.getElementById('overpay-debt-note').textContent = left > 0.0001
+                ? @json(__('lang_v1.overpay_remainder_to_credit')).replace(':amount', money(left))
+                : '';
+
+            // The debt path is a credit-side decision even when every penny of it
+            // lands on an invoice — `refund` would put the money back in the
+            // customer's hand instead.
+            overpayChoice.querySelector('[value="credit"]').checked = true;
+
+            return;
+        }
+
+        creditOption.classList.toggle('hidden', isAnonymous);
+        anonymousNote.classList.toggle('hidden', !isAnonymous);
+
+        if (isAnonymous) {
+            overpayChoice.querySelector('[value="refund"]').checked = true;
+        }
+    };
+
+    /* What this customer owes and what they have already paid in — both figures in
+       one request, asked once per customer rather than per keystroke.
+
+       Failure is silent and falls back to zero for both: the endpoint being
+       unreachable must not stop a sale, and zero is the safe answer — it means the
+       terminal offers the cashier the choice instead of asserting a debt it cannot
+       confirm, and states no credit rather than one it cannot confirm either.
+
+       The two failures differ in consequence, and only one of them is invisible.
+       An unconfirmed debt records nothing, so the worst outcome is a settlement
+       done later from the contact screen. An unconfirmed *credit* is still spent by
+       the server — applyAdvanceBalance() reads the balance from the database and
+       does not consult this — so the sale is recorded correctly and it is the
+       cashier who was not told. The banner after the sale says what was actually
+       spent, which is the reason that message exists. */
+    const loadCustomerDue = async function () {
+        customerDue = 0;
+        customerCredit = 0;
+
+        const id = Number(customerSelect.value);
+
+        if (!id || SHARED_CUSTOMERS.includes(id)) {
+            showCredit();
+            updateChange();
+            return;
+        }
+
+        try {
+            const response = await fetch(`/contacts/${id}/due`, {
+                headers: {'Accept': 'application/json'},
+                cache: 'no-store',
+                signal: AbortSignal.timeout?.(4000),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                customerDue = parseFloat(data.due) || 0;
+                customerCredit = parseFloat(data.advance_balance) || 0;
+            }
+        } catch (error) {
+            // Left at zero deliberately — see above.
+        }
+
+        showCredit();
+        updateChange();
     };
 
     /* --- Totals ----------------------------------------------------------
@@ -952,6 +1243,13 @@
         });
     });
 
+    /* The customer changes what the excess is *for*, not what anything costs, so
+       this refetches the debt and leaves the grid alone. Read on load as well as
+       on change: the terminal can arrive with a customer already selected, either
+       from `defaultCustomer` or from a rejected sale being put back on screen. */
+    customerSelect.addEventListener('change', loadCustomerDue);
+    loadCustomerDue();
+
     /* --- Payment --------------------------------------------------------- */
     const openPayment = function () {
         if (cart.querySelectorAll('[data-row]').length === 0) return;
@@ -1063,9 +1361,22 @@
         tendered.value = '';
         document.getElementById('additional_notes').value = '';
         tempIdField.value = '';
+
+        /* Back to cash-back explicitly. A radio is not cleared by emptying the
+           basket, so without this a cashier who once chose to keep an excess as
+           credit would keep doing it to every customer after — the panel is
+           hidden between sales, so nobody would see the choice still sitting
+           there. */
+        overpayChoice.querySelector('[value="refund"]').checked = true;
+
         closePayment();
         recalc();
-        updateChange();
+
+        /* The debt this terminal was holding is now wrong in both directions: the
+           sale just added to it, or the excess just came off it. Refetching also
+           calls updateChange(), which is what recalc() would have done. */
+        loadCustomerDue();
+
         document.getElementById('finalize').disabled = false;
         search.focus();
     };

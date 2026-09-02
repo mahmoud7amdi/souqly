@@ -308,6 +308,46 @@ class PaymentService
     }
 
     /**
+     * What a contact owes on one side of the ledger.
+     *
+     * One side, not a net figure: {@see payContactDue()} settles either the sell
+     * documents or the purchase ones, never both at once, so a contact of type
+     * `both` who is owed money as a supplier and owes it as a customer must not
+     * have the two cancelled into a single number here. Netting them would seed
+     * a settlement form with an amount that cannot be allocated — the payment
+     * would run off the end of the open documents and land in advance balance.
+     *
+     * Distinct from ContactController::netDuesFor(), which answers the other
+     * question ("what is this relationship worth overall?") for the listing and
+     * the contact header, and nets deliberately.
+     */
+    public function contactDue(Contact $contact, string $dueType = 'sell'): float
+    {
+        $documents = $this->openDocumentsFor($contact, $dueType);
+
+        if ($documents->isEmpty()) {
+            return 0.0;
+        }
+
+        $paid = (float) TransactionPayment::whereIn('transaction_id', $documents->pluck('id'))
+            ->where('is_return', 0)
+            ->sum('amount');
+
+        return round((float) $documents->sum('final_total') - $paid, 4);
+    }
+
+    /**
+     * Which side of the ledger a contact is settled on by default.
+     *
+     * A supplier is owed; everyone else owes. Used to seed the settlement forms
+     * so the common case needs no choice at all.
+     */
+    public function defaultDueTypeFor(Contact $contact): string
+    {
+        return $contact->type === 'supplier' ? 'purchase' : 'sell';
+    }
+
+    /**
      * Increase a contact's advance (prepaid) balance.
      */
     public function addAdvanceBalance(Contact $contact, float $amount): void
@@ -343,6 +383,95 @@ class PaymentService
         $contact->save();
 
         return $payment;
+    }
+
+    /**
+     * Spend whatever advance balance a contact has against a document they have
+     * not paid for.
+     *
+     * The counterpart to {@see payContactDue()}, which is how money gets *into*
+     * advance balance. This is how it comes out without anybody being asked: a
+     * contact who prepaid and later takes goods on credit has those goods drawn
+     * against money they already handed over, which is what the prepayment was
+     * for. Leaving it sitting there while the same person accrues a debt is the
+     * behaviour this replaces.
+     *
+     * Partial cover needs no arithmetic of its own. `useAdvanceBalance()` files a
+     * payment row for as far as the balance reaches and `refreshPaymentStatus()`
+     * derives `partial` from it, so the remainder simply stays due on the
+     * document — there is no second place where the shortfall is computed, and so
+     * no second place for it to be computed differently.
+     *
+     * Returns null when nothing was recorded, which is what lets a caller tell
+     * "no credit was spent" apart from "credit was spent and covered the lot".
+     *
+     * @return array{applied: float, remaining_credit: float, still_due: float}|null
+     */
+    public function applyAdvanceBalance(Transaction $document): ?array
+    {
+        $this->assertInTransaction();
+
+        $contact = $document->contact;
+
+        if (empty($contact)) {
+            return null;
+        }
+
+        /*
+         * The walk-in customer is one shared row every counter sale is filed
+         * against, so a balance sitting on it belongs to nobody in particular and
+         * spending it would quietly hand one person's prepayment to the next
+         * stranger through the door. This is the same rule the overpayment path
+         * applies when deciding whether credit may be *stored* there — see
+         * SellPosController::settleOverpayment().
+         */
+        if ($contact->is_default) {
+            return null;
+        }
+
+        /*
+         * Only against a document that is genuinely owed. A draft or a quotation
+         * is not a debt yet and a sales order is a promise rather than a sale, so
+         * none of them may consume a balance the contact can still spend
+         * elsewhere.
+         *
+         * Both guards live here rather than at the call site so that any screen
+         * that later spends credit — the sell form and the purchase form are the
+         * obvious candidates — inherits the same answer about what counts as owed
+         * instead of restating it. Today POS is the only caller; the type list
+         * already admits PURCHASE so that adding the second one is a call, not a
+         * rewrite.
+         */
+        if (! in_array($document->type, [
+            TransactionTypes::SELL,
+            TransactionTypes::PURCHASE,
+        ], true)) {
+            return null;
+        }
+
+        if (! in_array($document->status, [
+            TransactionTypes::STATUS_FINAL,
+            TransactionTypes::STATUS_RECEIVED,
+        ], true)) {
+            return null;
+        }
+
+        $available = round((float) $contact->balance, 4);
+        $due = $this->amountDue($document);
+
+        if ($available <= 0.0001 || $due <= 0.0001) {
+            return null;
+        }
+
+        $applied = round(min($available, $due), 4);
+
+        $this->useAdvanceBalance($contact, $document, $applied);
+
+        return [
+            'applied' => $applied,
+            'remaining_credit' => round($available - $applied, 4),
+            'still_due' => round($due - $applied, 4),
+        ];
     }
 
     /* ====================================================================

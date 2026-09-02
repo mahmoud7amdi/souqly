@@ -1104,6 +1104,14 @@
         @apply mt-0.5 block text-xs font-normal text-slate-500;
     }
 
+    /* Radio, on the same terms as .checkbox above: native control, accent-color
+       for the tint, nothing hand-drawn. It keeps the arrow-key group behaviour
+       that a div-and-an-icon imitation has to rebuild badly. */
+    .radio {
+        @apply size-4 shrink-0 cursor-pointer;
+        accent-color: var(--color-brand-600);
+    }
+
     /* Quantity stepper — −/value/+ as one control, sized for fingers. */
     .stepper {
         @apply inline-flex items-stretch overflow-hidden rounded-lg border border-slate-300 bg-white;
@@ -1910,11 +1918,49 @@
 
        48rem, not 64rem: a 1366px laptop at 150% display scaling reports 910 CSS
        px, and stacking there is what buried the cart under the product grid.
-       Stacked is for a phone; anything wider gets the two zones side by side. */
+       Stacked is for a phone; anything wider gets the two zones side by side.
+
+       ---- Cart width: 22 / 26 / 28 / 33rem, and where each cap comes from ---
+       A cart row spends 156px on chrome before any text: `px-3` (24) + two
+       `gap-2` (16) + `.cart-row-total` `w-20` (80) + the remove button (36).
+       Its second line then spends 138 more on `.stepper` (36+56+36+2 border)
+       plus its gap. So the "qty × unit price" readout beside the stepper gets
+       `cart − 294`, which at the original 19rem was **10px** — the figure was
+       not narrow, it was absent. The four steps give it 58 / 122 / 154 / 234px.
+
+       The steps are not taste. Each one is the largest width that still holds
+       its column count, and the binding case is named:
+
+         from 48rem → 22rem   capped at 22.125rem by 910px keeping 3 columns
+         from 68rem → 26rem   capped at 26.375rem by 1088px keeping 2 columns
+         from 80rem → 28rem   capped at 28.250rem by 1280px keeping 3 columns
+         from 96rem → 33rem   capped at 34.125rem by 1536px keeping 4 columns
+
+       Note the first tier cannot grow at all, and 64rem is the reason: it is
+       where the sidebar (16rem) appears AND `p-4` becomes `p-6`, so 1024px is
+       *tighter* than 768px. An earlier version stepped the cart up at exactly
+       that breakpoint and left the grid 288px — a SINGLE tile column, narrower
+       than the same screen at 768px. Hence a tier at 68rem instead: it clears
+       the 1024px pinch, and it is what lets a 1366px laptop at 125% scaling
+       (1093 CSS px) reach 26rem instead of being stuck behind 1280.
+
+         768px  → 2 cols @ 163px    1280px → 3 cols @ 153px
+         910px  → 3 cols @ 153px    1366px → 3 cols @ 182px
+         1024px → 2 cols @ 155px    1440px → 4 cols @ 153px
+         1093px → 2 cols @ 158px    1536px → 4 cols @ 157px
+         1152px → 2 cols @ 187px    1920px → 6 cols @ 165px
+
+       No tile can fall below 152px at any width: `auto-fill` + `minmax(9.5rem,
+       1fr)` drops a column instead of shrinking one, so the touch floor is
+       structural rather than something these numbers have to defend.
+
+       `grid-template-columns` resolves along the inline axis, so the cart stays
+       on the left in RTL with no override — the same reason this block never
+       needed one. */
     @media (min-width: 48rem) {
         .pos-shell {
             @apply grid;
-            grid-template-columns: minmax(0, 1fr) 19rem;
+            grid-template-columns: minmax(0, 1fr) 22rem;
         }
 
         .pos-cart {
@@ -1926,10 +1972,27 @@
         }
     }
 
-    /* Room to give the cart its full width back. */
-    @media (min-width: 64rem) {
+    /* 68rem/1088px: the first width past the 1024px sidebar pinch that can
+       spare the cart another 4rem and still hold two product columns. */
+    @media (min-width: 68rem) {
         .pos-shell {
-            grid-template-columns: minmax(0, 1fr) 24rem;
+            grid-template-columns: minmax(0, 1fr) 26rem;
+        }
+    }
+
+    /* 80rem/1280px: three columns come back, so the cart can take 2rem more. */
+    @media (min-width: 80rem) {
+        .pos-shell {
+            grid-template-columns: minmax(0, 1fr) 28rem;
+        }
+    }
+
+    /* 96rem/1536px and up: a desk monitor. The cart takes 33rem and the grid
+       still runs four columns, so the extra pixels go to the zone that reads
+       text rather than to a seventh tile nobody scans. */
+    @media (min-width: 96rem) {
+        .pos-shell {
+            grid-template-columns: minmax(0, 1fr) 33rem;
         }
     }
 
@@ -2022,6 +2085,66 @@
     .pos-total-value {
         @apply font-mono text-3xl font-bold tabular-nums text-slate-900;
         direction: ltr;
+    }
+
+    /* A tendering decision offered as a bordered row rather than a bare radio.
+
+       Used for the one question the terminal ever asks: what to do with money
+       handed over above the total. The whole row is the target because the
+       cashier is answering it with a thumb while holding notes, and each option
+       carries its consequence on a second line — "refund" and "credit" are both
+       four-letter answers whose difference is entirely in what happens next.
+
+       :has() puts the selected state on the row, not just the dot, so the answer
+       is readable from arm's length across a counter. */
+    .pos-choice {
+        @apply flex cursor-pointer items-start gap-2.5 rounded-lg border border-slate-300
+               bg-white px-3 py-2.5 transition select-none hover:bg-slate-50;
+    }
+
+    .pos-choice + .pos-choice {
+        @apply mt-2;
+    }
+
+    .pos-choice:has(input:checked) {
+        @apply border-brand-500 bg-brand-50 ring-1 ring-brand-500/20;
+    }
+
+    /* Nudged for the same reason .checkbox-row .checkbox is: a 16px control in a
+       20px line box sits high against the first line of a two-line label. */
+    .pos-choice .radio {
+        @apply mt-0.5;
+    }
+
+    .pos-choice-title {
+        @apply block text-sm font-semibold text-slate-900;
+    }
+
+    .pos-choice-note {
+        @apply mt-0.5 block text-xs font-normal text-slate-500;
+    }
+
+    /* The stored-credit chip on the register bar.
+
+       Toned, unlike everything else on that bar, and this is the one place the
+       rule in §11.9 bends toward colour: the bar is otherwise selects and labels,
+       so a figure that changes what the cashier does next — ask for less money,
+       or none — has to survive being glanced at rather than read. It is also
+       absent on most sales, which is what keeps the tone from becoming furniture.
+
+       `shrink-0` because the customer select beside it is `flex-1` and would
+       otherwise crush this to an ellipsis on a narrow register bar; the number is
+       the whole point of the chip and is the last thing that may be clipped. */
+    .pos-credit {
+        @apply inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-200
+               bg-brand-50 px-2.5 py-1.5 text-xs font-medium text-brand-800;
+    }
+
+    /* Tabular so the digits do not shift the chip's width as the balance is spent
+       down between sales, and semibold because the figure is what is being read —
+       the label beside it is only there to say what the figure is. */
+    .pos-credit-value {
+        @apply font-semibold text-brand-900 tabular-nums;
     }
 
     /* Numeric keypad for cash tendering. */

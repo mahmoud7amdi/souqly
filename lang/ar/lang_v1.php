@@ -268,6 +268,7 @@ return [
     'available_at' => 'متاح في',
     'locations_empty_means_all' => 'عدم الاختيار يعني كل الفروع',
     'save_and_add_opening_stock' => 'حفظ وإضافة رصيد افتتاحي',
+    'save_and_add_selling_prices' => 'حفظ وإضافة سعر بيع للمجموعة',
     'variation' => 'المتغيّر',
     'variation_prices' => 'أسعار المتغيّرات',
     'variation_template' => 'قالب متغيّرات',
@@ -566,6 +567,36 @@ return [
     'cart_empty_hint' => 'امسح باركود أو ابحث عن منتج لبدء البيع.',
     'amount_paid' => 'المبلغ المدفوع',
     'change_due' => 'الباقي للعميل',
+
+    /* الدفع الزائد. المفتاحان `overpay_will_reduce_due` و
+       `overpay_remainder_to_credit` يقرأهما سكربت نقطة البيع ويستبدل :amount
+       بنفسه — فيجب أن يبقى الوسيط مكتوبًا حرفيًا كما هنا في اللغتين. */
+    'excess_amount' => 'المبلغ الزائد',
+    'refund_change_cash' => 'إرجاع الباقي نقدًا',
+    'refund_change_cash_note' => 'لا يُسجَّل شيء غير البيعة.',
+    'keep_as_customer_credit' => 'حفظه رصيدًا للعميل',
+    'keep_as_customer_credit_note' => 'يُضاف إلى رصيده ويمكن استخدامه في بيعة لاحقة.',
+    'walk_in_cannot_hold_credit' => 'لا يمكن حفظ رصيد على العميل النقدي — الرصيد لن يكون منسوبًا لأحد. اختر عميلًا باسمه لحفظه.',
+    'overpay_will_reduce_due' => 'سيُخصم :amount من الدين المستحق على هذا العميل.',
+    'overpay_remainder_to_credit' => 'وسيُحفظ الباقي :amount رصيدًا له.',
+    'overpay_applied_to_due' => 'خُصم :amount من :count مستند مستحق',
+    'overpay_kept_as_credit' => 'حُفظ :amount رصيدًا للعميل',
+    'overpayment_from_sale' => 'دفع زائد على البيعة :invoice',
+
+    /* استخدام رصيد العميل المُقدَّم، وهو عكس الكتلة أعلاه: هناك كان المدفوع أكبر من
+       البيعة، وهنا أقلّ منها ويُكمِله الرصيد المحفوظ.
+
+       المفاتيح `advance_will_cover` و`advance_remainder_due` و`advance_left_after`
+       يقرأها سكربت نقطة البيع ويستبدل :amount بنفسه — فيجب أن يبقى الوسيط مكتوبًا
+       حرفيًا كما هنا في اللغتين. والثلاثة الأخرى تُبنى في الخادم لرسالة ما فعلته
+       البيعة بعد إتمامها. */
+    'customer_credit' => 'رصيد العميل',
+    'advance_will_cover' => 'سيُخصم :amount من رصيد هذا العميل.',
+    'advance_remainder_due' => 'ويبقى :amount مستحقًّا على هذه البيعة.',
+    'advance_left_after' => 'ويتبقّى له :amount من رصيده.',
+    'advance_applied_to_sale' => 'دُفع :amount من رصيد العميل',
+    'advance_still_due' => 'وبقي :amount مستحقًّا على هذه البيعة',
+    'advance_credit_remaining' => 'وتبقّى له :amount من رصيده',
     'finalize_sale' => 'إتمام البيع',
     'clear_cart' => 'إفراغ السلة',
     'clear_cart_confirm' => 'إفراغ السلة وإلغاء هذا البيع؟',
@@ -630,6 +661,7 @@ return [
     'transaction_number' => 'رقم الحوالة',
     'settle_due' => 'تسوية المستحقات',
     'settle_due_hint' => 'يوزّع المبلغ على أقدم المستندات المفتوحة أولًا، ويُضاف ما يتبقّى إلى رصيد العميل المُقدَّم.',
+    'more_payment_options' => 'بيانات البطاقة والشيك والحوالة',
     'due_type' => 'نوع المستحق',
     'unallocated_to_advance' => 'أُضيف :amount إلى الرصيد المُقدَّم',
     'no_open_documents' => 'لا توجد مستندات مفتوحة لهذه الجهة',

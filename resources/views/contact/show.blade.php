@@ -18,6 +18,16 @@
         <x-nav-icon name="book"/>
         {{ __('lang_v1.ledger') }}
     </a>
+    @if ($canSettle && $settleDue > 0)
+        {{-- The accent button on this screen, and the only one: taking money is
+             what the page is opened for. Absent entirely when there is nothing
+             outstanding — a disabled Settle button on a clear account invites the
+             click that explains why it is disabled. --}}
+        <button type="button" class="btn-accent" data-open-settle>
+            <x-nav-icon name="cash"/>
+            {{ __('lang_v1.settle_due') }}
+        </button>
+    @endif
     @can('customer.update')
         <a href="{{ route('contacts.edit', $contact->id) }}" class="btn-primary">
             <x-nav-icon name="edit"/>
@@ -29,16 +39,29 @@
 {{-- Money owed first: it is the reason this screen gets opened. Only net due is
      toned, and only when there is something outstanding — a zero balance is the
      normal state and colouring it trains the eye to ignore the colour. --}}
+@php
+    /* A negative net due and a positive advance balance are the same fact said
+       twice, not two figures to be added.
+
+       `netDuesFor()` counts the parent row of a settlement, so a customer who
+       hands over 500 against 300 of invoices comes back as net due −200 *and*
+       advance balance 200. Both are right, and showing both invites the reader
+       to total them into a 400 that does not exist. So the credit is stated once,
+       in the tile that is named for it, and net due floors at zero: what is
+       outstanding is nothing, which is true. */
+    $netDue = max(0.0, (float) $summary['net_due']);
+@endphp
 <div class="section">
     <div class="rise-group grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-stat :label="__('lang_v1.net_due')"
-                :value="format_currency($summary['net_due'])"
+                :value="format_currency($netDue)"
                 icon="wallet"
-                :tone="$summary['net_due'] > 0 ? 'danger' : null"/>
+                :tone="$netDue > 0 ? 'danger' : null"/>
 
         <x-stat :label="__('lang_v1.advance_balance')"
                 :value="format_currency($summary['advance_balance'])"
-                icon="coins"/>
+                icon="coins"
+                :tone="$summary['advance_balance'] > 0 ? 'success' : null"/>
 
         <x-stat :label="__('lang_v1.total_sales')"
                 :value="format_currency($summary['sales_total'])"
@@ -93,13 +116,29 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($recentTransactions as $transaction)
+                    @forelse ($recentTransactions as $movement)
                         <tr>
-                            <td class="whitespace-nowrap">@format_date($transaction->transaction_date)</td>
-                            <td class="force-ltr">{{ $transaction->invoice_no ?: $transaction->ref_no }}</td>
-                            <td><span class="badge-muted">{{ __('lang_v1.'.$transaction->type) }}</span></td>
-                            <td>@payment_status($transaction->payment_status)</td>
-                            <td class="cell-numeric">@format_currency($transaction->final_total)</td>
+                            <td class="whitespace-nowrap">@format_date($movement['date'])</td>
+                            <td class="force-ltr">{{ $movement['reference'] }}</td>
+                            {{-- The method rides along with the movement kind rather
+                                 than in the status column, which belongs to documents:
+                                 a row headed "Payment status" reading "Cash" is not a
+                                 status. This is also where a spend against stored
+                                 credit announces itself, as "Advance". --}}
+                            <td>
+                                <span class="badge-muted">{{ $movement['label'] }}</span>
+                                @if ($movement['method'])
+                                    <span class="ms-1 text-xs text-slate-500">{{ $movement['method'] }}</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if ($movement['status'])
+                                    @payment_status($movement['status'])
+                                @else
+                                    <span class="text-slate-400">&mdash;</span>
+                                @endif
+                            </td>
+                            <td class="cell-numeric">@format_currency($movement['total'])</td>
                         </tr>
                     @empty
                         <x-table-empty :columns="5" icon="receipt"
@@ -111,3 +150,12 @@
     </x-panel>
 </div>
 @endsection
+
+{{-- Pushed to the layout's modal stack rather than left inside the grid: a
+     dialog is fixed-position and z-50, so nesting it in a column would put it
+     inside a stacking context that the backdrop is supposed to cover. --}}
+@if ($canSettle && $settleDue > 0)
+    @push('modals')
+        @include('contact._settle-modal')
+    @endpush
+@endif

@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Events\ContactCreatedOrModified;
+use App\Models\Account;
 use App\Models\Contact;
 use App\Models\CustomerGroup;
 use App\Models\Transaction;
 use App\Models\TransactionPayment;
 use App\Services\FormattingService;
+use App\Services\PaymentService;
 use App\Services\ReferenceService;
 use App\Support\TransactionTypes;
 use Illuminate\Http\Request;
@@ -34,6 +36,7 @@ class ContactController extends Controller
     public function __construct(
         private FormattingService $format,
         private ReferenceService $references,
+        private PaymentService $payments,
     ) {}
 
     public function index(Request $request)
@@ -117,19 +120,114 @@ class ContactController extends Controller
         $contact = Contact::with('customer_group')->onlyOwnContact()
             ->select('contacts.*')->findOrFail($id);
 
+        $payments = $this->payments;
+
+        /*
+         * The settlement dialog's own figure, and not the `net_due` stat beside
+         * it. Those two answer different questions and only coincide for a
+         * contact who is purely a customer or purely a supplier: `net_due` nets
+         * both sides of the relationship, while a settlement is allocated down
+         * one side. Seeding the dialog from the netted number would offer a
+         * `both` contact an amount that runs off the end of their open sell
+         * documents and silently becomes advance balance.
+         */
+        $dueType = $payments->defaultDueTypeFor($contact);
+
         return view('contact.show', [
             'contact' => $contact,
             'summary' => $this->summaryFor($contact),
-            'recentTransactions' => Transaction::where('contact_id', $contact->id)
-                ->whereIn('type', [
-                    TransactionTypes::SELL, TransactionTypes::PURCHASE,
-                    TransactionTypes::SELL_RETURN, TransactionTypes::PURCHASE_RETURN,
-                    TransactionTypes::OPENING_BALANCE,
-                ])
-                ->latest('transaction_date')
-                ->limit(15)
-                ->get(),
+            'recentTransactions' => $this->recentMovementsFor($contact),
+
+            /*
+             * The dialog is rendered only when there is something to settle and
+             * somebody allowed to settle it, so both halves of that condition are
+             * decided here rather than in the view — the permission pair is the
+             * same one TransactionPaymentController::store() enforces on the
+             * request the dialog posts, and a button that leads to a 403 is worse
+             * than no button.
+             */
+            'settleDue' => $payments->contactDue($contact, $dueType),
+            'settleDueType' => $dueType,
+            'canSettle' => $this->allows('sell.payments', 'purchase.payments'),
+            'accounts' => Account::forDropdown(),
+            /*
+             * `advance` is excluded: spending a contact's stored credit needs a
+             * document to spend it against, and this dialog has none — it is
+             * settling documents, not choosing one. PaymentService would reject
+             * it, so offering it would only produce a validation error.
+             */
+            'methods' => collect(TransactionTypes::paymentMethods())
+                ->map(fn ($key) => __($key))->except('advance')->all(),
         ]);
+    }
+
+    /**
+     * The contact's latest movements — documents *and* payments in one list.
+     *
+     * Documents alone leave the most common question about a prepaying contact
+     * unanswerable from this screen: the advance-balance stat says what is left,
+     * but nothing says where the rest of it went. A credit sale drawn against
+     * stored credit shows up as a `paid` invoice with no payment beside it, which
+     * reads as an invoice somebody forgot to collect on.
+     *
+     * Both halves are normalised into one row shape here rather than in the view,
+     * which has one table and should not have to know it is looking at two tables.
+     *
+     * The running-balance statement is a different screen with a different job:
+     * {@see ledgerEntries()} deliberately drops advance spends, because there it
+     * would count the same cash twice. Here nothing is being summed, so the spend
+     * is exactly what the reader came for.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function recentMovementsFor(Contact $contact, int $limit = 15): array
+    {
+        $documents = Transaction::where('contact_id', $contact->id)
+            ->whereIn('type', [
+                TransactionTypes::SELL, TransactionTypes::PURCHASE,
+                TransactionTypes::SELL_RETURN, TransactionTypes::PURCHASE_RETURN,
+                TransactionTypes::OPENING_BALANCE,
+            ])
+            ->latest('transaction_date')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($transaction) => [
+                'date' => $transaction->transaction_date,
+                'reference' => $transaction->invoice_no ?: $transaction->ref_no,
+                'label' => __('lang_v1.'.$transaction->type),
+                'status' => $transaction->payment_status,
+                'method' => null,
+                'total' => (float) $transaction->final_total,
+            ]);
+
+        $methods = TransactionTypes::paymentMethods();
+
+        $payments = TransactionPayment::where('payment_for', $contact->id)
+            // Child rows of a bulk settlement would list the same money twice.
+            ->whereNull('parent_id')
+            ->latest('paid_on')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($payment) => [
+                'date' => $payment->paid_on,
+                'reference' => $payment->payment_ref_no,
+                'label' => __($payment->is_return ? 'lang_v1.payment_return' : 'lang_v1.payment'),
+                'status' => null,
+                'method' => __($methods[$payment->method] ?? 'lang_v1.other'),
+                'total' => (float) $payment->amount,
+            ]);
+
+        /*
+         * Each side is capped before the merge and the merged list again after it:
+         * fifteen of each is the smallest window guaranteed to contain the fifteen
+         * most recent overall, and taking fewer from either side could drop a
+         * payment that belongs on screen in favour of an older document.
+         */
+        return $documents->concat($payments)
+            ->sortByDesc('date')
+            ->take($limit)
+            ->values()
+            ->all();
     }
 
     public function edit(int $id)
@@ -277,6 +375,20 @@ class ContactController extends Controller
             ->whereBetween('paid_on', [$start.' 00:00:00', $end.' 23:59:59'])
             // Child rows of a bulk settlement would double-count the parent.
             ->whereNull('parent_id')
+            /*
+             * Spending advance balance moves no money — the cash was credited here
+             * already, when the payment that created the balance was recorded. So a
+             * statement that credited the spend as well would report the same note
+             * twice and drift from the advance-balance stat by exactly the amount
+             * spent: top up 500, take 300 of goods on credit, and the running
+             * balance would close at -500 beside a stat saying 200 is left.
+             *
+             * Every other mirror of a payment already draws this line —
+             * AddAccountTransaction, UpdateAccountTransaction and
+             * CashRegisterService::isDrawerMovement() all skip the method for the
+             * same reason.
+             */
+            ->where('method', '!=', 'advance')
             ->get()
             ->map(fn ($payment) => [
                 'date' => $payment->paid_on,
@@ -398,7 +510,7 @@ class ContactController extends Controller
         $existing->final_total = $amount;
         $existing->save();
 
-        app(\App\Services\PaymentService::class)->refreshPaymentStatus($existing);
+        $this->payments->refreshPaymentStatus($existing);
     }
 
     /* ================================================================

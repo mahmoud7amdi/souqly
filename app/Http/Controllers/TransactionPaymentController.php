@@ -508,37 +508,25 @@ class TransactionPaymentController extends Controller
                 'purchase' => __('lang_v1.purchase_payment_dues'),
             ],
             'defaultDueType' => $request->string('due_type')->toString()
-                ?: ($contact?->type === 'supplier' ? 'purchase' : 'sell'),
+                ?: ($contact ? $this->payments->defaultDueTypeFor($contact) : 'sell'),
             'returnUrl' => $this->returnTo($document, $contact),
         ];
     }
 
     /**
      * Open-document total for a contact, on the side the form is settling.
+     *
+     * Delegated to the service that will spend it: the figure the form offers as
+     * the amount has to be the figure `payContactDue()` can actually allocate,
+     * and keeping a second copy of that query here is how the two drift apart.
      */
     protected function contactDueFor(Contact $contact, Request $request): float
     {
-        $dueType = $request->string('due_type')->toString()
-            ?: ($contact->type === 'supplier' ? 'purchase' : 'sell');
-
-        $types = $dueType === 'sell'
-            ? [TransactionTypes::SELL, TransactionTypes::OPENING_BALANCE]
-            : [TransactionTypes::PURCHASE, TransactionTypes::OPENING_BALANCE];
-
-        $documents = Transaction::where('contact_id', $contact->id)
-            ->whereIn('type', $types)
-            ->whereIn('payment_status', [TransactionTypes::DUE, TransactionTypes::PARTIAL])
-            ->get(['id', 'final_total']);
-
-        if ($documents->isEmpty()) {
-            return 0.0;
-        }
-
-        $paid = (float) TransactionPayment::whereIn('transaction_id', $documents->pluck('id'))
-            ->where('is_return', 0)
-            ->sum('amount');
-
-        return round((float) $documents->sum('final_total') - $paid, 4);
+        return $this->payments->contactDue(
+            $contact,
+            $request->string('due_type')->toString()
+                ?: $this->payments->defaultDueTypeFor($contact)
+        );
     }
 
     /**

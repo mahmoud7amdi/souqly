@@ -156,6 +156,26 @@ class OpeningStockController extends Controller
             return back()->withInput()->with('status', $this->failed($e));
         }
 
+        /*
+         * "Save & add group selling price" continues the chain the product create
+         * form starts: product → opening position → per-group prices. The stock is
+         * already committed by the time we get here, so the branch only chooses
+         * where to land.
+         *
+         * `product.update` is checked rather than assumed. The group-price screen
+         * calls `permit('product.update')`, and this screen only requires
+         * `product.opening_stock` — so a user holding one and not the other would
+         * otherwise be shown a 403 on top of a save that actually succeeded. The
+         * button is hidden for them too; this is the same rule enforced twice,
+         * because a hidden button is not a closed route.
+         */
+        if ($request->input('submit_type') === 'submit_n_add_selling_prices'
+            && $this->allows('product.update')) {
+            return redirect()
+                ->route('products.addSellingPrices', $product->id)
+                ->with('status', $output);
+        }
+
         return redirect()
             ->route('opening-stock.index', ['location_id' => $locationId])
             ->with('status', $output);

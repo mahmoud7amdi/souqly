@@ -266,6 +266,7 @@ return [
     'available_at' => 'Available at',
     'locations_empty_means_all' => 'No selection means all locations',
     'save_and_add_opening_stock' => 'Save & add opening stock',
+    'save_and_add_selling_prices' => 'Save & add group selling price',
     'variation' => 'Variation',
     'variation_prices' => 'Variation prices',
     'variation_template' => 'Variation template',
@@ -564,6 +565,39 @@ Large',
     'cart_empty_hint' => 'Scan a barcode or search for a product to start the sale.',
     'amount_paid' => 'Amount paid',
     'change_due' => 'Change due',
+
+    /* Tendering above the total. `overpay_will_reduce_due` and
+       `overpay_remainder_to_credit` are also read by the terminal's script, which
+       substitutes :amount itself — so keep the placeholder spelled exactly as it
+       is here in both languages. */
+    'excess_amount' => 'The excess',
+    'refund_change_cash' => 'Give the change in cash',
+    'refund_change_cash_note' => 'Nothing is recorded beyond the sale.',
+    'keep_as_customer_credit' => 'Keep as customer credit',
+    'keep_as_customer_credit_note' => 'Added to their balance and spendable on a later sale.',
+    'walk_in_cannot_hold_credit' => 'Credit cannot be stored on the walk-in customer — the balance could not be traced back to anyone. Select a named customer to keep it.',
+    'overpay_will_reduce_due' => ':amount will come off this customer\'s outstanding balance.',
+    'overpay_remainder_to_credit' => 'The remaining :amount will be kept as credit.',
+    'overpay_applied_to_due' => ':amount applied to :count outstanding document(s)',
+    'overpay_kept_as_credit' => ':amount kept as customer credit',
+    'overpayment_from_sale' => 'Overpayment on sale :invoice',
+
+    /* Spending credit the customer left earlier, which is the mirror of the block
+       above: there the tender was more than the sale, here it is less and stored
+       credit makes up the difference.
+
+       `advance_will_cover`, `advance_remainder_due` and `advance_left_after` are
+       read by the terminal's script and have their :amount substituted in
+       JavaScript, so the placeholder must stay spelled exactly as it is here in
+       both languages. The other three are built server-side for the banner that
+       reports what the finished sale actually did. */
+    'customer_credit' => 'Customer credit',
+    'advance_will_cover' => ':amount will be taken from this customer\'s credit.',
+    'advance_remainder_due' => 'The remaining :amount stays due on this sale.',
+    'advance_left_after' => ':amount of their credit will be left.',
+    'advance_applied_to_sale' => ':amount paid from the customer\'s credit',
+    'advance_still_due' => ':amount still due on this sale',
+    'advance_credit_remaining' => ':amount of credit left',
     'finalize_sale' => 'Finalise sale',
     'clear_cart' => 'Clear cart',
     'clear_cart_confirm' => 'Empty the cart and abandon this sale?',
@@ -628,6 +662,7 @@ Large',
     'transaction_number' => 'Transaction number',
     'settle_due' => 'Settle dues',
     'settle_due_hint' => 'Allocates the amount to the oldest open documents first; anything left over is added to the contact\'s advance balance.',
+    'more_payment_options' => 'Card, cheque and transfer details',
     'due_type' => 'Due type',
     'unallocated_to_advance' => ':amount was added to the advance balance',
     'no_open_documents' => 'This contact has no open documents',

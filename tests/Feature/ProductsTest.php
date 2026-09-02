@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\BusinessLocation;
 use App\Models\Product;
+use App\Models\Role;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Variation;
@@ -11,6 +13,7 @@ use App\Models\VariationValueTemplate;
 use App\Services\BusinessService;
 use App\Support\Permissions;
 use App\Support\Tenancy;
+use App\Support\TransactionTypes;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\Models\Permission;
@@ -664,8 +667,156 @@ class ProductsTest extends TestCase
     }
 
     /* ================================================================
+     | "Save & add group selling price"
+     ================================================================ */
+
+    /**
+     * The button exists on the screen, and only for someone who can use it.
+     *
+     * Both halves are markup, and markup is what no redirect test can see: a
+     * `@can` written against the wrong permission name fails closed and silently,
+     * leaving the feature invisible on a page that still renders and still saves.
+     */
+    #[Test]
+    public function the_opening_stock_screen_offers_the_group_price_button(): void
+    {
+        $product = $this->createdProduct('Buttoned item');
+        $url = route('opening-stock.edit', $product->id);
+
+        $this->get($url)
+            ->assertOk()
+            ->assertSee('submit_n_add_selling_prices', false)
+            ->assertSee(__('lang_v1.save_and_add_selling_prices'), false);
+
+        // Same screen, same save, no onward button: the group-price grid is not
+        // theirs to open.
+        $this->actingAs($this->stockClerk($this->locationId()))
+            ->get($url)
+            ->assertOk()
+            ->assertDontSee('submit_n_add_selling_prices', false);
+    }
+
+    /**
+     * The third link in the same chain: product → opening position → group prices.
+     *
+     * `opening-stock.update` had exactly one exit, so the button had to be given a
+     * branch of its own rather than a route of its own — the stock is committed
+     * either way and only the landing changes. The assertion that matters is the
+     * pair: the redirect went to the group-price screen *and* the opening-stock
+     * document exists, because a branch taken before the save would look identical
+     * from the redirect alone.
+     */
+    #[Test]
+    public function saving_opening_stock_with_the_group_price_button_lands_on_the_group_price_screen(): void
+    {
+        $product = $this->createdProduct('Chained item');
+        $variation = $product->variations->firstOrFail();
+        $locationId = $this->locationId();
+
+        $response = $this->put(route('opening-stock.update', $product->id), [
+            'location_id' => $locationId,
+            'quantities' => [$variation->id => 5],
+            'prices' => [$variation->id => 20],
+            'submit_type' => 'submit_n_add_selling_prices',
+        ]);
+
+        $response->assertRedirect(route('products.addSellingPrices', $product->id))
+            ->assertSessionHas('status.success', 1);
+
+        $this->assertDatabaseHas('transactions', [
+            'opening_stock_product_id' => $product->id,
+            'type' => TransactionTypes::OPENING_STOCK,
+            'location_id' => $locationId,
+        ]);
+    }
+
+    /**
+     * The same button pressed by someone who may state opening stock but may not
+     * edit products.
+     *
+     * The two screens ask for different permissions — `product.opening_stock` here,
+     * `product.update` on the group-price grid — so following the redirect blindly
+     * would answer a successful save with a 403, which reads as "the stock was not
+     * saved" when it was. The index, with the message intact, is the honest place
+     * to land. Hiding the button is not enough on its own: the value is a form
+     * field and the route is open to anyone who can reach this screen.
+     */
+    #[Test]
+    public function the_group_price_button_falls_back_to_the_index_without_product_update(): void
+    {
+        $product = $this->createdProduct('Clerk item');
+        $variation = $product->variations->firstOrFail();
+        $locationId = $this->locationId();
+
+        $this->actingAs($this->stockClerk($locationId))
+            ->put(route('opening-stock.update', $product->id), [
+                'location_id' => $locationId,
+                'quantities' => [$variation->id => 5],
+                'prices' => [$variation->id => 20],
+                'submit_type' => 'submit_n_add_selling_prices',
+            ])
+            ->assertRedirect(route('opening-stock.index', ['location_id' => $locationId]))
+            ->assertSessionHas('status.success', 1);
+
+        $this->assertDatabaseHas('transactions', [
+            'opening_stock_product_id' => $product->id,
+            'type' => TransactionTypes::OPENING_STOCK,
+        ]);
+    }
+
+    /* ================================================================
      | Helpers
      ================================================================ */
+
+    /**
+     * A stocked product created the way the form creates one, returned with its
+     * variations loaded.
+     */
+    private function createdProduct(string $name): Product
+    {
+        $this->post(route('products.store'), $this->payload(['name' => $name]))
+            ->assertSessionHas('status.success', 1);
+
+        return Product::with('variations')->where('name', $name)->latest('id')->firstOrFail();
+    }
+
+    /**
+     * A user who may state opening stock and nothing else about a product.
+     *
+     * Explicit location access rather than `access_all_locations`, because
+     * `OpeningStockController::edit()` resolves the shop through
+     * `BusinessLocation::forDropdown()` and bounces to the index with
+     * "no permitted location" when that comes back empty.
+     */
+    private function stockClerk(int $locationId): User
+    {
+        $role = Role::create([
+            'name' => Role::nameFor('Stock clerk', $this->businessId),
+            'business_id' => $this->businessId, 'is_default' => false, 'guard_name' => 'web',
+        ]);
+        $role->givePermissionTo(Permission::findOrCreate('product.opening_stock', 'web'));
+
+        $clerk = User::create([
+            'user_type' => 'user', 'business_id' => $this->businessId,
+            'first_name' => 'Stock', 'last_name' => 'Clerk',
+            'username' => 'clerk_'.uniqid(), 'password' => 'secret-pass',
+            'language' => 'ar', 'status' => 'active', 'allow_login' => 1,
+        ]);
+        $clerk->assignRole($role);
+        $clerk->givePermissionTo(Permission::findOrCreate(
+            Permissions::forLocation($locationId), 'web'
+        ));
+
+        return $clerk;
+    }
+
+    /**
+     * The location `BusinessService::register()` seeded for this tenant.
+     */
+    private function locationId(): int
+    {
+        return (int) BusinessLocation::where('business_id', $this->businessId)->value('id');
+    }
 
     /**
      * A complete product submit. Every `required` rule is satisfied, so a test can

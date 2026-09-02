@@ -178,7 +178,21 @@
         <a href="{{ route('opening-stock.index', ['location_id' => $locationId]) }}" class="btn-secondary">
             {{ __('lang_v1.cancel') }}
         </a>
-        <button type="submit" class="btn-primary">
+
+        {{-- Two ways to commit, same as the product create form: this one saves the
+             opening position and then hands you the group-price grid, because the
+             three things are usually entered in one sitting — create the product,
+             state what is on the shelf, then price it per customer group. It stays
+             secondary even though it does more, and it is hidden without
+             `product.update`, which is what the group-price screen demands. --}}
+        @can('product.update')
+            <button type="submit" name="submit_type" value="submit_n_add_selling_prices" class="btn-secondary">
+                <x-nav-icon name="tag"/>
+                {{ __('lang_v1.save_and_add_selling_prices') }}
+            </button>
+        @endcan
+
+        <button type="submit" name="submit_type" value="save" class="btn-primary">
             <x-nav-icon name="save"/>
             {{ __('lang_v1.save') }}
         </button>
